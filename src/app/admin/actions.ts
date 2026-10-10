@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getGateway } from "@/lib/payments/registry";
 import { minorUnitsFactor } from "@/lib/money";
+import { partnerCodesEnabled } from "@/lib/env";
 
 async function audit(actor: string, action: string, entity: string, entityId: string, data?: object) {
   await createAdminClient().from("audit_log").insert({ actor_id: actor, action, entity, entity_id: entityId, data });
@@ -37,7 +38,6 @@ export async function setAffiliateStatus(affiliateId: string, status: "approved"
   if (form) {
     if (num("override_pct") !== undefined) patch.override_pct = num("override_pct");
     if (num("cookie_days") !== undefined) patch.cookie_days = Math.max(1, Math.round(Number(form.get("cookie_days"))));
-    patch.lifetime_attribution = form.get("lifetime_attribution") === "on";
     const parentCode = String(form.get("parent_code") ?? "").trim();
     if (parentCode) {
       const { data: parent } = await db.from("affiliates").select("id").eq("code", parentCode).neq("id", affiliateId).maybeSingle();
@@ -53,6 +53,7 @@ export async function setAffiliateStatus(affiliateId: string, status: "approved"
 /** A discount code that credits sales to the affiliate/IB even without their link. */
 export async function createAffiliateCoupon(affiliateId: string, form: FormData) {
   await requireRole(["admin", "finance"]);
+  if (!partnerCodesEnabled) throw new Error("Partner codes are switched off");
   const code = String(form.get("code") ?? "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
   const percent = Number(form.get("percent_off"));
   if (code.length < 3 || !(percent > 0 && percent <= 100)) throw new Error("Enter a code and a discount between 1 and 100%");

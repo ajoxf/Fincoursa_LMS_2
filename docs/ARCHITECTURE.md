@@ -49,6 +49,20 @@ Money is always stored in minor units (`bigint`) alongside an ISO currency.
 6. `apply_refund()`: a full refund revokes access and reverses unpaid earnings and commissions.
    A partial refund scales them down.
 
+## Partner (affiliate / IB) attribution
+
+Each sale is credited to at most one partner, through one route:
+
+1. **Referral link.** `?ref=CODE` (optionally `&sub=campaign`) sets a cookie for the partner's cookie window. The last click wins.
+2. **Partner code.** A coupon owned by a partner credits that partner only if no referral link was used. When a buyer
+   arrives on partner A's link and enters partner B's code, A is credited and B's code only gives the discount.
+   `PARTNER_CODES_ENABLED=false` switches this route off entirely (planned), leaving links as the only route.
+
+There is no lifetime attribution. A client's later purchases earn only if that purchase itself came through
+the partner's link or code. Sign-ups through a link are still recorded, so the partner sees them under Clients.
+A sub-IB's sale also pays the master IB's override (tier 2). This is part of the same single credited route,
+not a second referral.
+
 ## Progress tracking
 
 The player sends a heartbeat every 15s (and on pause, end, or tab hide) with the seconds **actually played**.

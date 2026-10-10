@@ -243,7 +243,7 @@ begin
   select jsonb_build_object(
     'profile', jsonb_build_object(
       'code', a.code, 'status', a.status, 'commission_pct', a.commission_pct, 'cookie_days', a.cookie_days,
-      'lifetime_attribution', a.lifetime_attribution, 'override_pct', a.override_pct,
+      'override_pct', a.override_pct,
       'parent_code', (select code from public.affiliates where id = a.parent_affiliate_id),
       'joined', a.approved_at, 'has_payout_details', a.payout_details <> '{}'::jsonb),
     'funnel', jsonb_build_object(

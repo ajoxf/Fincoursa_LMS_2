@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
-import { env } from "@/lib/env";
+import { env, partnerCodesEnabled } from "@/lib/env";
 import { Stat, Card, RangePicker, Progress } from "@/components/dash/Stat";
 import { ColumnChart } from "@/components/dash/ColumnChart";
 import { BarList } from "@/components/dash/BarList";
@@ -38,7 +38,7 @@ export default async function AffiliatePage({ searchParams }: PageProps<"/affili
       <div className="grid gap-6">
         <div>
           <h1 className="text-3xl font-bold text-primary">Become a FinCoursa partner</h1>
-          <p className="mt-2 max-w-2xl text-muted">Affiliates and Introducing Brokers earn commission on every course sale they refer. You get a personal link and coupon codes, a live view of your clients, sales and earnings, and you can build your own team of sub-IBs.</p>
+          <p className="mt-2 max-w-2xl text-muted">Affiliates and Introducing Brokers earn commission on every course sale they refer. You get a personal referral link, a live view of your clients, sales and earnings, and you can build your own team of sub-IBs.</p>
         </div>
         <ApplyForm parentCode={invite} />
       </div>
@@ -70,7 +70,6 @@ export default async function AffiliatePage({ searchParams }: PageProps<"/affili
             {isMaster && <span className="rounded-button bg-accent/20 px-2 py-0.5 text-xs font-semibold text-primary">Master IB</span>}
             {p.parent_code && <span className="rounded-button bg-surface px-2 py-0.5 text-xs">Sub-IB of {p.parent_code}</span>}
             <span>{Number(p.commission_pct)}% commission</span>·<span>{p.cookie_days}-day cookie</span>
-            {p.lifetime_attribution && <><span>·</span><span>Lifetime clients</span></>}
             {p.joined && <><span>·</span><span>Partner since {formatDate(p.joined)}</span></>}
           </p>
         </div>
@@ -220,7 +219,7 @@ async function Commissions({ m, days }: { m: (n: number) => string; days: number
                   <td className="py-2 pr-3 tabular-nums">#{r.order_number}</td>
                   <td className="max-w-56 truncate py-2 pr-3">{r.items}</td>
                   <td className="py-2 pr-3">{r.client}</td>
-                  <td className="py-2 pr-3 text-xs">{r.via === "link" ? "Link" : r.via === "coupon" ? "Coupon" : r.via === "lifetime" ? "Lifetime client" : r.via}{r.campaign && <span className="text-muted"> · {r.campaign}</span>}</td>
+                  <td className="py-2 pr-3 text-xs">{r.via === "link" ? "Link" : r.via === "coupon" ? "Code" : r.via}{r.campaign && <span className="text-muted"> · {r.campaign}</span>}</td>
                   <td className="py-2 pr-3 tabular-nums">{m(r.sale_minor)}</td>
                   <td className="py-2 pr-3 tabular-nums">{Number(r.pct)}%{r.tier === 2 && <span className="text-xs text-muted"> override</span>}</td>
                   <td className="py-2 pr-3 tabular-nums font-medium">{m(r.amount_minor)}</td>
@@ -263,7 +262,7 @@ async function Campaigns({ d, m, code }: { d: Dash; m: (n: number) => string; co
           </table>
         </div>
       </Card>
-      <Card title="Your coupon codes">
+      {partnerCodesEnabled && <Card title="Your partner codes">
         {(d.coupons ?? []).length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[600px] text-sm">
@@ -283,8 +282,8 @@ async function Campaigns({ d, m, code }: { d: Dash; m: (n: number) => string; co
               </tbody>
             </table>
           </div>
-        ) : <p className="text-sm text-muted">No coupon codes yet. Ask the FinCoursa team for a discount code for your audience; any sale using it is credited to you, even without your link.</p>}
-      </Card>
+        ) : <p className="text-sm text-muted">No partner codes yet. Ask the FinCoursa team for a discount code for your audience. A sale using your code is credited to you when the buyer didn&apos;t come through another partner&apos;s link.</p>}
+      </Card>}
     </>
   );
 }

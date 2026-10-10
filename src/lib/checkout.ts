@@ -2,7 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { pickPrice } from "@/lib/catalog";
 import { computeTax } from "@/lib/money";
-import { env } from "@/lib/env";
+import { env, partnerCodesEnabled } from "@/lib/env";
 
 export type QuoteInput = {
   courseSlug?: string;
@@ -85,15 +85,14 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
   };
 }
 
-export type Attribution = { affiliateId: string; attribution: "link" | "coupon" | "lifetime"; campaign: string | null } | null;
+export type Attribution = { affiliateId: string; attribution: "link" | "coupon"; campaign: string | null } | null;
 
 /**
- * Who gets credit for a sale, in priority order:
- *  1. the referral link cookie (last click within the cookie window),
- *  2. an affiliate/IB coupon code used at checkout,
- *  3. the IB who originally referred this client, if that IB has lifetime attribution.
- * Self-referrals and unapproved affiliates never earn. A client referred at sign-up is also
- * recorded here if they arrive at checkout with a cookie but no referral on file.
+ * A sale is credited to at most ONE partner, through ONE route:
+ *  1. their referral link (last click within the cookie window), otherwise
+ *  2. their partner code used at checkout (only while partner codes are enabled).
+ * If a buyer arrives on one partner's link and types another partner's code, the link wins;
+ * the code still gives the buyer its discount. Self-referrals and unapproved partners never earn.
  */
 export async function resolveAttribution(opts: { refCode?: string; campaign?: string; buyerId: string; couponId?: string | null }): Promise<Attribution> {
   const db = createAdminClient();
@@ -106,14 +105,10 @@ export async function resolveAttribution(opts: { refCode?: string; campaign?: st
       return { affiliateId: data!.id, attribution: "link", campaign: opts.campaign ?? null };
     }
   }
-  if (opts.couponId) {
+  if (partnerCodesEnabled && opts.couponId) {
     const { data: c } = await db.from("coupons").select("affiliate:affiliates(id, user_id, status)").eq("id", opts.couponId).maybeSingle();
     const a = (c?.affiliate ?? null) as { id: string; user_id: string; status: string } | null;
     if (ok(a)) return { affiliateId: a!.id, attribution: "coupon", campaign: null };
   }
-  const { data: p } = await db.from("profiles")
-    .select("affiliate:affiliates!profiles_referred_by_fk(id, user_id, status, lifetime_attribution)").eq("id", opts.buyerId).maybeSingle();
-  const life = (p?.affiliate ?? null) as { id: string; user_id: string; status: string; lifetime_attribution: boolean } | null;
-  if (ok(life) && life!.lifetime_attribution) return { affiliateId: life!.id, attribution: "lifetime", campaign: null };
   return null;
 }

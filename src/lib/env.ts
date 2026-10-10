@@ -8,6 +8,12 @@ export const env = {
   defaultCurrency: (process.env.NEXT_PUBLIC_DEFAULT_CURRENCY ?? "AED").toUpperCase(),
 };
 
+/**
+ * Partner coupon codes. When false, codes no longer credit sales to partners and are hidden
+ * from the partner and admin screens; referral links become the only route. (Plan: switch off.)
+ */
+export const partnerCodesEnabled = (process.env.PARTNER_CODES_ENABLED ?? "true") !== "false";
+
 export const isSupabaseConfigured = Boolean(env.supabaseUrl && env.supabaseAnonKey);
 
 export function serverSecret(name: string): string {

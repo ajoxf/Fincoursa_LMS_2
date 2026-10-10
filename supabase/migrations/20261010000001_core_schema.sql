@@ -257,7 +257,6 @@ create table public.affiliates (
   status public.affiliate_status not null default 'pending',
   commission_pct numeric(5,2) not null default 20 check (commission_pct between 0 and 100),
   cookie_days int not null default 30,
-  lifetime_attribution boolean not null default false, -- true: earn on every future purchase of referred clients
   parent_affiliate_id uuid references public.affiliates(id) on delete set null, -- master IB (2-tier)
   override_pct numeric(5,2) not null default 0 check (override_pct between 0 and 100), -- what the master IB earns on this sub-IB's sales
   payout_details jsonb not null default '{}'::jsonb,   -- bank/IBAN, PayPal etc. (staff + owner only)
@@ -295,7 +294,7 @@ create table public.orders (
   coupon_id uuid references public.coupons(id) on delete set null,
   affiliate_id uuid references public.affiliates(id) on delete set null,
   affiliate_campaign text,
-  attribution text check (attribution in ('link','coupon','lifetime')),
+  attribution text check (attribution in ('link','coupon')),   -- a sale is credited through ONE route only
   gateway text,
   gateway_session_id text,
   paid_at timestamptz,
