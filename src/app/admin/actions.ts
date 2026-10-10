@@ -31,12 +31,37 @@ export async function refundOrder(orderId: string, form: FormData) {
 export async function setAffiliateStatus(affiliateId: string, status: "approved" | "suspended", form?: FormData) {
   const admin = await requireRole(["admin"]);
   const db = createAdminClient();
-  const pct = form ? Number(form.get("commission_pct")) : NaN;
-  const { data: a } = await db.from("affiliates")
-    .update({ status, approved_at: status === "approved" ? new Date().toISOString() : null, ...(pct >= 0 && pct <= 100 ? { commission_pct: pct } : {}) })
-    .eq("id", affiliateId).select("user_id").single();
+  const num = (k: string) => { const v = form?.get(k); const n = Number(v); return v === null || v === undefined || v === "" || isNaN(n) ? undefined : Math.min(100, Math.max(0, n)); };
+  const patch: Record<string, unknown> = { status, approved_at: status === "approved" ? new Date().toISOString() : null };
+  if (num("commission_pct") !== undefined) patch.commission_pct = num("commission_pct");
+  if (form) {
+    if (num("override_pct") !== undefined) patch.override_pct = num("override_pct");
+    if (num("cookie_days") !== undefined) patch.cookie_days = Math.max(1, Math.round(Number(form.get("cookie_days"))));
+    patch.lifetime_attribution = form.get("lifetime_attribution") === "on";
+    const parentCode = String(form.get("parent_code") ?? "").trim();
+    if (parentCode) {
+      const { data: parent } = await db.from("affiliates").select("id").eq("code", parentCode).neq("id", affiliateId).maybeSingle();
+      if (parent) patch.parent_affiliate_id = parent.id;
+    } else patch.parent_affiliate_id = null;
+  }
+  const { data: a } = await db.from("affiliates").update(patch).eq("id", affiliateId).select("user_id, approved_at").single();
   if (a && status === "approved") await db.from("user_roles").upsert({ user_id: a.user_id, role: "affiliate" });
-  await audit(admin.id, `affiliate.${status}`, "affiliate", affiliateId);
+  await audit(admin.id, `affiliate.${status}`, "affiliate", affiliateId, patch);
+  revalidatePath("/admin/affiliates");
+}
+
+/** A discount code that credits sales to the affiliate/IB even without their link. */
+export async function createAffiliateCoupon(affiliateId: string, form: FormData) {
+  await requireRole(["admin", "finance"]);
+  const code = String(form.get("code") ?? "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+  const percent = Number(form.get("percent_off"));
+  if (code.length < 3 || !(percent > 0 && percent <= 100)) throw new Error("Enter a code and a discount between 1 and 100%");
+  const ends = String(form.get("ends_at") ?? "");
+  const { error } = await createAdminClient().from("coupons").insert({
+    code, percent_off: percent, affiliate_id: affiliateId, is_active: true,
+    max_redemptions: Number(form.get("max_redemptions")) || null, ends_at: ends ? new Date(ends).toISOString() : null,
+  });
+  if (error) throw new Error(error.code === "23505" ? "That code already exists" : error.message);
   revalidatePath("/admin/affiliates");
 }
 

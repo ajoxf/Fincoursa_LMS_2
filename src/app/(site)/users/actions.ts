@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
@@ -54,6 +55,9 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     },
   });
   if (error) return { error: error.message };
+  // First-touch client attribution for affiliates / IBs
+  const ref = (await cookies()).get("fc_ref")?.value;
+  if (ref && data.user) await createAdminClient().rpc("record_referral_signup", { p_user: data.user.id, p_code: ref });
   if (!data.session) return { message: "Check your email to confirm your account." };
   redirect(next);
 }

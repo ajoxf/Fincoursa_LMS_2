@@ -35,6 +35,8 @@ create table public.profiles (
   country_code char(2),
   preferred_currency char(3) default 'AED',
   marketing_opt_in boolean not null default false,
+  referred_by_affiliate_id uuid,          -- first affiliate/IB who brought this user (FK added below)
+  referred_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -255,6 +257,9 @@ create table public.affiliates (
   status public.affiliate_status not null default 'pending',
   commission_pct numeric(5,2) not null default 20 check (commission_pct between 0 and 100),
   cookie_days int not null default 30,
+  lifetime_attribution boolean not null default false, -- true: earn on every future purchase of referred clients
+  parent_affiliate_id uuid references public.affiliates(id) on delete set null, -- master IB (2-tier)
+  override_pct numeric(5,2) not null default 0 check (override_pct between 0 and 100), -- what the master IB earns on this sub-IB's sales
   payout_details jsonb not null default '{}'::jsonb,   -- bank/IBAN, PayPal etc. (staff + owner only)
   website text,
   notes text,
@@ -267,6 +272,7 @@ create table public.affiliate_clicks (
   affiliate_id uuid not null references public.affiliates(id) on delete cascade,
   visitor_id text,                 -- first-party cookie id
   landing_path text,
+  campaign text,                   -- ?sub= / utm_campaign
   referrer text,
   country_code char(2),
   created_at timestamptz not null default now()
@@ -288,6 +294,8 @@ create table public.orders (
   billing_country char(2),
   coupon_id uuid references public.coupons(id) on delete set null,
   affiliate_id uuid references public.affiliates(id) on delete set null,
+  affiliate_campaign text,
+  attribution text check (attribution in ('link','coupon','lifetime')),
   gateway text,
   gateway_session_id text,
   paid_at timestamptz,
@@ -428,7 +436,8 @@ create index on public.instructor_earnings (instructor_id, status);
 create table public.affiliate_commissions (
   id uuid primary key default gen_random_uuid(),
   affiliate_id uuid not null references public.affiliates(id) on delete restrict,
-  order_id uuid not null unique references public.orders(id) on delete cascade,
+  order_id uuid not null references public.orders(id) on delete cascade,
+  tier smallint not null default 1 check (tier in (1, 2)),   -- 1 = direct referral, 2 = override from a sub-IB's sale
   currency char(3) not null,
   net_revenue_minor bigint not null,
   commission_pct numeric(5,2) not null,
@@ -439,6 +448,12 @@ create table public.affiliate_commissions (
   created_at timestamptz not null default now()
 );
 create index on public.affiliate_commissions (affiliate_id, status);
+create unique index on public.affiliate_commissions (order_id, affiliate_id);
+
+-- links that need both tables to exist
+alter table public.profiles add constraint profiles_referred_by_fk
+  foreign key (referred_by_affiliate_id) references public.affiliates(id) on delete set null;
+alter table public.coupons add column affiliate_id uuid references public.affiliates(id) on delete set null; -- IB's own discount code
 
 -- ---------- Organizations (B2B: corporate / university / custom) ----------
 create table public.organizations (

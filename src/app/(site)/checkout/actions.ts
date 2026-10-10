@@ -2,7 +2,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { buildQuote, resolveAffiliate } from "@/lib/checkout";
+import { buildQuote, resolveAttribution } from "@/lib/checkout";
 import { gatewaysFor, getGateway } from "@/lib/payments/registry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
@@ -15,7 +15,10 @@ export async function startCheckout(form: FormData) {
   if (!quote) throw new Error("Item not found");
 
   const db = createAdminClient();
-  const affiliateId = await resolveAffiliate((await cookies()).get("fc_ref")?.value, user.id);
+  const jar = await cookies();
+  const attr = await resolveAttribution({
+    refCode: jar.get("fc_ref")?.value, campaign: jar.get("fc_campaign")?.value, buyerId: user.id, couponId: quote.coupon?.id,
+  });
 
   let gatewayId: string | null = null;
   if (quote.totalMinor > 0) {
@@ -29,7 +32,8 @@ export async function startCheckout(form: FormData) {
     user_id: user.id, currency: quote.currency,
     subtotal_minor: quote.subtotalMinor, discount_minor: quote.discountMinor, tax_minor: quote.taxMinor, total_minor: quote.totalMinor,
     tax_rate: quote.taxRate, billing_country: country, coupon_id: quote.coupon?.id ?? null,
-    affiliate_id: affiliateId, gateway: gatewayId ?? "free",
+    affiliate_id: attr?.affiliateId ?? null, attribution: attr?.attribution ?? null, affiliate_campaign: attr?.campaign ?? null,
+    gateway: gatewayId ?? "free",
   }).select("id, number").single();
   if (error || !order) throw new Error("Could not create order");
 

@@ -229,15 +229,24 @@ begin
     end loop;
   end loop;
 
-  -- affiliate commission (no self-referrals)
+  -- affiliate / IB commission (no self-referrals), plus the master IB's override (tier 2)
   if v_o.affiliate_id is not null then
     select * into v_aff from public.affiliates where id = v_o.affiliate_id;
     if v_aff.status = 'approved' and v_aff.user_id <> v_o.user_id then
       v_order_net := v_o.total_minor - v_o.tax_minor;
-      insert into public.affiliate_commissions (affiliate_id, order_id, currency, net_revenue_minor, commission_pct, amount_minor, available_at)
-      values (v_aff.id, p_order, v_o.currency, v_order_net, v_aff.commission_pct,
+      insert into public.affiliate_commissions (affiliate_id, order_id, tier, currency, net_revenue_minor, commission_pct, amount_minor, available_at)
+      values (v_aff.id, p_order, 1, v_o.currency, v_order_net, v_aff.commission_pct,
               round(v_order_net * v_aff.commission_pct / 100), now() + v_hold)
-      on conflict (order_id) do nothing;
+      on conflict (order_id, affiliate_id) do nothing;
+
+      if v_aff.parent_affiliate_id is not null and v_aff.override_pct > 0 then
+        insert into public.affiliate_commissions (affiliate_id, order_id, tier, currency, net_revenue_minor, commission_pct, amount_minor, available_at)
+        select par.id, p_order, 2, v_o.currency, v_order_net, v_aff.override_pct,
+               round(v_order_net * v_aff.override_pct / 100), now() + v_hold
+          from public.affiliates par
+         where par.id = v_aff.parent_affiliate_id and par.status = 'approved' and par.user_id <> v_o.user_id
+        on conflict (order_id, affiliate_id) do nothing;
+      end if;
     end if;
   end if;
 

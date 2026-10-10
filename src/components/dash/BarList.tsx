@@ -8,8 +8,8 @@ export function BarList({ rows, format = (n) => String(n), empty = "No data yet"
     <ul className="grid gap-3">
       {rows.map((r) => (
         <li key={r.label}>
-          <div className="flex justify-between gap-4 text-sm">
-            <span className="truncate">{r.label}</span>
+          <div className="flex justify-between gap-3 text-sm">
+            <span className="min-w-0 truncate">{r.label}</span>
             <span className="shrink-0 tabular-nums font-medium">{format(r.value)}{r.sub && <span className="ml-2 font-normal text-muted">{r.sub}</span>}</span>
           </div>
           <div className="mt-1 h-2 rounded-full bg-surface">

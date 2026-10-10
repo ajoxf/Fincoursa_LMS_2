@@ -10,7 +10,7 @@ export function Stat({ label, value, hint }: { label: string; value: React.React
 
 export function Card({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <section className="fc-card p-5">
+    <section className="fc-card min-w-0 p-5">
       <div className="mb-4 flex items-center justify-between gap-4">
         <h2 className="font-semibold text-primary">{title}</h2>
         {action}
