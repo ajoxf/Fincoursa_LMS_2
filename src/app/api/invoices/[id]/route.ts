@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/format";
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -27,7 +28,7 @@ table{width:100%;border-collapse:collapse;margin-top:24px}td,th{padding:8px;bord
 .r{text-align:right}.muted{color:#5b6676}h1{margin:0}@media print{button{display:none}}</style></head><body>
 <button onclick="print()" style="float:right">Print / Save PDF</button>
 <h1>${trn ? "Tax Invoice" : "Invoice"}</h1>
-<p class="muted">Invoice #${o.number} · ${esc(new Date(o.paid_at ?? o.created_at).toLocaleDateString("en-GB"))}</p>
+<p class="muted">Invoice #${o.number} · ${esc(formatDate(o.paid_at ?? o.created_at))}</p>
 <p><strong>${esc(seller)}</strong><br>${esc(address)}${trn ? `<br>TRN: ${esc(trn)}` : ""}</p>
 <p>Billed to: ${esc(buyer?.full_name || buyer?.email)}<br>${esc(buyer?.email)}${o.billing_country ? `<br>${esc(o.billing_country)}` : ""}</p>
 <table><tr><th>Item</th><th class="r">Qty</th><th class="r">Amount</th></tr>

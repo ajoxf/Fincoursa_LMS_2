@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatMoney, minorUnitsFactor } from "@/lib/money";
 import { refundOrder } from "../actions";
+import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -36,7 +37,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
               return (
                 <tr key={o.id} className="border-t border-line align-top">
                   <td className="p-3"><a href={`/api/invoices/${o.id}`} className="underline">{o.number}</a></td>
-                  <td className="p-3">{new Date(o.created_at).toLocaleDateString()}</td>
+                  <td className="p-3">{formatDate(o.created_at)}</td>
                   <td className="p-3">{o.user?.full_name || o.user?.email}</td>
                   <td className="p-3">{o.order_items?.map((i: { title: string }) => i.title).join(", ")}</td>
                   <td className="p-3">{o.gateway}{o.billing_country && ` · ${o.billing_country}`}</td>
@@ -45,11 +46,16 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
                   <td className="p-3 text-right tabular-nums">{formatMoney(o.total_minor, o.currency)}{o.refunded_minor > 0 && <div className="text-xs text-danger">−{formatMoney(o.refunded_minor, o.currency)}</div>}</td>
                   <td className="p-3">
                     {refundable && (
-                      <form action={refundOrder.bind(null, o.id)} className="flex gap-1">
-                        <input name="amount" type="number" step="0.01" min="0.01" max={left} defaultValue={left} className="fc-input w-24 !py-1" />
-                        <input name="reason" placeholder="Reason" className="fc-input w-28 !py-1" />
-                        <button className="rounded-md border border-danger px-2 text-xs text-danger">Refund</button>
-                      </form>
+                      <details className="relative">
+                        <summary className="cursor-pointer list-none text-xs font-medium text-danger underline">Refund…</summary>
+                        <form action={refundOrder.bind(null, o.id)} className="absolute right-0 z-10 mt-2 grid w-56 gap-2 rounded-card border border-line bg-bg p-3 shadow-lg">
+                          <label className="grid gap-1 text-xs">Amount ({o.currency})
+                            <input name="amount" type="number" step="0.01" min="0.01" max={left} defaultValue={left} className="fc-input !py-1" />
+                          </label>
+                          <input name="reason" placeholder="Reason" className="fc-input !py-1 text-xs" />
+                          <button className="rounded-md border border-danger px-2 py-1 text-xs text-danger">Confirm refund</button>
+                        </form>
+                      </details>
                     )}
                   </td>
                 </tr>

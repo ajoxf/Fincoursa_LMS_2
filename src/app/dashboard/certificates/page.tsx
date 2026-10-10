@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Certificates" };
 
@@ -17,7 +18,7 @@ export default async function CertificatesPage() {
         {(data ?? []).map((c: any) => (
           <Link key={c.serial} href={`/certificates/${c.serial}`} className="fc-card p-5 hover:shadow-md">
             <p className="font-semibold">{c.course?.title}</p>
-            <p className="mt-1 text-xs text-muted">Issued {new Date(c.issued_at).toLocaleDateString()} · ID {c.serial}</p>
+            <p className="mt-1 text-xs text-muted">Issued {formatDate(c.issued_at)} · ID {c.serial}</p>
           </Link>
         ))}
         {!data?.length && <p className="text-muted">Finish a course to earn your first certificate.</p>}

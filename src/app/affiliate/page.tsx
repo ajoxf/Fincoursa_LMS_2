@@ -7,6 +7,7 @@ import { Stat, Card, RangePicker } from "@/components/dash/Stat";
 import { ColumnChart } from "@/components/dash/ColumnChart";
 import { ApplyForm } from "./ApplyForm";
 import { LinkBuilder } from "./CopyLink";
+import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Affiliate" };
 
@@ -70,13 +71,13 @@ export default async function AffiliatePage({ searchParams }: PageProps<"/affili
       <Card title="Your referral link"><LinkBuilder base={env.siteUrl} code={aff.code} /></Card>
       <div className="grid gap-6 xl:grid-cols-2">
         <Card title="Clicks per day"><ColumnChart label="Clicks" data={series.map((d) => ({ x: d.day, y: Number(d.clicks) }))} /></Card>
-        <Card title="Commission per day"><ColumnChart label="Commission" format={m} data={series.map((d) => ({ x: d.day, y: Number(d.commission_minor) }))} /></Card>
+        <Card title="Commission per day"><ColumnChart label="Commission" currency={cur} data={series.map((d) => ({ x: d.day, y: Number(d.commission_minor) }))} /></Card>
       </div>
       <Card title="Recent commissions">
         <ul className="divide-y divide-line text-sm">
           {(commissions ?? []).map((c) => (
             <li key={c.id} className="flex justify-between gap-4 py-2">
-              <span>{new Date(c.created_at).toLocaleDateString()} · sale of {formatMoney(c.net_revenue_minor, c.currency)}</span>
+              <span>{formatDate(c.created_at)} · sale of {formatMoney(c.net_revenue_minor, c.currency)}</span>
               <span className="tabular-nums">{formatMoney(c.amount_minor, c.currency)} <span className="text-muted">· {c.status}</span></span>
             </li>
           ))}

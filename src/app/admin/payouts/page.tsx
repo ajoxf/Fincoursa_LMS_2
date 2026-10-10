@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatMoney } from "@/lib/money";
 import { Card } from "@/components/dash/Stat";
 import { cancelPayout, createPayouts, markPayoutPaid } from "../actions";
+import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Payouts" };
 
@@ -33,7 +34,7 @@ export default async function AdminPayouts() {
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {(payouts ?? []).map((p: any) => (
               <tr key={p.id} className="border-t border-line">
-                <td className="p-3">{new Date(p.created_at).toLocaleDateString()}</td>
+                <td className="p-3">{formatDate(p.created_at)}</td>
                 <td className="p-3">{p.payee_type === "instructor" ? p.instructor?.name : `Affiliate ${p.affiliate?.code}`}</td>
                 <td className="p-3 tabular-nums">{formatMoney(p.amount_minor, p.currency)}</td>
                 <td className="p-3">{p.status}{p.reference && <span className="text-muted"> · {p.reference}</span>}</td>

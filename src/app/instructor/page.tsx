@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/money";
 import { env } from "@/lib/env";
 import { Stat, Card, Progress, RangePicker } from "@/components/dash/Stat";
 import { ColumnChart } from "@/components/dash/ColumnChart";
+import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Instructor dashboard" };
 
@@ -40,7 +41,7 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
         <Stat label="Paid out to date" value={m(summary.paid_minor)} />
       </div>
       <Card title="Daily earnings">
-        <ColumnChart label="Earnings" format={m} data={(series ?? []).map((r: { day: string; amount_minor: number }) => ({ x: r.day, y: Number(r.amount_minor) }))} />
+        <ColumnChart label="Earnings" currency={cur} data={(series ?? []).map((r: { day: string; amount_minor: number }) => ({ x: r.day, y: Number(r.amount_minor) }))} />
       </Card>
       <Card title={`My courses · ${students} students`}>
         <div className="overflow-x-auto">
@@ -71,7 +72,7 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
           <ul className="divide-y divide-line text-sm">
             {payouts.map((p) => (
               <li key={p.id} className="flex justify-between py-2">
-                <span>{new Date(p.paid_at ?? p.created_at).toLocaleDateString()} · {p.status}{p.reference && ` · ${p.reference}`}</span>
+                <span>{formatDate(p.paid_at ?? p.created_at)} · {p.status}{p.reference && ` · ${p.reference}`}</span>
                 <span className="tabular-nums">{formatMoney(p.amount_minor, p.currency)}</span>
               </li>
             ))}

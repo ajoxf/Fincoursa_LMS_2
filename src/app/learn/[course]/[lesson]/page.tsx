@@ -119,7 +119,7 @@ export default async function LessonPage({ params }: PageProps<"/learn/[course]/
                   startAt={progress.get(lessonId)?.last_position_seconds ?? 0} track={tracking}
                   watermark={user?.email ?? undefined} title={lesson.title} viewerId={user?.id} />
               ) : (
-                <div className="fc-card flex aspect-video items-center justify-center text-muted">Video is processing — check back shortly.</div>
+                <div className="fc-card flex aspect-video items-center justify-center text-muted">{full.video_asset_id ? "Video is processing — check back shortly." : "The video for this lesson is coming soon."}</div>
               )
             ) : full?.type === "quiz" ? (
               <QuizLesson lessonId={lessonId} passPct={b.pass_pct ?? 70}

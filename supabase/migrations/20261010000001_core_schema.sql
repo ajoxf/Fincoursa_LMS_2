@@ -6,6 +6,9 @@
 create extension if not exists pgcrypto;
 create extension if not exists citext;
 
+-- Daily revenue/progress figures are bucketed by business day in Dubai, not UTC.
+do $$ begin execute format('alter database %I set timezone to %L', current_database(), 'Asia/Dubai'); end $$;
+
 -- ---------- Enums ----------
 create type public.app_role as enum ('student','instructor','affiliate','admin','finance','support');
 create type public.publish_status as enum ('draft','published','archived');

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Purchases" };
 
@@ -30,7 +31,7 @@ export default async function PurchasesPage() {
               <tr key={o.id} className="border-t border-line">
                 <td className="p-4">#{o.number}</td>
                 <td className="p-4">{o.order_items?.map((i) => i.title).join(", ")}</td>
-                <td className="p-4">{new Date(o.paid_at ?? o.created_at).toLocaleDateString()}</td>
+                <td className="p-4">{formatDate(o.paid_at ?? o.created_at)}</td>
                 <td className="p-4">{statusLabel[o.status] ?? o.status}</td>
                 <td className="p-4 text-right tabular-nums">{formatMoney(o.total_minor, o.currency)}</td>
                 <td className="p-4 text-right">{o.status !== "failed" && <a href={`/api/invoices/${o.id}`} className="text-primary underline">Invoice</a>}</td>

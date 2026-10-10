@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { brand } from "@/components/site/brand";
+import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Certificate" };
 
@@ -24,7 +25,7 @@ export default async function CertificatePage({ params }: PageProps<"/certificat
         <p className="mt-2 text-4xl font-bold text-primary">{c.recipient_name}</p>
         <p className="mt-6 text-muted">has successfully completed</p>
         <p className="mt-2 text-2xl font-semibold">{title}</p>
-        <p className="mt-10 text-sm text-muted">Issued {new Date(c.issued_at).toLocaleDateString("en-GB", { dateStyle: "long" })} · Certificate ID {c.serial}</p>
+        <p className="mt-10 text-sm text-muted">Issued {formatDate(c.issued_at, "long")} · Certificate ID {c.serial}</p>
       </div>
     </div>
   );

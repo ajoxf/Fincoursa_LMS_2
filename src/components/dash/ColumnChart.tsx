@@ -1,19 +1,21 @@
 "use client";
 import { useState } from "react";
+import { formatMoney } from "@/lib/money";
 
 /**
  * Single-series column chart (one hue, so no legend — the card title names it).
  * Thin bars with rounded tops on a zero baseline, recessive grid, hover tooltip,
  * and a "Table" toggle so values are never available only as colour/height.
  */
-export function ColumnChart({ data, format = (n) => String(n), label, height = 180 }: {
-  data: { x: string; y: number }[]; format?: (n: number) => string; label: string; height?: number;
+export function ColumnChart({ data, currency, label, height = 180 }: {
+  data: { x: string; y: number }[]; currency?: string; label: string; height?: number;
 }) {
+  const format = (n: number) => (currency ? formatMoney(n, currency) : n.toLocaleString());
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
   const max = Math.max(1, ...data.map((d) => d.y));
   const nice = niceMax(max);
-  const W = 600, H = height, padL = 0, padB = 20, plotH = H - padB - 8;
+  const W = 600, H = height, padL = 0, padB = 0, plotH = H - padB - 8;
   const step = (W - padL) / Math.max(data.length, 1);
   const barW = Math.max(2, Math.min(24, step - 2)); // 2px surface gap between bars
   const ticks = [0, nice / 2, nice];
@@ -51,13 +53,15 @@ export function ColumnChart({ data, format = (n) => String(n), label, height = 1
                     <path d={`M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + barW - r} Q${x + barW},${y} ${x + barW},${y + r} V${y + h} Z`}
                       fill="var(--fc-primary)" opacity={hover === null || hover === i ? 1 : 0.45} />
                   )}
-                  {i % every === 0 && (
-                    <text x={x + barW / 2} y={H - 4} textAnchor="middle" fontSize={11} fill="var(--fc-text-muted)">{d.x.slice(5)}</text>
-                  )}
                 </g>
               );
             })}
           </svg>
+          <div className="relative h-4 text-[11px] text-muted">
+            {data.map((d, i) => i % every === 0 && (
+              <span key={d.x} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${((i + 0.5) / data.length) * 100}%` }}>{d.x.slice(5)}</span>
+            ))}
+          </div>
           <span className="absolute left-0 top-0 text-[11px] text-muted">{format(nice)}</span>
           {hover !== null && data[hover] && (
             <div className="pointer-events-none absolute -top-2 rounded-md border border-line bg-bg px-2 py-1 text-xs shadow"

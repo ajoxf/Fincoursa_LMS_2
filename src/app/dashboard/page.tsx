@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Stat, Progress } from "@/components/dash/Stat";
+import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "My courses" };
 
@@ -62,9 +63,9 @@ export default async function StudentDashboard({ searchParams }: PageProps<"/das
                 <p className="font-semibold">{e.course.title}</p>
                 <Progress pct={Number(e.progress_pct)} />
                 <p className="text-xs text-muted">
-                  {e.completed_at ? `Completed ${new Date(e.completed_at).toLocaleDateString()}` :
-                    e.last_activity_at ? `Last studied ${new Date(e.last_activity_at).toLocaleDateString()}` : "Not started"}
-                  {e.expires_at && ` · Access until ${new Date(e.expires_at).toLocaleDateString()}`}
+                  {e.completed_at ? `Completed ${formatDate(e.completed_at)}` :
+                    e.last_activity_at ? `Last studied ${formatDate(e.last_activity_at)}` : "Not started"}
+                  {e.expires_at && ` · Access until ${formatDate(e.expires_at)}`}
                 </p>
               </Link>
             ))}

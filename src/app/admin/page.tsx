@@ -61,7 +61,7 @@ export default async function AdminOverview({ searchParams }: PageProps<"/admin"
           hint={<Link href="/admin/payouts" className="underline">Go to payouts</Link>} />
       </div>
       <Card title="Net revenue per day">
-        <ColumnChart label="Net revenue" format={m} data={(series.data ?? []).map((r: { day: string; net_minor: number }) => ({ x: r.day, y: Number(r.net_minor) }))} />
+        <ColumnChart label="Net revenue" currency={cur} data={(series.data ?? []).map((r: { day: string; net_minor: number }) => ({ x: r.day, y: Number(r.net_minor) }))} />
       </Card>
       <div className="grid gap-6 xl:grid-cols-2">
         <Card title="By course"><BarList rows={rows(byCourse.data)} format={m} /></Card>
