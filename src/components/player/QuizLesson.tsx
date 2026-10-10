@@ -2,11 +2,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { notifyLessonCompleted } from "@/app/actions/progress";
 
 export type QuizQuestion = { id: string; prompt: string; options: { id: string; text: string }[] };
 
-export function QuizLesson({ lessonId, questions, passPct, canSubmit }: {
-  lessonId: string; questions: QuizQuestion[]; passPct: number; canSubmit: boolean;
+export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit }: {
+  lessonId: string; courseId: string; questions: QuizQuestion[]; passPct: number; canSubmit: boolean;
 }) {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -19,7 +20,11 @@ export function QuizLesson({ lessonId, questions, passPct, canSubmit }: {
       start(async () => {
         const { data, error } = await createClient().rpc("submit_quiz", { p_lesson: lessonId, p_answers: answers });
         const row = Array.isArray(data) ? data[0] : data;
-        if (!error && row) { setResult({ score: Number(row.score), passed: row.passed }); router.refresh(); }
+        if (!error && row) {
+          setResult({ score: Number(row.score), passed: row.passed });
+          if (row.passed) await notifyLessonCompleted(courseId);
+          router.refresh();
+        }
       });
     }}>
       {questions.map((q, i) => (

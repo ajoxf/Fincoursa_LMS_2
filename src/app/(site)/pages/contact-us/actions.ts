@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
+import { allow, clientIp, LIMITS, TOO_MANY } from "@/lib/rate-limit";
 
 const schema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -18,6 +19,7 @@ export async function submitContact(_: ContactState, form: FormData): Promise<Co
   const parsed = schema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { ok: false, error: "Please check your name and email." };
   if (!isSupabaseConfigured) return { ok: false, error: "The contact form isn't connected yet." };
+  if (!(await allow("contact", await clientIp(), LIMITS.contact.limit, LIMITS.contact.window))) return { ok: false, error: TOO_MANY };
   if (parsed.data.website) return { ok: true }; // bot filled the honeypot
   const { name, email, organization, program_type, message } = parsed.data;
   const row = { name, email, organization, program_type, message };

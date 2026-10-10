@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getGateway } from "@/lib/payments/registry";
 import { minorUnitsFactor } from "@/lib/money";
 import { partnerCodesEnabled } from "@/lib/env";
+import { sendPartnerApproved, sendPayoutPaid } from "@/lib/email/events";
 
 async function audit(actor: string, action: string, entity: string, entityId: string, data?: object) {
   await createAdminClient().from("audit_log").insert({ actor_id: actor, action, entity, entity_id: entityId, data });
@@ -44,8 +45,11 @@ export async function setAffiliateStatus(affiliateId: string, status: "approved"
       if (parent) patch.parent_affiliate_id = parent.id;
     } else patch.parent_affiliate_id = null;
   }
+  const { data: before } = await db.from("affiliates").select("status, approved_at").eq("id", affiliateId).single();
+  if (status === "approved" && before?.status === "approved") patch.approved_at = before.approved_at; // keep original approval date on edits
   const { data: a } = await db.from("affiliates").update(patch).eq("id", affiliateId).select("user_id, approved_at").single();
   if (a && status === "approved") await db.from("user_roles").upsert({ user_id: a.user_id, role: "affiliate" });
+  if (a && status === "approved" && before?.status !== "approved") await sendPartnerApproved(affiliateId); // sent once (email log)
   await audit(admin.id, `affiliate.${status}`, "affiliate", affiliateId, patch);
   revalidatePath("/admin/affiliates");
 }
@@ -109,6 +113,7 @@ export async function markPayoutPaid(payoutId: string, form: FormData) {
     const table = p.payee_type === "instructor" ? "instructor_earnings" : "affiliate_commissions";
     await db.from(table).update({ status: "paid" }).eq("payout_id", payoutId);
     await audit(admin.id, "payout.paid", "payout", payoutId);
+    await sendPayoutPaid(payoutId);
   }
   revalidatePath("/admin/payouts");
 }

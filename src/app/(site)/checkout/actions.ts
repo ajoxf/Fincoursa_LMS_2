@@ -6,10 +6,14 @@ import { buildQuote, resolveAttribution } from "@/lib/checkout";
 import { gatewaysFor, getGateway } from "@/lib/payments/registry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
+import { after } from "next/server";
+import { allow, LIMITS, TOO_MANY } from "@/lib/rate-limit";
+import { sendReceipt } from "@/lib/email/events";
 
 export async function startCheckout(form: FormData) {
   const s = (k: string) => (String(form.get(k) ?? "").trim() || undefined);
   const user = await requireUser("/pages/paid-courses");
+  if (!(await allow("checkout", user.id, LIMITS.checkout.limit, LIMITS.checkout.window))) throw new Error(TOO_MANY);
   const country = s("country")?.toUpperCase() ?? null;
   const quote = await buildQuote({ courseSlug: s("course"), bundleSlug: s("bundle"), couponCode: s("coupon"), country });
   if (!quote) throw new Error("Item not found");
@@ -71,5 +75,6 @@ export async function simulatePayment(orderId: string) {
   const { data: order } = await db.from("orders").select("user_id, gateway").eq("id", orderId).single();
   if (!order || order.user_id !== user.id || order.gateway !== "manual") throw new Error("Not allowed");
   await db.rpc("fulfill_order", { p_order: orderId, p_gateway_ref: `manual_${orderId}` });
+  after(() => sendReceipt(orderId));
   redirect(`/checkout/success?order=${orderId}`);
 }

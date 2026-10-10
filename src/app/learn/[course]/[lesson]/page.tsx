@@ -115,14 +115,14 @@ export default async function LessonPage({ params }: PageProps<"/learn/[course]/
               </div>
             ) : full?.type === "video" ? (
               video ? (
-                <VideoLesson lessonId={lessonId} playbackId={video.playbackId} tokens={video.tokens}
+                <VideoLesson lessonId={lessonId} courseId={course.id} playbackId={video.playbackId} tokens={video.tokens}
                   startAt={progress.get(lessonId)?.last_position_seconds ?? 0} track={tracking}
                   watermark={user?.email ?? undefined} title={lesson.title} viewerId={user?.id} />
               ) : (
                 <div className="fc-card flex aspect-video items-center justify-center text-muted">{full.video_asset_id ? "Video is processing — check back shortly." : "The video for this lesson is coming soon."}</div>
               )
             ) : full?.type === "quiz" ? (
-              <QuizLesson lessonId={lessonId} passPct={b.pass_pct ?? 70}
+              <QuizLesson lessonId={lessonId} courseId={course.id} passPct={b.pass_pct ?? 70}
                 // never send correct answers to the browser
                 questions={(b.questions ?? []).map((q) => ({ id: q.id, prompt: q.prompt, options: q.options }))} canSubmit={tracking} />
             ) : null}
@@ -134,7 +134,7 @@ export default async function LessonPage({ params }: PageProps<"/learn/[course]/
               </ul>
             )}
             {unlocked && tracking && full && !["video", "quiz"].includes(full.type) && (
-              <div className="mt-6"><CompleteButton lessonId={lessonId} done={Boolean(progress.get(lessonId)?.completed_at)} /></div>
+              <div className="mt-6"><CompleteButton lessonId={lessonId} courseId={course.id} done={Boolean(progress.get(lessonId)?.completed_at)} /></div>
             )}
           </div>
 

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendMissedCompletionEmails } from "@/lib/email/events";
 
 // Daily (vercel.json): earnings past the 30-day refund window become payable.
 export async function GET(request: NextRequest) {
@@ -8,5 +9,6 @@ export async function GET(request: NextRequest) {
   }
   const { error } = await createAdminClient().rpc("release_matured_earnings");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  const completionEmails = await sendMissedCompletionEmails();
+  return NextResponse.json({ ok: true, completionEmails });
 }

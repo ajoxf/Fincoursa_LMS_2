@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { allow, LIMITS, TOO_MANY } from "@/lib/rate-limit";
 
 export type ApplyState = { error?: string; ok?: boolean } | null;
 
@@ -16,6 +17,7 @@ const schema = z.object({
 
 export async function applyAsAffiliate(_: ApplyState, form: FormData): Promise<ApplyState> {
   const user = await requireUser("/affiliate");
+  if (!(await allow("aff-apply", user.id, LIMITS.affiliateApply.limit, LIMITS.affiliateApply.window))) return { error: TOO_MANY };
   const parsed = schema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   let parentId: string | null = null;

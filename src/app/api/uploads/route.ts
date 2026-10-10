@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser, hasRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { allow, LIMITS } from "@/lib/rate-limit";
 
 const BUCKETS = {
   "course-images": { maxMb: 10, types: /^image\/(png|jpe?g|webp|gif|svg\+xml)$/ },
@@ -14,6 +15,7 @@ const BUCKETS = {
 export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await allow("upload", user.id, LIMITS.upload.limit, LIMITS.upload.window))) return NextResponse.json({ error: "Too many uploads, try again later" }, { status: 429 });
   const { bucket, filename, contentType, size, courseId } = (await request.json().catch(() => ({}))) as {
     bucket?: keyof typeof BUCKETS; filename?: string; contentType?: string; size?: number; courseId?: string;
   };

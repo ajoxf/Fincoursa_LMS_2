@@ -3,6 +3,7 @@ import MuxPlayer from "@mux/mux-player-react";
 import { useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { notifyLessonCompleted } from "@/app/actions/progress";
 
 const BEAT_SECONDS = 15;
 
@@ -10,8 +11,8 @@ const BEAT_SECONDS = 15;
  * Signed Mux playback + server-side progress tracking.
  * Only seconds actually played (not seeked) count toward completion; the server caps each beat.
  */
-export function VideoLesson({ lessonId, playbackId, tokens, startAt, track, watermark, title, viewerId }: {
-  lessonId: string; playbackId: string; tokens: Record<string, string | undefined>; startAt: number;
+export function VideoLesson({ lessonId, courseId, playbackId, tokens, startAt, track, watermark, title, viewerId }: {
+  lessonId: string; courseId: string; playbackId: string; tokens: Record<string, string | undefined>; startAt: number;
   track: boolean; watermark?: string; title: string; viewerId?: string;
 }) {
   const router = useRouter();
@@ -31,9 +32,10 @@ export function VideoLesson({ lessonId, playbackId, tokens, startAt, track, wate
     const row = Array.isArray(data) ? data[0] : data;
     if (row?.completed && !completed.current) {
       completed.current = true;
+      if (Number(row.progress_pct) >= 100) notifyLessonCompleted(courseId);
       router.refresh(); // update the sidebar tick and progress bar
     }
-  }, [lessonId, track, router]);
+  }, [lessonId, courseId, track, router]);
 
   useEffect(() => {
     const id = setInterval(flush, BEAT_SECONDS * 1000);

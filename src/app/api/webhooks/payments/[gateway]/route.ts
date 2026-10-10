@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getGateway } from "@/lib/payments/registry";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendReceipt } from "@/lib/email/events";
 
 /**
  * One webhook endpoint per provider: /api/webhooks/payments/{gateway}
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/webhook
     let err = null;
     if (ev.type === "payment.succeeded") {
       ({ error: err } = await db.rpc("fulfill_order", { p_order: ev.orderId, p_gateway_ref: ev.sessionId ?? null }));
+      if (!err) await sendReceipt(ev.orderId).catch((e) => console.error("[email] receipt", e));
     } else if (ev.type === "payment.failed") {
       ({ error: err } = await db.from("orders").update({ status: "failed" }).eq("id", ev.orderId).eq("status", "pending"));
     } else if (ev.type === "refund.succeeded") {
