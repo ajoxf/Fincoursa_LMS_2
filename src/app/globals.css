@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+@theme inline {
+  --color-primary: var(--fc-primary);
+  --color-primary-contrast: var(--fc-primary-contrast);
+  --color-accent: var(--fc-accent);
+  --color-accent-contrast: var(--fc-accent-contrast);
+  --color-bg: var(--fc-bg);
+  --color-surface: var(--fc-surface);
+  --color-surface-dark: var(--fc-surface-dark);
+  --color-line: var(--fc-border);
+  --color-ink: var(--fc-text);
+  --color-muted: var(--fc-text-muted);
+  --color-on-dark: var(--fc-text-on-dark);
+  --color-success: var(--fc-success);
+  --color-warning: var(--fc-warning);
+  --color-danger: var(--fc-danger);
+  --font-sans: var(--fc-font-body);
+  --font-heading: var(--fc-font-heading);
+  --radius-card: var(--fc-radius);
+  --radius-button: var(--fc-radius-button);
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { background: var(--fc-bg); color: var(--fc-text); font-family: var(--fc-font-body); }
+  h1, h2, h3, h4 { font-family: var(--fc-font-heading); }
+}
+
+@layer components {
+  .fc-container { width: 100%; max-width: var(--fc-container); margin-inline: auto; padding-inline: 16px; }
+  @media (min-width: 768px) { .fc-container { padding-inline: 24px; } }
+  .fc-label { font-size: 0.75rem; font-weight: 600; letter-spacing: var(--fc-label-tracking); text-transform: uppercase; color: var(--fc-accent); }
+  .fc-btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border-radius: var(--fc-radius-button);
+            padding: .75rem 1.5rem; font-weight: 600; font-size: .95rem; transition: opacity .15s, background .15s; }
+  .fc-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .fc-btn-primary { background: var(--fc-accent); color: var(--fc-accent-contrast); }
+  .fc-btn-primary:hover { opacity: .9; }
+  .fc-btn-outline { border: 1px solid currentColor; }
+  .fc-btn-dark { background: var(--fc-primary); color: var(--fc-primary-contrast); }
+  .fc-card { background: var(--fc-bg); border: 1px solid var(--fc-border); border-radius: var(--fc-radius); }
+  .fc-input { width: 100%; border: 1px solid var(--fc-border); border-radius: 8px; padding: .65rem .8rem; background: var(--fc-bg); color: var(--fc-text); }
+  .fc-input:focus { outline: 2px solid var(--fc-accent); outline-offset: 1px; }
+}

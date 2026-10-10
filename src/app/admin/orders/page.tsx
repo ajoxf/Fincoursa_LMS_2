@@ -1,0 +1,63 @@
+import type { Metadata } from "next";
+import { requireRole } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { formatMoney, minorUnitsFactor } from "@/lib/money";
+import { refundOrder } from "../actions";
+
+export const metadata: Metadata = { title: "Orders" };
+
+export default async function OrdersPage({ searchParams }: PageProps<"/admin/orders">) {
+  await requireRole(["admin", "finance", "support"], "/admin/orders");
+  const q = (await searchParams).q;
+  const db = createAdminClient();
+  let query = db.from("orders")
+    .select("id, number, status, currency, total_minor, refunded_minor, gateway, billing_country, created_at, paid_at, user:profiles(email, full_name), order_items(title), affiliate:affiliates(code)")
+    .order("created_at", { ascending: false }).limit(100);
+  if (typeof q === "string" && /^\d+$/.test(q)) query = query.eq("number", Number(q));
+  const { data: orders, error } = await query;
+
+  return (
+    <div className="grid gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold text-primary">Orders &amp; refunds</h1>
+        <form><input name="q" defaultValue={typeof q === "string" ? q : ""} placeholder="Order #" className="fc-input w-40" /></form>
+      </div>
+      {error && <p className="text-sm text-danger">{error.message}</p>}
+      <div className="fc-card overflow-x-auto">
+        <table className="w-full min-w-[900px] text-sm">
+          <thead className="text-left text-muted"><tr>
+            {["#", "Date", "Buyer", "Item", "Gateway", "Affiliate", "Status", "Total", "Refund"].map((h) => <th key={h} className="p-3 font-medium">{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(orders ?? []).map((o: any) => {
+              const refundable = (o.status === "paid" || o.status === "partially_refunded");
+              const left = (o.total_minor - o.refunded_minor) / minorUnitsFactor(o.currency);
+              return (
+                <tr key={o.id} className="border-t border-line align-top">
+                  <td className="p-3"><a href={`/api/invoices/${o.id}`} className="underline">{o.number}</a></td>
+                  <td className="p-3">{new Date(o.created_at).toLocaleDateString()}</td>
+                  <td className="p-3">{o.user?.full_name || o.user?.email}</td>
+                  <td className="p-3">{o.order_items?.map((i: { title: string }) => i.title).join(", ")}</td>
+                  <td className="p-3">{o.gateway}{o.billing_country && ` · ${o.billing_country}`}</td>
+                  <td className="p-3">{o.affiliate?.code ?? "—"}</td>
+                  <td className="p-3">{o.status}</td>
+                  <td className="p-3 text-right tabular-nums">{formatMoney(o.total_minor, o.currency)}{o.refunded_minor > 0 && <div className="text-xs text-danger">−{formatMoney(o.refunded_minor, o.currency)}</div>}</td>
+                  <td className="p-3">
+                    {refundable && (
+                      <form action={refundOrder.bind(null, o.id)} className="flex gap-1">
+                        <input name="amount" type="number" step="0.01" min="0.01" max={left} defaultValue={left} className="fc-input w-24 !py-1" />
+                        <input name="reason" placeholder="Reason" className="fc-input w-28 !py-1" />
+                        <button className="rounded-md border border-danger px-2 text-xs text-danger">Refund</button>
+                      </form>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

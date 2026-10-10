@@ -1,0 +1,37 @@
+/* =====================================================================
+   FinCoursa design tokens — THE ONLY FILE TO EDIT FOR VISUAL STYLING.
+   Values below are PLACEHOLDERS. They will be replaced with the exact
+   colours, fonts and radii from the live fincoursa.com Thinkific theme
+   once it has been audited. Page structure does not change.
+   ===================================================================== */
+:root {
+  /* Brand */
+  --fc-primary: #0b1f3a;          /* nav, headings, dark sections */
+  --fc-primary-contrast: #ffffff;
+  --fc-accent: #c8a24a;           /* buttons, highlights */
+  --fc-accent-contrast: #0b1f3a;
+
+  /* Surfaces & text */
+  --fc-bg: #ffffff;
+  --fc-surface: #f5f6f8;          /* alternate section background */
+  --fc-surface-dark: #0b1f3a;     /* faculty / organizations sections */
+  --fc-border: #e3e6eb;
+  --fc-text: #1b2533;
+  --fc-text-muted: #5b6676;
+  --fc-text-on-dark: #e9edf3;
+
+  /* Status */
+  --fc-success: #1f8a5b;
+  --fc-warning: #b7791f;
+  --fc-danger: #c0392b;
+
+  /* Type */
+  --fc-font-heading: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fc-font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fc-label-tracking: 0.14em;    /* small uppercase section labels, e.g. "LEARNING PATHS" */
+
+  /* Shape */
+  --fc-radius: 12px;
+  --fc-radius-button: 999px;
+  --fc-container: 1200px;
+}

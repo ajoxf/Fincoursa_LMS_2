@@ -1,0 +1,120 @@
+"use server";
+import { revalidatePath } from "next/cache";
+import { requireRole } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getGateway } from "@/lib/payments/registry";
+import { minorUnitsFactor } from "@/lib/money";
+
+async function audit(actor: string, action: string, entity: string, entityId: string, data?: object) {
+  await createAdminClient().from("audit_log").insert({ actor_id: actor, action, entity, entity_id: entityId, data });
+}
+
+/** Refund: through the gateway when it supports it (its webhook then records it), otherwise record a manual refund. */
+export async function refundOrder(orderId: string, form: FormData) {
+  const admin = await requireRole(["admin", "finance"]);
+  const reason = String(form.get("reason") ?? "").slice(0, 500);
+  const db = createAdminClient();
+  const { data: o } = await db.from("orders").select("gateway, gateway_session_id, currency").eq("id", orderId).single();
+  if (!o) throw new Error("Order not found");
+  const amount = Math.round(Number(form.get("amount")) * minorUnitsFactor(o.currency));
+  if (!(amount > 0)) throw new Error("Enter an amount");
+  const gw = o?.gateway ? getGateway(o.gateway) : undefined;
+  if (gw?.refund && o.gateway_session_id) {
+    const { refundId } = await gw.refund({ orderId, sessionId: o.gateway_session_id, amountMinor: amount, currency: o.currency });
+    await db.rpc("apply_refund", { p_order: orderId, p_amount: amount, p_reason: reason, p_gateway_refund_id: refundId, p_actor: admin.id });
+  } else {
+    await db.rpc("apply_refund", { p_order: orderId, p_amount: amount, p_reason: reason || "manual refund", p_gateway_refund_id: null, p_actor: admin.id });
+  }
+  revalidatePath("/admin/orders");
+}
+
+export async function setAffiliateStatus(affiliateId: string, status: "approved" | "suspended", form?: FormData) {
+  const admin = await requireRole(["admin"]);
+  const db = createAdminClient();
+  const pct = form ? Number(form.get("commission_pct")) : NaN;
+  const { data: a } = await db.from("affiliates")
+    .update({ status, approved_at: status === "approved" ? new Date().toISOString() : null, ...(pct >= 0 && pct <= 100 ? { commission_pct: pct } : {}) })
+    .eq("id", affiliateId).select("user_id").single();
+  if (a && status === "approved") await db.from("user_roles").upsert({ user_id: a.user_id, role: "affiliate" });
+  await audit(admin.id, `affiliate.${status}`, "affiliate", affiliateId);
+  revalidatePath("/admin/affiliates");
+}
+
+/** Group every approved (payable) earning per payee into a draft payout. */
+export async function createPayouts() {
+  const admin = await requireRole(["admin", "finance"]);
+  const db = createAdminClient();
+  const [{ data: ie }, { data: ac }] = await Promise.all([
+    db.from("instructor_earnings").select("id, instructor_id, currency, amount_minor").eq("status", "approved").is("payout_id", null),
+    db.from("affiliate_commissions").select("id, affiliate_id, currency, amount_minor").eq("status", "approved").is("payout_id", null),
+  ]);
+  type Group = { type: "instructor" | "affiliate"; payee: string; currency: string; total: number; ids: string[] };
+  const groups = new Map<string, Group>();
+  for (const r of ie ?? []) {
+    const k = `i:${r.instructor_id}:${r.currency}`;
+    const g: Group = groups.get(k) ?? { type: "instructor", payee: r.instructor_id, currency: r.currency, total: 0, ids: [] };
+    g.total += Number(r.amount_minor); g.ids.push(r.id); groups.set(k, g);
+  }
+  for (const r of ac ?? []) {
+    const k = `a:${r.affiliate_id}:${r.currency}`;
+    const g: Group = groups.get(k) ?? { type: "affiliate", payee: r.affiliate_id, currency: r.currency, total: 0, ids: [] };
+    g.total += Number(r.amount_minor); g.ids.push(r.id); groups.set(k, g);
+  }
+  for (const g of groups.values()) {
+    if (g.total <= 0) continue;
+    const { data: p } = await db.from("payouts").insert({
+      payee_type: g.type, instructor_id: g.type === "instructor" ? g.payee : null, affiliate_id: g.type === "affiliate" ? g.payee : null,
+      currency: g.currency, amount_minor: g.total, status: "draft", created_by: admin.id,
+    }).select("id").single();
+    if (!p) continue;
+    const table = g.type === "instructor" ? "instructor_earnings" : "affiliate_commissions";
+    await db.from(table).update({ payout_id: p.id }).in("id", g.ids);
+  }
+  revalidatePath("/admin/payouts");
+}
+
+export async function markPayoutPaid(payoutId: string, form: FormData) {
+  const admin = await requireRole(["admin", "finance"]);
+  const db = createAdminClient();
+  const { data: p } = await db.from("payouts")
+    .update({ status: "paid", paid_at: new Date().toISOString(), method: String(form.get("method") ?? "bank transfer"), reference: String(form.get("reference") ?? "") })
+    .eq("id", payoutId).eq("status", "draft").select("payee_type").single();
+  if (p) {
+    const table = p.payee_type === "instructor" ? "instructor_earnings" : "affiliate_commissions";
+    await db.from(table).update({ status: "paid" }).eq("payout_id", payoutId);
+    await audit(admin.id, "payout.paid", "payout", payoutId);
+  }
+  revalidatePath("/admin/payouts");
+}
+
+export async function cancelPayout(payoutId: string) {
+  await requireRole(["admin", "finance"]);
+  const db = createAdminClient();
+  await db.from("instructor_earnings").update({ payout_id: null }).eq("payout_id", payoutId);
+  await db.from("affiliate_commissions").update({ payout_id: null }).eq("payout_id", payoutId);
+  await db.from("payouts").update({ status: "cancelled" }).eq("id", payoutId).eq("status", "draft");
+  revalidatePath("/admin/payouts");
+}
+
+export async function createCourse(form: FormData) {
+  const admin = await requireRole(["admin"]);
+  const title = String(form.get("title") ?? "").trim();
+  const slug = (String(form.get("slug") ?? "").trim() || title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  if (!title || !slug) throw new Error("Title required");
+  const db = createAdminClient();
+  const { data: c, error } = await db.from("courses").insert({ title, slug, status: "draft" }).select("id").single();
+  if (error || !c) throw new Error(error?.message ?? "Could not create course");
+  const instructorId = String(form.get("instructor_id") ?? "");
+  if (instructorId) await db.from("course_instructors").insert({ course_id: c.id, instructor_id: instructorId, is_primary: true });
+  const price = Number(form.get("price"));
+  await db.from("prices").insert({ course_id: c.id, type: price > 0 ? "one_time" : "free", currency: String(form.get("currency") ?? "AED"), amount_minor: Math.round((price || 0) * minorUnitsFactor(String(form.get("currency") ?? "AED"))) });
+  await audit(admin.id, "course.created", "course", c.id);
+  revalidatePath("/admin/courses");
+}
+
+export async function setCourseStatus(courseId: string, status: "draft" | "published" | "archived") {
+  await requireRole(["admin"]);
+  await createAdminClient().from("courses")
+    .update({ status, ...(status === "published" ? { published_at: new Date().toISOString() } : {}) }).eq("id", courseId);
+  revalidatePath("/admin/courses");
+}

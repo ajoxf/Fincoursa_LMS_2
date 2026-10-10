@@ -1,0 +1,12 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+// Daily (vercel.json): earnings past the 30-day refund window become payable.
+export async function GET(request: NextRequest) {
+  if (request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  const { error } = await createAdminClient().rpc("release_matured_earnings");
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
