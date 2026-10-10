@@ -23,6 +23,7 @@ function navFor(u: SessionUser): { title: string; items: NavItem[] }[] {
       { href: "/admin/affiliates", label: "Affiliates" },
       { href: "/admin/payouts", label: "Payouts" },
       { href: "/admin/leads", label: "Leads" },
+      { href: "/admin/import", label: "Import from Thinkific" },
     ] });
   }
   return groups;

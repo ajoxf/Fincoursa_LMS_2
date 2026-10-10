@@ -105,7 +105,7 @@ export async function sendPayoutPaid(payoutId: string) {
  * so the email is branded and goes through the same provider and log as everything else.
  * Unknown emails get no email, but the caller shows the same message (no account enumeration).
  */
-export async function sendSignInLink(email: string, next: string, kind: "signin" | "migration" = "signin") {
+export async function sendSignInLink(email: string, next: string) {
   const db = createAdminClient();
   const { data: p } = await db.from("profiles").select("id, full_name").eq("email", email.toLowerCase()).maybeSingle();
   if (!p) return false;
@@ -113,13 +113,23 @@ export async function sendSignInLink(email: string, next: string, kind: "signin"
   if (error || !data?.properties?.hashed_token) { console.error("[auth] generateLink failed", error); return false; }
   const url = `${site()}/auth/confirm?token_hash=${encodeURIComponent(data.properties.hashed_token)}&type=magiclink&next=${encodeURIComponent(next)}`;
   const ref = `${p.id}:${Date.now()}`;
-  if (kind === "migration") {
-    const { count } = await db.from("enrollments").select("id", { count: "exact", head: true }).eq("user_id", p.id).is("revoked_at", null);
-    const t = T.migrationInviteEmail({ name: p.full_name, url, courseCount: count ?? 0, minutes: LINK_MINUTES });
-    return sendEmail({ ...t, to: email, template: "migration_invite", ref: p.id });
-  }
   const t = T.signInLinkEmail({ url, minutes: LINK_MINUTES });
   return sendEmail({ ...t, to: email, template: "sign_in_link", ref });
+}
+
+/**
+ * "We've moved" email for students imported from Thinkific. The button opens the sign-in page with
+ * their email filled in, which sends a fresh one-click link: invites never expire before they're opened.
+ * Sent once per student (email log).
+ */
+export async function sendMigrationInvite(userId: string) {
+  const db = createAdminClient();
+  const { data: p } = await db.from("profiles").select("email, full_name").eq("id", userId).maybeSingle();
+  if (!p?.email) return false;
+  const { count } = await db.from("enrollments").select("id", { count: "exact", head: true }).eq("user_id", userId).is("revoked_at", null);
+  const url = `${site()}/users/sign_in?welcome=1&email=${encodeURIComponent(p.email)}`;
+  const t = T.migrationInviteEmail({ name: p.full_name, url, courseCount: count ?? 0 });
+  return sendEmail({ ...t, to: p.email, template: "migration_invite", ref: userId });
 }
 
 export async function sendPasswordReset(email: string) {

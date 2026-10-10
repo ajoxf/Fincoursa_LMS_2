@@ -156,7 +156,7 @@ export function payoutPaidEmail(o: { name?: string | null; amount: string; refer
   };
 }
 
-export function migrationInviteEmail(o: { name?: string | null; url: string; courseCount: number; minutes: number }): Rendered {
+export function migrationInviteEmail(o: { name?: string | null; url: string; courseCount: number }): Rendered {
   return {
     subject: "FinCoursa has a new home: your courses are waiting",
     ...layout({
@@ -164,10 +164,10 @@ export function migrationInviteEmail(o: { name?: string | null; url: string; cou
       heading: `Hi ${first(o.name)}, we've moved`,
       body: join(
         p("FinCoursa Academy now runs on its own platform. Your account has been moved across" + (o.courseCount ? `, along with your ${o.courseCount} ${o.courseCount === 1 ? "course" : "courses"} and your progress.` : ".")),
-        p("Sign in with the button below. No password needed. You can set a new password afterwards in Settings if you like."),
-        p(`This sign-in link expires in ${o.minutes} minutes. After that, use "Sign In" on the website and leave the password empty to get a fresh link.`),
+        p("Your old password doesn't carry over. Click the button, and we'll email you a one-click sign-in link straight away. You can set a new password afterwards in Settings."),
       ),
-      cta: { label: "Go to my courses", url: o.url },
+      cta: { label: "Sign in to my courses", url: o.url },
+      footer: "You're receiving this because you have a FinCoursa account.",
     }),
   };
 }
