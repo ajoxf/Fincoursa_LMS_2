@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Stat, Card } from "@/components/dash/Stat";
 import { BarList } from "@/components/dash/BarList";
 import { CourseBuilder } from "@/components/dash/CourseBuilder";
+import { getCurriculum } from "@/lib/course-admin";
 
 export const metadata: Metadata = { title: "Manage course" };
 
@@ -19,9 +20,10 @@ export default async function ManageCourse({ params }: PageProps<"/instructor/co
   const supabase = await createClient();
   const { data: report, error } = await supabase.rpc("course_progress_report", { p_course: id });
   if (error) notFound();
-  const [{ data: buckets }, { data: course }] = await Promise.all([
+  const [{ data: buckets }, { data: course }, chapters] = await Promise.all([
     supabase.rpc("course_progress_buckets", { p_course: id }),
-    supabase.from("courses").select("id, slug, title, status, chapters(id, title, position, lessons(id, title, type, position, is_preview, video_asset_id, video:video_assets(status), body:lesson_bodies(body)))").eq("id", id).single(),
+    supabase.from("courses").select("id, slug, title, status").eq("id", id).single(),
+    getCurriculum(id),
   ]);
   if (!course) notFound();
   const lessons = (report.lessons ?? []) as LessonStat[];
@@ -30,7 +32,7 @@ export default async function ManageCourse({ params }: PageProps<"/instructor/co
   return (
     <div className="grid gap-6">
       <div>
-        <Link href={hasRole(user, "admin") ? "/admin/courses" : "/instructor"} className="text-sm text-muted hover:underline">← Back</Link>
+        <Link href={hasRole(user, "admin") ? `/admin/courses/${id}` : "/instructor"} className="text-sm text-muted hover:underline">← Back</Link>
         <h1 className="mt-2 text-3xl font-bold text-primary">{course.title}</h1>
         <p className="text-sm text-muted">Status: {course.status} · <Link href={`/courses/${course.slug}`} className="underline">View page</Link></p>
       </div>
@@ -54,8 +56,7 @@ export default async function ManageCourse({ params }: PageProps<"/instructor/co
         </Card>
       </div>
       <Card title="Curriculum">
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <CourseBuilder courseId={course.id} chapters={(course.chapters ?? []) as any} />
+        <CourseBuilder courseId={course.id} chapters={chapters} />
       </Card>
     </div>
   );

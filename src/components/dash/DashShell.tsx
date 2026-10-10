@@ -18,6 +18,8 @@ function navFor(u: SessionUser): { title: string; items: NavItem[] }[] {
       { href: "/admin", label: "Overview" },
       { href: "/admin/orders", label: "Orders & refunds" },
       { href: "/admin/courses", label: "Courses" },
+      { href: "/admin/bundles", label: "Bundles" },
+      { href: "/admin/instructors", label: "Instructors" },
       { href: "/admin/affiliates", label: "Affiliates" },
       { href: "/admin/payouts", label: "Payouts" },
       { href: "/admin/leads", label: "Leads" },

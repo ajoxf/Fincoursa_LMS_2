@@ -29,7 +29,13 @@ export async function POST(request: Request) {
       else await db.from("video_assets").update(update).eq("asset_id", data.id);
       // keep lesson durations in step with the real video length
       if (data.duration && data.passthrough) {
-        await db.from("lessons").update({ duration_seconds: Math.round(data.duration) }).eq("video_asset_id", data.passthrough);
+        const { data: ls } = await db.from("lessons").update({ duration_seconds: Math.round(data.duration) })
+          .eq("video_asset_id", data.passthrough).select("course_id");
+        for (const courseId of new Set((ls ?? []).map((l) => l.course_id))) {
+          const { data: all } = await db.from("lessons").select("duration_seconds").eq("course_id", courseId);
+          const minutes = Math.round((all ?? []).reduce((a, l) => a + (l.duration_seconds ?? 0), 0) / 60);
+          await db.from("courses").update({ duration_minutes: minutes }).eq("id", courseId);
+        }
       }
       break;
     }

@@ -20,7 +20,8 @@ pluggable payment gateways (Stripe included; regional gateways added through one
 | Student | My courses with progress, continue button, purchases & invoices, certificates with a public verification page |
 | Instructor | Earnings (pending / ready / paid), daily earnings chart, students and average progress per course, completion rate, lesson-by-lesson drop-off, course builder with direct video upload |
 | Affiliate | Application → approval, referral link builder, clicks → sales → commission, pending / ready / paid |
-| Admin | Net revenue, VAT, refunds, revenue by course / channel / gateway / country, orders & refunds, course publishing, affiliate approvals, payout batches, leads |
+| Admin | Net revenue, VAT, refunds, revenue by course / channel / gateway / country, orders & refunds, affiliate approvals, payout batches, leads |
+| Course authoring (admin) | Create a course → details, thumbnail upload, category, level, access length, SEO → prices (several currencies, compare-at price) → instructors with revenue share → curriculum: chapters and lessons with reorder, video upload to Mux, PDF/download uploads, visual quiz builder, free previews, drip unlocks → publish. Bundles (courses, price, image) and instructor profiles (photo, logo, bio, linked login) are managed the same way |
 
 ## Getting started
 
@@ -49,7 +50,7 @@ Make yourself admin after signing up once:
 insert into user_roles (user_id, role) select id, 'admin' from auth.users where email = 'you@example.com';
 ```
 
-Create a **private** Storage bucket named `course-files` for lesson downloads.
+Storage buckets `course-images` (public) and `course-files` (private) are created by the migrations.
 
 ### Tests
 

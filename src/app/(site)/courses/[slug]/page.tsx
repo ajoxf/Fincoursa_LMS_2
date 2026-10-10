@@ -37,7 +37,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
               {course.isFree ? "Free" : course.price && formatMoney(course.price.amount_minor, course.price.currency)}
             </p>
             <ul className="mt-4 space-y-2 text-sm text-muted">
-              <li>{lessonCount} {lessonCount === 1 ? "lesson" : "lessons"} · {formatDuration(course.duration_minutes)}</li>
+              <li>{lessonCount} {lessonCount === 1 ? "lesson" : "lessons"}{course.duration_minutes > 0 && ` · ${formatDuration(course.duration_minutes)}`}</li>
               <li>{course.access_days ? `${course.access_days} days access` : "Lifetime access"}</li>
               {course.certificate_enabled && <li>Certificate of completion</li>}
             </ul>

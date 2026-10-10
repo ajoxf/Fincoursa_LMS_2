@@ -18,7 +18,7 @@ export function CourseCard({ course }: { course: Course }) {
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-center justify-between text-xs text-muted">
           <span className="font-semibold uppercase tracking-wide text-accent">{course.category ?? "Course"}</span>
-          <span>{formatDuration(course.duration_minutes)}</span>
+          {course.duration_minutes > 0 && <span>{formatDuration(course.duration_minutes)}</span>}
         </div>
         <h3 className="text-lg font-semibold leading-snug text-primary group-hover:underline">{course.title}</h3>
         {ins && (

@@ -95,26 +95,3 @@ export async function cancelPayout(payoutId: string) {
   await db.from("payouts").update({ status: "cancelled" }).eq("id", payoutId).eq("status", "draft");
   revalidatePath("/admin/payouts");
 }
-
-export async function createCourse(form: FormData) {
-  const admin = await requireRole(["admin"]);
-  const title = String(form.get("title") ?? "").trim();
-  const slug = (String(form.get("slug") ?? "").trim() || title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  if (!title || !slug) throw new Error("Title required");
-  const db = createAdminClient();
-  const { data: c, error } = await db.from("courses").insert({ title, slug, status: "draft" }).select("id").single();
-  if (error || !c) throw new Error(error?.message ?? "Could not create course");
-  const instructorId = String(form.get("instructor_id") ?? "");
-  if (instructorId) await db.from("course_instructors").insert({ course_id: c.id, instructor_id: instructorId, is_primary: true });
-  const price = Number(form.get("price"));
-  await db.from("prices").insert({ course_id: c.id, type: price > 0 ? "one_time" : "free", currency: String(form.get("currency") ?? "AED"), amount_minor: Math.round((price || 0) * minorUnitsFactor(String(form.get("currency") ?? "AED"))) });
-  await audit(admin.id, "course.created", "course", c.id);
-  revalidatePath("/admin/courses");
-}
-
-export async function setCourseStatus(courseId: string, status: "draft" | "published" | "archived") {
-  await requireRole(["admin"]);
-  await createAdminClient().from("courses")
-    .update({ status, ...(status === "published" ? { published_at: new Date().toISOString() } : {}) }).eq("id", courseId);
-  revalidatePath("/admin/courses");
-}
