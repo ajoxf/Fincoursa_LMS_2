@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import { ALL_COUNTRIES, countryName } from "@/lib/format";
 import { startCheckout } from "./actions";
+import { getCourse } from "@/lib/catalog";
 
 export const metadata: Metadata = { title: "Checkout", robots: { index: false } };
 
@@ -33,6 +34,10 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   const company = one("company") ?? "";
   const taxId = one("tax_id") ?? "";
   const quote = await buildQuote({ courseSlug, bundleSlug, couponCode: one("coupon"), country, businessTaxId: taxId || undefined });
+  // what the buyer gets: live sessions, a fixed access period, or lifetime access
+  const detail = courseSlug ? await getCourse(courseSlug) : null;
+  const accessText = detail?.liveSessions.length ? `${detail.liveSessions.length} live sessions + recordings`
+    : detail?.access_days ? `${detail.access_days} days access` : "Lifetime access";
   if (!quote) notFound();
 
   // Already own everything in this item? Go straight to learning.
@@ -115,7 +120,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
         <aside className="self-start rounded-2xl bg-white p-6 md:p-8">
           <p className="text-sm font-medium uppercase tracking-[0.14em] text-ink">Order summary</p>
           <p className="mt-4 text-2xl font-normal leading-snug tracking-tight text-ink">{quote.item.title}</p>
-          <p className="mt-1 text-sm text-muted">{quote.item.kind === "bundle" ? `Bundle · ${quote.item.courseIds.length} courses` : "Course"} · Lifetime access</p>
+          <p className="mt-1 text-sm text-muted">{quote.item.kind === "bundle" ? `Bundle · ${quote.item.courseIds.length} courses` : "Course"} · {accessText}</p>
           <dl className="mt-6 grid gap-3 text-[15px] text-ink">
             <div className="flex justify-between"><dt>Price</dt><dd>{m(quote.subtotalMinor)}</dd></div>
             {quote.discountMinor > 0 && <div className="flex justify-between text-success"><dt>Discount ({quote.coupon?.code})</dt><dd>−{m(quote.discountMinor)}</dd></div>}

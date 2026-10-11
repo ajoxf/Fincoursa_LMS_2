@@ -41,7 +41,7 @@ export function InstructorForm({ ins, loginEmail }: { ins: any; loginEmail: stri
           </div>
           <div className="rounded-md border border-line p-3">
             <p className="text-sm font-medium">Instructor login</p>
-            <p className="text-xs text-muted">{loginEmail ? `Linked to ${loginEmail}. They can see their courses, students and earnings. Only admins can change course content.` : "Not linked. Enter the email they signed up with to give them an instructor dashboard."}</p>
+            <p className="text-xs text-muted">{loginEmail ? `Linked to ${loginEmail}. They can see their courses, students and earnings. Only admins can change course content.` : "Not linked yet. Enter their email: if they don't have an account, one is created and they're emailed an invitation to their instructor dashboard."}</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <input name="login_email" type="email" placeholder={loginEmail ?? "instructor@example.com"} className="fc-input max-w-sm" />
               {loginEmail && <label className="flex items-center gap-2 text-xs"><input type="checkbox" name="unlink" />Unlink login</label>}
@@ -51,7 +51,7 @@ export function InstructorForm({ ins, loginEmail }: { ins: any; loginEmail: stri
       </div>
       <div className="flex items-center gap-3">
         <button disabled={pending} className="fc-btn fc-btn-primary">{pending ? "Saving…" : "Save instructor"}</button>
-        {state?.ok && <span className="text-sm text-success">Saved</span>}
+        {state?.ok && <span className="text-sm text-success">{state.message ?? "Saved"}</span>}
         {state?.error && <span className="text-sm text-danger">{state.error}</span>}
       </div>
     </form>

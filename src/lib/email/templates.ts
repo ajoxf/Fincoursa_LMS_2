@@ -242,3 +242,22 @@ export function courseAccessEmail(o: { name?: string | null; course: string; url
     }),
   };
 }
+
+export function staffInviteEmail(o: { name?: string | null; role: "instructor" | "partner"; url: string }): Rendered {
+  const what = o.role === "instructor"
+    ? "Your instructor dashboard shows your courses, your students' progress, and your earnings and payouts."
+    : "Your partner dashboard shows your referral link, the clients you've referred, and your commission and payouts.";
+  return {
+    subject: o.role === "instructor" ? "You've been added as a FinCoursa instructor" : "Your FinCoursa partner account is ready",
+    ...layout({
+      preheader: "Set up your account in one click.",
+      heading: `Hi ${first(o.name)}, welcome to FinCoursa`,
+      body: join(
+        p(`FinCoursa Academy has set up ${o.role === "instructor" ? "an instructor" : "a partner"} account for you. ${what}`),
+        p("Click the button and we'll email you a one-click sign-in link. No password needed; you can set one later in Settings."),
+      ),
+      cta: { label: "Set up my account", url: o.url },
+      footer: "You're receiving this because FinCoursa added you to its team.",
+    }),
+  };
+}

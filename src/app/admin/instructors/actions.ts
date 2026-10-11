@@ -3,8 +3,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendEmail } from "@/lib/email/send";
+import { staffInviteEmail } from "@/lib/email/templates";
+import { env } from "@/lib/env";
 
-export type FormState = { ok?: boolean; error?: string } | null;
+export type FormState = { ok?: boolean; error?: string; message?: string } | null;
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
 
 export async function createInstructor(form: FormData) {
@@ -30,9 +33,20 @@ export async function saveInstructor(id: string, _: FormState, form: FormData): 
   // Optional: link a login so the instructor sees their own dashboard
   const email = String(form.get("login_email") ?? "").trim().toLowerCase();
   let userId: string | null | undefined = undefined;
+  let invited: string | null = null;
   if (email) {
-    const { data: profile } = await db.from("profiles").select("id").eq("email", email).maybeSingle();
-    if (!profile) return { error: `No account found for ${email}. Ask them to sign up first, then link it here.` };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email address" };
+    let { data: profile } = await db.from("profiles").select("id").eq("email", email).maybeSingle();
+    if (!profile) {
+      // no account yet: create one and email them a link to set it up
+      const { data: created, error: cErr } = await db.auth.admin.createUser({ email, email_confirm: true, user_metadata: { full_name: name } });
+      if (cErr || !created.user) return { error: `Could not create an account for ${email}: ${cErr?.message ?? "unknown error"}` };
+      profile = { id: created.user.id };
+      const m = staffInviteEmail({ name, role: "instructor", url: `${env.siteUrl}/users/sign_in?invite=1&email=${encodeURIComponent(email)}&next=/instructor` });
+      const sent = await sendEmail({ to: email, ...m, template: "instructor_invite", ref: created.user.id });
+      invited = sent ? `Account created and an invitation emailed to ${email}.`
+        : `Account created for ${email}, but the invitation email couldn't be sent. They can sign in at the Sign In page with just their email (we email them a link).`;
+    }
     const { data: taken } = await db.from("instructors").select("id").eq("user_id", profile.id).neq("id", id).maybeSingle();
     if (taken) return { error: "That account is already linked to another instructor profile." };
     userId = profile.id;
@@ -50,5 +64,5 @@ export async function saveInstructor(id: string, _: FormState, form: FormData): 
   if (error) return { error: error.message };
   revalidatePath(`/admin/instructors/${id}`);
   revalidatePath("/admin/instructors");
-  return { ok: true };
+  return invited ? { ok: true, message: invited } : { ok: true };
 }

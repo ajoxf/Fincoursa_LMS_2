@@ -10,10 +10,13 @@ export default async function SignInPage({ searchParams }: PageProps<"/users/sig
   const nextStr = typeof sp.next === "string" ? sp.next : undefined;
   const email = typeof sp.email === "string" ? sp.email : undefined;
   const welcome = sp.welcome === "1";
+  const invite = sp.invite === "1";
   return (
     <section className="fc-container max-w-md py-20">
-      <h1 className="text-3xl font-bold text-primary">{welcome ? "Welcome to the new FinCoursa" : "Sign In"}</h1>
-      <p className="mt-2 text-sm text-muted">{welcome
+      <h1 className="text-3xl font-bold text-primary">{invite ? "Set up your FinCoursa account" : welcome ? "Welcome to the new FinCoursa" : "Sign In"}</h1>
+      <p className="mt-2 text-sm text-muted">{invite
+        ? "Click Sign In and we'll email you a one-click sign-in link. Once you're in, you can set a password in Settings."
+        : welcome
         ? "Your account and courses have moved here. Click Sign In and we'll email you a one-click sign-in link. No password needed."
         : "Leave the password empty to get a one-time sign-in link by email."}</p>
       <div className="mt-8">
