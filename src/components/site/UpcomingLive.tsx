@@ -18,7 +18,7 @@ function dateBlock(isos: string[]) {
 }
 
 /** Compact homepage section listing upcoming live workshops; hidden when there are none. */
-export function UpcomingLive({ courses }: { courses: CourseDetail[] }) {
+export function UpcomingLive({ courses, text }: { courses: CourseDetail[]; text?: { label: string; title: string; sub: string } }) {
   const items = courses.map((c) => {
     const sessions = c.chapters.flatMap((ch) => ch.lessons)
       .filter((l) => l.type === "live" && l.starts_at && sessionNotOver(l.starts_at, l.live_minutes))
@@ -30,8 +30,8 @@ export function UpcomingLive({ courses }: { courses: CourseDetail[] }) {
   return (
     <section className="bg-white">
       <div className="fc-container py-20">
-        <SectionHeading label="Live on Zoom" title="Upcoming live workshops"
-          sub="Learn live with the faculty, ask your questions, and keep the recordings in your account." />
+        <SectionHeading label={text?.label ?? "Live on Zoom"} title={text?.title ?? "Upcoming live workshops"}
+          sub={text?.sub ?? "Learn live with the faculty, ask your questions, and keep the recordings in your account."} />
         <div className="mx-auto mt-12 grid max-w-[968px] gap-4">
           {items.map(({ c, sessions }) => {
             const d = dateBlock(sessions.map((s) => s.starts_at!));

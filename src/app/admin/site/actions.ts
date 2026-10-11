@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { getSetting, setSetting, type Branding, type IntroVideo } from "@/lib/site-settings";
+import { diffHome } from "@/lib/home-content";
 
 async function update(patch: Partial<IntroVideo>) {
   const admin = await requireRole(["admin"]);
@@ -54,4 +55,12 @@ export async function savePartners(list: { name: string; logo_url: string | null
     .filter((p) => p.name || p.logo_url)
     .map((p) => ({ ...p, name: p.name || "Partner" }));
   await updateBranding({ partners: clean });
+}
+
+/** Save the home page wording. Only changes from the original wording are stored; {} resets everything. */
+export async function saveHomeText(input: Record<string, unknown>) {
+  const admin = await requireRole(["admin"]);
+  await setSetting("home_text", diffHome(input ?? {}), admin.id);
+  revalidatePath("/");
+  revalidatePath("/admin/site");
 }
