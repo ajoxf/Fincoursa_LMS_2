@@ -1,16 +1,17 @@
-// Brand assets currently hosted on the Thinkific CDN. Re-host in /public or Supabase Storage before cut-over.
-import { assetUrl } from "@/lib/assets";
-
-const CDN = "https://import.cdn.thinkific.com/1229196/custom_site_themes/id";
+// Brand assets. The old Thinkific CDN copies are gone (the CDN returns AccessDenied), so until the real
+// files are added under /public/brand the site shows a text wordmark and partner names as text.
+// To switch to the image files: put them in /public/brand and set the paths below.
 export const brand = {
   name: "FinCoursa Academy",
-  logoHeader: assetUrl(`${CDN}/nheg0rh2QRqGIOXG8FBU_header-logo.png`),
-  logoFooter: assetUrl(`${CDN}/K7xJCUqTUCsenKNBD5zw_header-logo.png`),
-  // Poster under the home hero until an intro video (NEXT_PUBLIC_INTRO_PLAYBACK_ID) is set
-  heroPoster: assetUrl(`${CDN}/HuQCUF6DRo2ypIjWDair_Gemini_Generated_Image_321uby321uby321u.jpg`),
+  /** Dark logo for light backgrounds, e.g. "/brand/logo-dark.png" */
+  logoHeader: null as string | null,
+  /** White logo for dark backgrounds, e.g. "/brand/logo-white.png" */
+  logoFooter: null as string | null,
+  /** Poster under the home hero until an intro video (NEXT_PUBLIC_INTRO_PLAYBACK_ID) is set */
+  heroPoster: null as string | null,
   partners: [
-    { name: "OKX", src: assetUrl(`${CDN}/zOnIy1ltQHim7zms8hpf_OKX_wordmark_black.png`) },
-    { name: "Kase and Company", src: assetUrl(`${CDN}/cytupqSQQ9yhMbB0GxBW_kase_logo_black_1x.png`) },
-    { name: "Bloomberg", src: assetUrl(`${CDN}/LMCVTGJ1Sdu467ljPJyx_bloomberg_wordmark_bold_1x.png`) },
+    { name: "Kase and Company, Inc.", src: null as string | null, style: "font-normal" },
+    { name: "Bloomberg", src: null as string | null, style: "font-bold tracking-tight" },
+    { name: "OKX", src: null as string | null, style: "font-black tracking-[0.2em]" },
   ],
 };

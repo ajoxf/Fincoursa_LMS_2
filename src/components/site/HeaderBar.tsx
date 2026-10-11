@@ -1,4 +1,5 @@
 "use client";
+import { Logo } from "@/components/site/Logo";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { brand } from "./brand";
@@ -32,8 +33,7 @@ export function HeaderBar({ learnLinks, mainLinks, user }: { learnLinks: L[]; ma
         <div className={`relative flex h-[68px] items-center justify-between gap-6 transition-all duration-300 ${
           light ? "rounded-xl bg-white px-4 text-ink shadow-[0_8px_30px_rgba(0,0,0,.12)] md:px-5" : "fc-container text-white"}`}>
           <Link href="/" aria-label={brand.name} className="shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={light ? brand.logoHeader : brand.logoFooter} alt={brand.name} className="h-7 w-auto md:h-8" />
+            <Logo tone={light ? "dark" : "light"} />
           </Link>
 
           <nav className="hidden items-center gap-10 text-sm md:flex">

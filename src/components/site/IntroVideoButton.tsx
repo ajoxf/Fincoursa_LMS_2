@@ -14,13 +14,14 @@ export function IntroVideo() {
 
   if (playing && playbackId) {
     return (
-      <div className="overflow-hidden rounded-xl bg-black">
+      <div className="mt-20 overflow-hidden rounded-xl bg-black">
         <MuxPlayer playbackId={playbackId} autoPlay streamType="on-demand" accentColor="#d6fd3b" metadata={{ video_title: "FinCoursa intro" }} />
       </div>
     );
   }
+  if (!poster) return null; // no intro video or poster yet
   return (
-    <div className="relative aspect-[1080/608] overflow-hidden rounded-xl bg-[#1a1410]">
+    <div className="relative mt-20 aspect-[1080/608] overflow-hidden rounded-xl bg-[#1a1410]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={assetUrl(poster)} alt="" className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-black/35" />

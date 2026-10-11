@@ -1,3 +1,4 @@
+import { Logo } from "@/components/site/Logo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -112,8 +113,7 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
           <span className="hidden sm:inline">Go to Home</span>
         </Link>
         <Link href="/" aria-label={brand.name}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={brand.logoFooter} alt={brand.name} className="h-7 w-auto md:h-8" />
+          <Logo tone="light" />
         </Link>
       </header>
 

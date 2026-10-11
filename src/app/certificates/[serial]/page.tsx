@@ -1,7 +1,7 @@
+import { Logo } from "@/components/site/Logo";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { brand } from "@/components/site/brand";
 import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Certificate" };
@@ -18,8 +18,7 @@ export default async function CertificatePage({ params }: PageProps<"/certificat
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface p-4 print:bg-white">
       <div className="w-full max-w-3xl rounded-card border-8 border-double border-primary bg-bg p-10 text-center md:p-16">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={brand.logoHeader} alt={brand.name} className="mx-auto h-10" />
+        <span className="flex justify-center"><Logo tone="dark" className="h-10" /></span>
         <p className="fc-label mt-10">Certificate of completion</p>
         <p className="mt-6 text-muted">This certifies that</p>
         <p className="mt-2 text-4xl font-bold text-primary">{c.recipient_name}</p>

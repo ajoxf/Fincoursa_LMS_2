@@ -1,3 +1,4 @@
+import { Logo } from "@/components/site/Logo";
 import Link from "next/link";
 import { brand } from "./brand";
 
@@ -16,8 +17,7 @@ export function SiteFooter() {
       <div className="fc-container">
         <div className="flex flex-col gap-8 py-14 md:flex-row md:items-center md:justify-between">
           <Link href="/" aria-label={brand.name}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={brand.logoFooter} alt={brand.name} className="h-7 w-auto" />
+            <Logo tone="light" className="h-7" />
           </Link>
           <nav className="flex flex-wrap gap-x-10 gap-y-3 text-[15px]">
             {links.map((l) => <Link key={l.label} href={l.href} className="hover:text-white">{l.label}</Link>)}

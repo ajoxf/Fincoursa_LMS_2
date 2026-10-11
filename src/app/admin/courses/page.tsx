@@ -1,4 +1,4 @@
-import { assetUrl } from "@/lib/assets";
+import { assetUrl, isThinkificAsset } from "@/lib/assets";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
@@ -46,7 +46,7 @@ export default async function AdminCourses() {
             <Link key={c.id} href={`/admin/courses/${c.id}`} className="fc-card group flex flex-col overflow-hidden transition hover:shadow-md">
               <div className="relative aspect-[310/171] overflow-hidden bg-surface">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {img && <img src={assetUrl(img)} alt="" className="absolute inset-0 h-full w-full object-cover object-top" />}
+                {img && !isThinkificAsset(img) && <img src={assetUrl(img)} alt="" className="absolute inset-0 h-full w-full object-cover object-top" />}
               </div>
               <div className="flex flex-1 flex-col gap-1 p-4">
                 <h2 className="font-semibold leading-snug text-ink group-hover:underline">{c.title}</h2>

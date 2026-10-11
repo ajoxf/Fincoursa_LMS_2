@@ -1,7 +1,7 @@
+import { Logo } from "@/components/site/Logo";
 import { assetUrl } from "@/lib/assets";
 import Link from "next/link";
 import type { Instructor } from "@/lib/catalog";
-import { brand } from "./brand";
 
 /** Tall portrait card with a thin lime edge, organisation logo, name and title over the photo. */
 export function FacultyCard({ person }: { person: Instructor }) {
@@ -13,9 +13,8 @@ export function FacultyCard({ person }: { person: Instructor }) {
         <img src={assetUrl(person.photo_url)} alt={person.name} className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
       ) : (
         // No photo yet: FinCoursa logo on white, as on fincoursa.com
-        <div className="absolute inset-0 flex items-start justify-center bg-white px-6 pt-[22%]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={brand.logoHeader} alt="" className="w-full" />
+        <div className="absolute inset-0 flex items-start justify-center bg-white px-6 pt-[30%]">
+          <Logo tone="dark" className="w-full" />
         </div>
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 via-35% to-transparent to-60%" />

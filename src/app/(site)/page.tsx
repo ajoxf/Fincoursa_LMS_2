@@ -34,7 +34,7 @@ export default async function HomePage() {
               </div>
             </div>
           </div>
-          <div className="mx-auto mt-20 max-w-[1080px]"><IntroVideo /></div>
+          <div className="mx-auto max-w-[1080px]"><IntroVideo /></div>
         </div>
       </section>
 
@@ -46,9 +46,11 @@ export default async function HomePage() {
           <p className="text-center text-base font-medium tracking-wide text-ink">INDUSTRY EXPERTS</p>
           <div className="fc-marquee mx-auto mt-10 max-w-[1040px] overflow-hidden">
             <div className="fc-marquee-track items-center gap-20">
-              {[0, 1, 2, 3].flatMap((k) => brand.partners.map((p) => (
+              {[0, 1, 2, 3].flatMap((k) => brand.partners.map((p) => p.src ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img key={`${k}-${p.name}`} src={p.src} alt={k === 0 ? p.name : ""} aria-hidden={k > 0} className="h-6 w-auto shrink-0 md:h-7" />
+              ) : (
+                <span key={`${k}-${p.name}`} aria-hidden={k > 0} className={`shrink-0 whitespace-nowrap text-xl text-ink md:text-2xl ${p.style}`}>{p.name}</span>
               )))}
             </div>
           </div>

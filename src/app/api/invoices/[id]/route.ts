@@ -92,7 +92,7 @@ td.r,th.r{padding-left:16px}
 <div class="actions"><button class="btn" onclick="print()">Print / Save PDF</button></div>
 <div class="page">
   <div class="top">
-    <img src="${esc(brand.logoFooter)}" alt="FinCoursa">
+    ${brand.logoFooter ? `<img src="${esc(brand.logoFooter)}" alt="FinCoursa">` : `<span style="font-size:26px;font-weight:700;letter-spacing:-.5px">FinCoursa</span>`}
     <span class="pill lime">${title}</span>
   </div>
   <div class="body">

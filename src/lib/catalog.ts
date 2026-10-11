@@ -3,6 +3,12 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured, env } from "@/lib/env";
 import { demoCatalog } from "@/lib/demo-catalog";
+import { isThinkificAsset } from "@/lib/assets";
+
+/** Old Thinkific CDN links no longer resolve (AccessDenied): treat them as "no image" so pages fall back cleanly. */
+const img = (u: string | null | undefined) => (u && !isThinkificAsset(u) ? u : null);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const cleanInstructor = (i: any) => (i ? { ...i, photo_url: img(i.photo_url), org_logo_url: img(i.org_logo_url) } : i);
 
 export type Instructor = {
   id: string;
@@ -91,14 +97,14 @@ function toCourseCard(row: any): CourseCard {
     title: row.title,
     subtitle: row.subtitle ?? null,
     description: row.description ?? null,
-    thumbnail_url: row.thumbnail_url ?? null,
+    thumbnail_url: img(row.thumbnail_url),
     duration_minutes: row.duration_minutes ?? 0,
     category: row.category?.name ?? null,
     level: row.level ?? null,
     liveSessions: (row.live_lessons ?? []).map((l: { starts_at: string | null }) => l.starts_at).filter(Boolean).sort(),
     instructors: (row.course_instructors ?? [])
       .sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary))
-      .map((ci: any) => ci.instructor)
+      .map((ci: any) => cleanInstructor(ci.instructor))
       .filter(Boolean),
     price,
     isFree: !price || price.amount_minor === 0,
@@ -163,7 +169,7 @@ export const getBundles = cache(async (): Promise<BundleCard[]> => {
       slug: b.slug,
       title: b.title,
       description: b.description,
-      thumbnail_url: b.thumbnail_url,
+      thumbnail_url: img(b.thumbnail_url),
       price,
       isFree: !price || price.amount_minor === 0,
       courses,
@@ -183,7 +189,7 @@ export const getInstructors = cache(async (): Promise<Instructor[]> => {
     .eq("is_published", true)
     .order("sort_order");
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map(cleanInstructor);
 });
 
 /** One instructor with their published courses and total lesson count (for the instructor page). */

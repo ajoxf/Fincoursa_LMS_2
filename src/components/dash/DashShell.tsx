@@ -44,7 +44,7 @@ export async function DashShell({ children }: { children: React.ReactNode }) {
               <div key={g.title} className="shrink-0">
                 <p className="mb-1 text-xs uppercase tracking-wide text-muted">{g.title}</p>
                 <div className="flex gap-3 lg:flex-col lg:gap-1">
-                  {g.items.map((i) => <Link key={i.href} href={i.href} className="whitespace-nowrap rounded-md py-1 hover:text-accent lg:px-2 lg:hover:bg-surface">{i.label}</Link>)}
+                  {g.items.map((i) => <Link key={i.href} href={i.href} className="whitespace-nowrap rounded-md py-1 text-ink/85 hover:text-ink hover:underline lg:px-2 lg:hover:bg-surface lg:hover:no-underline">{i.label}</Link>)}
                 </div>
               </div>
             ))}
