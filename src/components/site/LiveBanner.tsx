@@ -1,3 +1,4 @@
+import { assetUrl } from "@/lib/assets";
 import Link from "next/link";
 import type { CourseDetail } from "@/lib/catalog";
 import { formatMoney } from "@/lib/money";
@@ -31,7 +32,7 @@ export function LiveBanner({ course }: { course: CourseDetail }) {
         <Link href={`/courses/${course.slug}`} className="group relative block overflow-hidden rounded-3xl border border-accent/70 bg-black text-white">
           {ins?.photo_url && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={ins.photo_url} alt="" className="absolute inset-y-0 right-0 hidden h-full w-[48%] object-cover object-top md:block" />
+            <img src={assetUrl(ins.photo_url)} alt="" className="absolute inset-y-0 right-0 hidden h-full w-[48%] object-cover object-top md:block" />
           )}
           <div className="absolute inset-0 hidden bg-gradient-to-r from-black via-black/90 via-50% to-black/10 md:block" />
           <div className="relative grid gap-8 p-6 md:p-10">
