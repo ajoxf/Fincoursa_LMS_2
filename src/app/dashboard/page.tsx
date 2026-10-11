@@ -45,11 +45,11 @@ export default async function StudentDashboard({ searchParams }: PageProps<"/das
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className={`grid gap-4 ${certs ? "grid-cols-2 md:grid-cols-4" : "grid-cols-3"}`}>
         <Stat label="Enrolled" value={enrollments.length} />
         <Stat label="In progress" value={inProgress.length} />
         <Stat label="Completed" value={done.length} />
-        <Stat label="Certificates" value={certs ?? 0} />
+        {certs ? <Stat label="Certificates" value={certs} /> : null}
       </div>
 
       <CourseUpdatesList items={updates} name={user.fullName} />

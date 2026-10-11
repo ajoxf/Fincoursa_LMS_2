@@ -72,6 +72,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
           ...(isLive
             ? ["Live on Zoom", plural(sessions.length, "session"), "Recordings included", course.level ?? "All Levels"]
             : [course.level ?? "All Levels", plural(lessonCount, "lesson"), "Self-paced"]),
+          ...(course.certificate_enabled ? ["Certificate of completion"] : []),
           ...course.tags,
         ])]} />
       </PageHero>

@@ -15,7 +15,7 @@ export default async function AdminCourses() {
   await requireRole(["admin"], "/admin/courses");
   const db = createAdminClient();
   const [{ data: courses }, { data: enrolls }] = await Promise.all([
-    db.from("courses").select("id, slug, title, status, thumbnail_url, updated_at, course_instructors(instructor:instructors(name, photo_url)), prices(amount_minor, currency, is_active), lessons(id)").order("sort_order").order("created_at"),
+    db.from("courses").select("id, slug, title, status, thumbnail_url, updated_at, certificate_enabled, course_instructors(instructor:instructors(name, photo_url)), prices(amount_minor, currency, is_active), lessons(id)").order("sort_order").order("created_at"),
     db.from("enrollments").select("course_id").is("revoked_at", null),
   ]);
   const counts = new Map<string, number>();
@@ -54,7 +54,10 @@ export default async function AdminCourses() {
                 <p className="text-sm text-muted">
                   {p ? (p.amount_minor ? formatMoney(p.amount_minor, p.currency) : "Free") : "No price"} · {c.lessons?.length ?? 0} lessons · {counts.get(c.id) ?? 0} students
                 </p>
-                <span className={`mt-3 self-start rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusStyle[c.status]}`}>{c.status}</span>
+                <span className="mt-3 flex flex-wrap gap-2">
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusStyle[c.status]}`}>{c.status}</span>
+                  {c.certificate_enabled && <span className="rounded-full bg-accent/30 px-2.5 py-0.5 text-xs font-medium">Certificate</span>}
+                </span>
               </div>
             </Link>
           );

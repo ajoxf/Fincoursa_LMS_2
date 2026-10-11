@@ -1,14 +1,16 @@
 import { DashNav } from "./DashNav";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { SiteHeader } from "@/components/site/SiteHeader";
+import { createClient } from "@/lib/supabase/server";
 
 type NavItem = { href: string; label: string };
 
-function navFor(u: SessionUser): { title: string; items: NavItem[] }[] {
+function navFor(u: SessionUser, hasCertificates: boolean): { title: string; items: NavItem[] }[] {
   const groups = [{ title: "Learning", items: [
     { href: "/dashboard", label: "My courses" },
     { href: "/dashboard/purchases", label: "Purchases" },
-    { href: "/dashboard/certificates", label: "Certificates" },
+    // only once they have one (certificates are switched on per course)
+    ...(hasCertificates ? [{ href: "/dashboard/certificates", label: "Certificates" }] : []),
     { href: "/dashboard/settings", label: "Settings" },
   ] }];
   if (u.roles.includes("instructor")) groups.push({ title: "Teaching", items: [{ href: "/instructor", label: "Instructor dashboard" }] });
@@ -36,12 +38,13 @@ function navFor(u: SessionUser): { title: string; items: NavItem[] }[] {
 
 export async function DashShell({ children }: { children: React.ReactNode }) {
   const user = await requireUser("/dashboard");
+  const { count } = await (await createClient()).from("certificates").select("id", { count: "exact", head: true }).eq("user_id", user.id);
   return (
     <>
       <SiteHeader />
       <div className="fc-container grid flex-1 content-start gap-6 py-6 lg:grid-cols-[220px_1fr] lg:gap-8 lg:py-8">
         <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
-          <DashNav name={user.fullName || user.email || "My account"} groups={navFor(user)} />
+          <DashNav name={user.fullName || user.email || "My account"} groups={navFor(user, (count ?? 0) > 0)} />
         </aside>
         <div className="min-w-0">{children}</div>
       </div>

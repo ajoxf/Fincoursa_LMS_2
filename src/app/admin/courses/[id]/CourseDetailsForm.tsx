@@ -63,7 +63,7 @@ export function CourseDetailsForm({ course, categories, allTags = [] }: { course
 
       <div className="flex flex-wrap gap-6 text-sm">
         <label className="flex items-center gap-2"><input type="checkbox" name="is_featured" defaultChecked={course.is_featured} />Show in Featured Courses on the home page</label>
-        <label className="flex items-center gap-2"><input type="checkbox" name="certificate_enabled" defaultChecked={course.certificate_enabled} />Issue a certificate on completion</label>
+        <label className="flex items-center gap-2"><input type="checkbox" name="certificate_enabled" defaultChecked={course.certificate_enabled} />Issue a certificate on completion <span className="text-muted">(students get a certificate and an email when they finish)</span></label>
       </div>
 
       <details>

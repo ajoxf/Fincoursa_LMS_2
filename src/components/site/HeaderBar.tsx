@@ -25,7 +25,7 @@ export function HeaderBar({ learnLinks, mainLinks, user }: { learnLinks: L[]; ma
   }, []);
 
   const light = scrolled;
-  const initial = user ? shortName(user.name).slice(-1).toUpperCase() : "";
+  const initial = user ? (user.name.trim()[0] ?? "").toUpperCase() : "";
 
   return (
     <header className={`sticky top-0 z-40 transition-colors ${light ? "bg-transparent" : "bg-surface-dark"}`}>

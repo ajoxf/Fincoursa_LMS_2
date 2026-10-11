@@ -55,6 +55,8 @@ export type CourseCard = {
   level: string | null;
   /** Extra labels shown as chips and catalog filters */
   tags: string[];
+  /** Issues a certificate on completion (set per course in the admin) */
+  certificate: boolean;
   /** Start times of live (Zoom) sessions, oldest first; empty for recorded-only courses */
   liveSessions: string[];
   instructors: Instructor[];
@@ -104,6 +106,7 @@ function toCourseCard(row: any): CourseCard {
     category: row.category?.name ?? null,
     level: row.level ?? null,
     tags: row.tags ?? [],
+    certificate: row.certificate_enabled === true,
     liveSessions: (row.live_lessons ?? []).map((l: { starts_at: string | null }) => l.starts_at).filter(Boolean).sort(),
     instructors: (row.course_instructors ?? [])
       .sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary))

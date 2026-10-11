@@ -7,7 +7,7 @@ export function CourseListPage({ title, courses }: { title: string; courses: Cou
   return (
     <>
       <PageHero label="Courses" title={title}>
-        <Chips firstLime items={[`${courses.length} ${courses.length === 1 ? "course" : "courses"}`, "Guided order", "Certificate per course", "Lifetime access"]} />
+        <Chips firstLime items={[`${courses.length} ${courses.length === 1 ? "course" : "courses"}`, "Guided order", ...(courses.some((c) => c.certificate) ? ["Certificates available"] : []), "Lifetime access"]} />
       </PageHero>
       <section className="bg-surface">
         <div className="fc-container py-24">
