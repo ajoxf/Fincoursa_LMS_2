@@ -9,6 +9,7 @@ import { env } from "@/lib/env";
 import { after } from "next/server";
 import { allow, LIMITS, TOO_MANY } from "@/lib/rate-limit";
 import { sendReceipt } from "@/lib/email/events";
+import { applyGatewayEvents } from "@/lib/payments/apply";
 
 export async function startCheckout(form: FormData) {
   const s = (k: string) => (String(form.get(k) ?? "").trim() || undefined);
@@ -21,6 +22,19 @@ export async function startCheckout(form: FormData) {
   if (!quote) throw new Error("Item not found");
 
   const db = createAdminClient();
+
+  // Already has (unexpired) access to everything in this item: never charge again
+  const { data: owned } = await db.from("enrollments").select("course_id, expires_at")
+    .eq("user_id", user.id).is("revoked_at", null).in("course_id", quote.item.courseIds);
+  const active = (owned ?? []).filter((e) => !e.expires_at || new Date(e.expires_at).getTime() > Date.now());
+  if (quote.item.courseIds.length && active.length >= quote.item.courseIds.length) {
+    redirect(quote.item.kind === "course" ? `/learn/${quote.item.slug}` : "/dashboard");
+  }
+
+  // Pressed Pay again for the same thing (refresh, back button, second tab)? Reuse that payment, don't start a new one.
+  const reused = await reusePendingOrder(user.id, quote, s("gateway"));
+  if (reused) redirect(reused);
+
   const jar = await cookies();
   const attr = await resolveAttribution({
     refCode: jar.get("fc_ref")?.value, campaign: jar.get("fc_campaign")?.value, buyerId: user.id, couponId: quote.coupon?.id,
@@ -68,8 +82,38 @@ export async function startCheckout(form: FormData) {
     cancelUrl: `${env.siteUrl}/checkout?${quote.item.kind}=${quote.item.slug}`,
     webhookUrl: `${env.siteUrl}/api/webhooks/payments/${conn.gateway.id}`,
   }, conn.cfg);
-  await db.from("orders").update({ gateway_session_id: session.sessionId }).eq("id", order.id);
+  await db.from("orders").update({ gateway_session_id: session.sessionId, gateway_redirect_url: session.redirectUrl }).eq("id", order.id);
   redirect(session.redirectUrl);
+}
+
+/**
+ * A pending order from the last 20 minutes for the same item, amount and provider: first ask the provider
+ * whether it was actually paid (then show success), otherwise send the buyer back to the same payment page.
+ */
+async function reusePendingOrder(userId: string, quote: NonNullable<Awaited<ReturnType<typeof buildQuote>>>, gatewayChoice?: string): Promise<string | null> {
+  if (quote.totalMinor <= 0) return null;
+  const db = createAdminClient();
+  const since = new Date(Date.now() - 20 * 60_000).toISOString();
+  const { data: pending } = await db.from("orders")
+    .select("id, gateway, gateway_session_id, gateway_redirect_url, total_minor, currency, order_items(course_id, bundle_id)")
+    .eq("user_id", userId).eq("status", "pending").gte("created_at", since).order("created_at", { ascending: false }).limit(5);
+  const itemKey = quote.item.kind === "course" ? "course_id" : "bundle_id";
+  const match = (pending ?? []).find((o) =>
+    o.total_minor === quote.totalMinor && o.currency === quote.currency && o.gateway_redirect_url &&
+    (!gatewayChoice || gatewayChoice === o.gateway) &&
+    (o.order_items ?? []).some((i) => i[itemKey] === quote.item.id));
+  if (!match) return null;
+  const conn = await connect(match.gateway);
+  if (!conn) return null;
+  if (conn.gateway.verify && match.gateway_session_id) {
+    try {
+      const events = await conn.gateway.verify({ orderId: match.id, sessionId: match.gateway_session_id }, conn.cfg);
+      if (events.length && (await applyGatewayEvents(match.gateway, events))) return `/checkout/success?order=${match.id}`;
+    } catch { /* provider unreachable: fall back to the stored payment page */ }
+  }
+  // payment-link providers show our own pay page; others go back to the provider's page
+  if (match.gateway.startsWith("custom-")) return `/checkout/pay/${match.id}`;
+  return match.gateway === "manual" ? `/checkout/success?order=${match.id}` : match.gateway_redirect_url;
 }
 
 /** Test gateway only: simulate a successful payment. */

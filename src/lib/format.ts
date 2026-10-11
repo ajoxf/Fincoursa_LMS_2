@@ -71,3 +71,5 @@ export function daysAgoIso(days: number) {
 
 /** Current time for server components (kept out of render bodies for the purity lint rule). */
 export const nowMs = () => Date.now();
+
+export const nowIso = () => new Date().toISOString();

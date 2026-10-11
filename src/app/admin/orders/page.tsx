@@ -12,10 +12,19 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
   const q = (await searchParams).q;
   const db = createAdminClient();
   let query = db.from("orders")
-    .select("id, number, status, currency, total_minor, refunded_minor, gateway, billing_country, created_at, paid_at, user_id, user:profiles(email, full_name), order_items(title), affiliate:affiliates(code)")
+    .select("id, number, status, currency, total_minor, refunded_minor, gateway, billing_country, created_at, paid_at, user_id, user:profiles(email, full_name), order_items(title, course_id, bundle_id), affiliate:affiliates(code)")
     .order("created_at", { ascending: false }).limit(100);
   if (typeof q === "string" && /^\d+$/.test(q)) query = query.eq("number", Number(q));
   const { data: orders, error } = await query;
+  // Same buyer paid for the same item twice within 24 hours: probably a duplicate payment to refund
+  const dupes = new Set<string>();
+  const paid = (orders ?? []).filter((o) => ["paid", "partially_refunded"].includes(o.status) && o.total_minor > 0);
+  for (const o of paid) {
+    const key = (x: typeof o) => x.order_items?.map((i) => i.course_id ?? i.bundle_id).sort().join(",");
+    const earlier = paid.find((x) => x.id !== o.id && x.user_id === o.user_id && key(x) === key(o)
+      && new Date(x.created_at) < new Date(o.created_at) && new Date(o.created_at).getTime() - new Date(x.created_at).getTime() < 864e5);
+    if (earlier) dupes.add(o.id);
+  }
 
   return (
     <div className="grid gap-6">
@@ -42,7 +51,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
                   <td className="p-3">{o.order_items?.map((i: { title: string }) => i.title).join(", ")}</td>
                   <td className="p-3">{o.gateway}{o.billing_country && ` · ${o.billing_country}`}</td>
                   <td className="p-3">{o.affiliate?.code ?? "—"}</td>
-                  <td className="p-3">{o.status}</td>
+                  <td className="p-3">{o.status}{dupes.has(o.id) && <div className="mt-1 inline-block rounded-full bg-warning/15 px-2 py-0.5 text-[11px] text-warning" title="The same buyer paid for the same item within 24 hours">Possible duplicate: refund?</div>}</td>
                   <td className="p-3 text-right tabular-nums">{formatMoney(o.total_minor, o.currency)}{o.refunded_minor > 0 && <div className="text-xs text-danger">−{formatMoney(o.refunded_minor, o.currency)}</div>}</td>
                   <td className="p-3">
                     {(o.status === "pending" || o.status === "failed") && o.total_minor > 0 && (

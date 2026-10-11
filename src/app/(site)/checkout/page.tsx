@@ -6,7 +6,8 @@ import { buildQuote } from "@/lib/checkout";
 import { gatewaysFor } from "@/lib/payments/registry";
 import { formatMoney } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
-import { ALL_COUNTRIES, countryName } from "@/lib/format";
+import { ALL_COUNTRIES, countryName, nowIso } from "@/lib/format";
+import { PayButton } from "./PayButton";
 import { startCheckout } from "./actions";
 import { getCourse } from "@/lib/catalog";
 
@@ -42,8 +43,10 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
 
   // Already own everything in this item? Go straight to learning.
   const { data: owned } = await (await createClient())
-    .from("enrollments").select("course_id").eq("user_id", user.id).is("revoked_at", null).in("course_id", quote.item.courseIds);
-  if (quote.item.courseIds.length && (owned?.length ?? 0) >= quote.item.courseIds.length) {
+    .from("enrollments").select("course_id, expires_at").eq("user_id", user.id).is("revoked_at", null).in("course_id", quote.item.courseIds);
+  // expired access can be bought again (renewal)
+  const activeOwned = (owned ?? []).filter((e) => !e.expires_at || e.expires_at > nowIso());
+  if (quote.item.courseIds.length && activeOwned.length >= quote.item.courseIds.length) {
     redirect(quote.item.kind === "course" ? `/learn/${quote.item.slug}` : "/dashboard");
   }
 
@@ -96,7 +99,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             <input type="hidden" name="company" value={company} />
             <input type="hidden" name="tax_id" value={taxId} />
             {quote.totalMinor === 0 ? (
-              <button className="fc-btn fc-btn-primary fc-btn-lg justify-self-start">Complete enrollment</button>
+              <PayButton>Complete enrollment</PayButton>
             ) : gateways.length === 0 ? (
               <p className="rounded-lg bg-danger/10 p-4 text-sm text-danger">Online payment isn&apos;t available for this country yet. Please contact us to enroll.</p>
             ) : (
@@ -109,7 +112,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
                     </label>
                   ))}
                 </fieldset>
-                <button className="fc-btn fc-btn-primary fc-btn-lg justify-self-start">Pay {m(quote.totalMinor)}</button>
+                <PayButton>Pay {m(quote.totalMinor)}</PayButton>
                 <p className="text-xs text-muted">Card details are entered on the payment provider&apos;s secure page. We never see or store them.</p>
               </>
             )}
