@@ -31,6 +31,8 @@ export type LessonSummary = {
   position: number;
   is_preview: boolean;
   duration_seconds: number;
+  starts_at?: string | null;
+  live_minutes?: number | null;
 };
 
 export type Chapter = { id: string; title: string; position: number; lessons: LessonSummary[] };
@@ -45,12 +47,14 @@ export type CourseCard = {
   duration_minutes: number;
   category: string | null;
   level: string | null;
+  /** Start times of live (Zoom) sessions, oldest first; empty for recorded-only courses */
+  liveSessions: string[];
   instructors: Instructor[];
   price: Price | null;
   isFree: boolean;
 };
 
-export type CourseDetail = CourseCard & { chapters: Chapter[]; access_days: number | null; certificate_enabled: boolean };
+export type CourseDetail = CourseCard & { chapters: Chapter[]; access_days: number | null; certificate_enabled: boolean; highlights: string[] };
 
 export type BundleCard = {
   id: string;
@@ -65,7 +69,7 @@ export type BundleCard = {
 };
 
 const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, duration_minutes, access_days, certificate_enabled, level,
-  sort_order, is_featured,
+  sort_order, is_featured, live_lessons:lessons(starts_at),
   category:categories(name),
   course_instructors(is_primary, instructor:instructors(id, slug, name, title, bio, photo_url, org_logo_url)),
   prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active)`;
@@ -91,6 +95,7 @@ function toCourseCard(row: any): CourseCard {
     duration_minutes: row.duration_minutes ?? 0,
     category: row.category?.name ?? null,
     level: row.level ?? null,
+    liveSessions: (row.live_lessons ?? []).map((l: { starts_at: string | null }) => l.starts_at).filter(Boolean).sort(),
     instructors: (row.course_instructors ?? [])
       .sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary))
       .map((ci: any) => ci.instructor)
@@ -119,7 +124,7 @@ export const getCourse = cache(async (slug: string): Promise<CourseDetail | null
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("courses")
-    .select(`${COURSE_SELECT}, chapters(id, title, position, lessons(id, title, type, position, is_preview, duration_seconds))`)
+    .select(`${COURSE_SELECT}, highlights, chapters(id, title, position, lessons(id, title, type, position, is_preview, duration_seconds, starts_at, live_minutes))`)
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw error;
@@ -128,6 +133,7 @@ export const getCourse = cache(async (slug: string): Promise<CourseDetail | null
     ...toCourseCard(data),
     access_days: data.access_days,
     certificate_enabled: data.certificate_enabled,
+    highlights: (data as { highlights?: string[] }).highlights ?? [],
     chapters: (data.chapters ?? [])
       .sort((a, b) => a.position - b.position)
       .map((ch) => ({ ...ch, lessons: (ch.lessons ?? []).sort((a, b) => a.position - b.position) })),

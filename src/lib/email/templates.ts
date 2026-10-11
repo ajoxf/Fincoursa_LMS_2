@@ -65,23 +65,48 @@ export type ReceiptLine = { title: string; amount: string };
 export function receiptEmail(o: {
   name?: string | null; orderNumber: number; date: string; lines: ReceiptLine[]; discount?: string | null;
   vatLabel?: string | null; vat?: string | null; total: string; invoiceUrl: string; learnUrl: string; trn?: string | null;
+  vatAdded?: boolean; reverseCharge?: boolean; sessions?: SessionLine[];
 }): Rendered {
   const rows = o.lines.map((l) => `<tr><td style="padding:8px 0;border-bottom:1px solid ${T.border}">${esc(l.title)}</td><td align="right" style="padding:8px 0;border-bottom:1px solid ${T.border};white-space:nowrap">${esc(l.amount)}</td></tr>`).join("");
   const extra = [
     o.discount ? `<tr><td style="padding:6px 0;color:${T.muted}">Discount</td><td align="right" style="padding:6px 0;color:${T.muted}">−${esc(o.discount)}</td></tr>` : "",
-    o.vat ? `<tr><td style="padding:6px 0;color:${T.muted}">${esc(o.vatLabel ?? "VAT")} (included)</td><td align="right" style="padding:6px 0;color:${T.muted}">${esc(o.vat)}</td></tr>` : "",
+    o.vat ? `<tr><td style="padding:6px 0;color:${T.muted}">${esc(o.vatLabel ?? "VAT")} (${o.vatAdded ? "added" : "included"})</td><td align="right" style="padding:6px 0;color:${T.muted}">${esc(o.vat)}</td></tr>` : "",
+    o.reverseCharge ? `<tr><td colspan="2" style="padding:6px 0;color:${T.muted}">Reverse charge: tax not charged; you account for it in your country.</td></tr>` : "",
     `<tr><td style="padding:10px 0;font-weight:700">Total paid</td><td align="right" style="padding:10px 0;font-weight:700">${esc(o.total)}</td></tr>`,
   ].join("");
   const table: Block = {
     html: `<p style="margin:0 0 12px">Thank you, ${esc(first(o.name))}. Your payment was received and your course access is active.</p>
 <p style="margin:0 0 4px;font-size:13px;color:${T.muted}">${o.trn ? "Tax invoice" : "Receipt"} #${o.orderNumber} · ${esc(o.date)}${o.trn ? ` · TRN ${esc(o.trn)}` : ""}</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin:8px 0 16px">${rows}${extra}</table>
-<p style="margin:0 0 12px"><a href="${esc(o.invoiceUrl)}" style="color:${T.primary}">View or print your ${o.trn ? "tax invoice" : "invoice"}</a></p>`,
-    text: `Thank you. Your payment was received.\n\n${o.trn ? "Tax invoice" : "Receipt"} #${o.orderNumber} · ${o.date}\n${o.lines.map((l) => `${l.title}: ${l.amount}`).join("\n")}${o.discount ? `\nDiscount: -${o.discount}` : ""}${o.vat ? `\n${o.vatLabel ?? "VAT"} (included): ${o.vat}` : ""}\nTotal paid: ${o.total}\n\nInvoice: ${o.invoiceUrl}`,
+<p style="margin:0 0 12px"><a href="${esc(o.invoiceUrl)}" style="color:${T.primary}">View or print your ${o.trn ? "tax invoice" : "invoice"}</a></p>${o.sessions?.length ? sessionsHtml(o.sessions) : ""}`,
+    text: `Thank you. Your payment was received.${o.sessions?.length ? `\n\nYour live sessions:\n${sessionsText(o.sessions)}` : ""}\n\n${o.trn ? "Tax invoice" : "Receipt"} #${o.orderNumber} · ${o.date}\n${o.lines.map((l) => `${l.title}: ${l.amount}`).join("\n")}${o.discount ? `\nDiscount: -${o.discount}` : ""}${o.vat ? `\n${o.vatLabel ?? "VAT"} (included): ${o.vat}` : ""}\nTotal paid: ${o.total}\n\nInvoice: ${o.invoiceUrl}`,
   };
   return {
     subject: `Your FinCoursa receipt #${o.orderNumber}`,
     ...layout({ preheader: `Payment received: ${o.total}`, heading: "You're enrolled", body: table, cta: { label: "Start learning", url: o.learnUrl } }),
+  };
+}
+
+export type SessionLine = { title: string; day: string; times: string };
+
+function sessionsHtml(sessions: SessionLine[]) {
+  return `<div style="margin:20px 0 4px;padding:16px 18px;background:#000000;border-radius:12px;color:#ffffff">
+<p style="margin:0 0 10px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:${T.accent}">Your live sessions on Zoom</p>
+${sessions.map((x) => `<p style="margin:0 0 10px"><b>${esc(x.day)}</b> · ${esc(x.title)}<br><span style="font-size:13px;color:#d1d5db">${esc(x.times)}</span></p>`).join("")}
+<p style="margin:0;font-size:13px;color:#d1d5db">Join from your FinCoursa account. The Join button appears 15 minutes before the start, and recordings are added afterwards.</p></div>`;
+}
+const sessionsText = (sessions: SessionLine[]) => sessions.map((x) => `- ${x.day}, ${x.times}: ${x.title}`).join("\n");
+
+/** Day-before reminder for a live session. */
+export function liveReminderEmail(o: { name?: string | null; course: string; session: SessionLine; url: string; calendarUrl: string }): Rendered {
+  const body: Block = {
+    html: `<p style="margin:0 0 12px">Hi ${esc(first(o.name))}, a quick reminder that <b>${esc(o.course)}</b> is live soon.</p>${sessionsHtml([o.session])}
+<p style="margin:16px 0 0;font-size:13px"><a href="${esc(o.calendarUrl)}" style="color:${T.primary}">Add it to your calendar</a></p>`,
+    text: `Hi ${first(o.name)}, ${o.course} is live soon.\n${sessionsText([o.session])}\nJoin from your account: ${o.url}`,
+  };
+  return {
+    subject: `Reminder: ${o.course} is live ${o.session.day}`,
+    ...layout({ preheader: `${o.session.day}, ${o.session.times}`, heading: "See you live", body, cta: { label: "Open the session", url: o.url } }),
   };
 }
 

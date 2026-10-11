@@ -2,7 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/money";
-import { formatDate } from "@/lib/format";
+import { formatDate, SESSION_ZONES, sessionDay, sessionTimes } from "@/lib/format";
 import { sendEmail } from "./send";
 import * as T from "./templates";
 
@@ -25,24 +25,68 @@ export async function sendWelcome(userId: string) {
 export async function sendReceipt(orderId: string) {
   const db = createAdminClient();
   const { data: o } = await db.from("orders")
-    .select("id, number, user_id, status, currency, discount_minor, tax_minor, total_minor, tax_rate, paid_at, billing_country, order_items(title, unit_amount_minor, quantity, course:courses(slug))")
+    .select("id, number, user_id, status, currency, discount_minor, tax_minor, total_minor, tax_rate, tax_name, reverse_charge, paid_at, billing_country, order_items(title, unit_amount_minor, quantity, course_id, bundle_id, course:courses(slug))")
     .eq("id", orderId).maybeSingle();
-  if (!o || o.status !== "paid" || o.total_minor <= 0) return;
+  if (!o || o.status !== "paid") return;
+  // live sessions in what they bought (course, or every course in a bundle)
+  const courseIds = new Set<string>((o.order_items ?? []).map((i) => i.course_id).filter(Boolean) as string[]);
+  const bundleIds = (o.order_items ?? []).map((i) => i.bundle_id).filter(Boolean) as string[];
+  if (bundleIds.length) (await db.from("bundle_courses").select("course_id").in("bundle_id", bundleIds)).data?.forEach((b) => courseIds.add(b.course_id));
+  const { data: live } = courseIds.size
+    ? await db.from("lessons").select("title, starts_at, live_minutes").in("course_id", [...courseIds]).eq("type", "live")
+        .gte("starts_at", new Date().toISOString()).order("starts_at")
+    : { data: [] as { title: string; starts_at: string; live_minutes: number | null }[] };
+  const sessions = (live ?? []).map((l) => sessionLine(l.title, l.starts_at, l.live_minutes));
+  if (o.total_minor <= 0 && !sessions.length) return; // free course: the welcome/course email is enough
   const p = await profile(o.user_id);
   if (!p?.email) return;
   const m = (n: number) => formatMoney(n, o.currency);
-  const { data: tax } = o.billing_country ? await db.from("tax_rates").select("name").eq("country_code", o.billing_country).maybeSingle() : { data: null };
+  const { data: tax } = o.billing_country ? await db.from("tax_rates").select("name, prices_include_tax").eq("country_code", o.billing_country).maybeSingle() : { data: null };
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const firstCourse = (o.order_items?.[0]?.course as any)?.slug as string | undefined;
   const t = T.receiptEmail({
     name: p.full_name, orderNumber: o.number, date: formatDate(o.paid_at, "long"),
     lines: (o.order_items ?? []).map((i) => ({ title: i.title, amount: m(i.unit_amount_minor * i.quantity) })),
     discount: o.discount_minor ? m(o.discount_minor) : null,
-    vat: o.tax_minor ? m(o.tax_minor) : null, vatLabel: tax?.name ? `${tax.name} ${(Number(o.tax_rate) * 100).toFixed(0)}%` : null,
+    vat: o.tax_minor ? m(o.tax_minor) : null, vatLabel: (o.tax_name ?? tax?.name) ? `${o.tax_name ?? tax?.name} ${+(Number(o.tax_rate) * 100).toFixed(1)}%` : null,
+    vatAdded: tax?.prices_include_tax === false, reverseCharge: o.reverse_charge, sessions,
     total: m(o.total_minor), invoiceUrl: `${site()}/api/invoices/${o.id}`,
     learnUrl: firstCourse ? `${site()}/learn/${firstCourse}` : `${site()}/dashboard`, trn: process.env.COMPANY_TRN ?? null,
   });
   await sendEmail({ ...t, to: p.email, template: "receipt", ref: o.id });
+}
+
+function sessionLine(title: string, startsAt: string, minutes: number | null) {
+  return {
+    title, day: sessionDay(startsAt),
+    times: SESSION_ZONES.slice(0, 3).map((z) => `${sessionTimes(startsAt, minutes, z.tz)} ${z.label}`).join(" | "),
+  };
+}
+
+/** Daily cron: remind enrolled students of live sessions starting in the next ~30 hours (once per person per session). */
+export async function sendLiveReminders(hoursAhead = 30) {
+  const db = createAdminClient();
+  const now = new Date();
+  const { data: sessions } = await db.from("lessons")
+    .select("id, title, starts_at, live_minutes, course_id, course:courses(title, slug, status)")
+    .eq("type", "live").gte("starts_at", now.toISOString())
+    .lte("starts_at", new Date(now.getTime() + hoursAhead * 3600_000).toISOString());
+  let sent = 0;
+  for (const l of sessions ?? []) {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const course = l.course as any;
+    if (!course || course.status !== "published") continue;
+    const { data: students } = await db.from("enrollments").select("user_id").eq("course_id", l.course_id).is("revoked_at", null).limit(5000);
+    for (const st of students ?? []) {
+      const p = await profile(st.user_id);
+      if (!p?.email) continue;
+      const url = `${site()}/learn/${course.slug}/${l.id}`;
+      const t = T.liveReminderEmail({ name: p.full_name, course: course.title, session: sessionLine(l.title, l.starts_at!, l.live_minutes), url, calendarUrl: `${site()}/api/calendar/${l.id}` });
+      const r = await sendEmail({ ...t, to: p.email, template: "live_reminder", ref: `${l.id}:${st.user_id}` });
+      if (r) sent++;
+    }
+  }
+  return sent;
 }
 
 /** Sent once per certificate, the moment a course reaches 100%. */

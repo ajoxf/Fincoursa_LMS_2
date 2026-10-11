@@ -6,13 +6,16 @@ import { buildQuote } from "@/lib/checkout";
 import { gatewaysFor } from "@/lib/payments/registry";
 import { formatMoney } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
+import { ALL_COUNTRIES, countryName } from "@/lib/format";
 import { startCheckout } from "./actions";
 
 export const metadata: Metadata = { title: "Checkout", robots: { index: false } };
 
+// Most common first, then every country A–Z
+const TOP = ["AE", "SA", "IN", "GB", "US", "QA", "KW", "BH", "OM", "EG", "PK", "SG"];
 const COUNTRIES: [string, string][] = [
-  ["AE", "United Arab Emirates"], ["SA", "Saudi Arabia"], ["QA", "Qatar"], ["KW", "Kuwait"], ["BH", "Bahrain"], ["OM", "Oman"],
-  ["EG", "Egypt"], ["IN", "India"], ["PK", "Pakistan"], ["GB", "United Kingdom"], ["US", "United States"], ["SG", "Singapore"],
+  ...TOP.map((c) => [c, countryName(c)] as [string, string]),
+  ...ALL_COUNTRIES.filter(([c]) => !TOP.includes(c)),
 ];
 
 export default async function CheckoutPage({ searchParams }: PageProps<"/checkout">) {
@@ -27,7 +30,9 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   const { data: profile } = await (await createClient()).from("profiles").select("country_code").eq("id", user.id).maybeSingle();
   const country = (one("country") ?? profile?.country_code ?? h.get("x-vercel-ip-country") ?? "AE").toUpperCase();
 
-  const quote = await buildQuote({ courseSlug, bundleSlug, couponCode: one("coupon"), country });
+  const company = one("company") ?? "";
+  const taxId = one("tax_id") ?? "";
+  const quote = await buildQuote({ courseSlug, bundleSlug, couponCode: one("coupon"), country, businessTaxId: taxId || undefined });
   if (!quote) notFound();
 
   // Already own everything in this item? Go straight to learning.
@@ -64,6 +69,14 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             <label className="grid gap-1.5 text-sm text-ink/80">Coupon code
               <span className="flex gap-2"><input name="coupon" defaultValue={one("coupon")} placeholder="Enter code" className={field} /><button className="fc-btn fc-btn-outline !min-w-0 text-ink">Apply</button></span>
             </label>
+            <details className="rounded-lg border border-line p-4" open={Boolean(company || taxId)}>
+              <summary className="cursor-pointer text-sm text-ink">Buying for a business? Add company and tax details</summary>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1.5 text-sm text-ink/80">Company name<input name="company" defaultValue={company} className={field} /></label>
+                <label className="grid gap-1.5 text-sm text-ink/80">VAT / GST number<input name="tax_id" defaultValue={taxId} className={field} /></label>
+              </div>
+              <p className="mt-2 text-xs text-muted">Shown on your tax invoice. In countries with reverse charge (EU, UK and others), registered businesses pay the price without VAT.</p>
+            </details>
             <button className="justify-self-start text-sm text-ink underline underline-offset-4">Update total</button>
             {quote.couponError && <p className="text-sm text-danger">{quote.couponError}</p>}
             {quote.coupon && <p className="text-sm text-success">Code {quote.coupon.code} applied.</p>}
@@ -75,6 +88,8 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             <input type="hidden" name="bundle" value={bundleSlug ?? ""} />
             <input type="hidden" name="coupon" value={quote.coupon?.code ?? ""} />
             <input type="hidden" name="country" value={country} />
+            <input type="hidden" name="company" value={company} />
+            <input type="hidden" name="tax_id" value={taxId} />
             {quote.totalMinor === 0 ? (
               <button className="fc-btn fc-btn-primary fc-btn-lg justify-self-start">Complete enrollment</button>
             ) : gateways.length === 0 ? (
@@ -106,8 +121,11 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             {quote.discountMinor > 0 && <div className="flex justify-between text-success"><dt>Discount ({quote.coupon?.code})</dt><dd>−{m(quote.discountMinor)}</dd></div>}
             {quote.taxMinor > 0 && (
               <div className="flex justify-between text-muted">
-                <dt>{quote.taxName ?? "Tax"} ({(quote.taxRate * 100).toFixed(0)}%){quote.pricesIncludeTax ? " included" : ""}</dt><dd>{m(quote.taxMinor)}</dd>
+                <dt>{quote.taxName ?? quote.taxLabel} ({+(quote.taxRate * 100).toFixed(1)}%){quote.pricesIncludeTax ? " included" : " added"}</dt><dd>{m(quote.taxMinor)}</dd>
               </div>
+            )}
+            {quote.reverseCharge && (
+              <div className="flex justify-between text-muted"><dt>{quote.taxLabel} reverse charge</dt><dd>{m(0)}</dd></div>
             )}
             <div className="mt-2 flex items-baseline justify-between border-t border-ink pt-4"><dt className="font-medium">Total</dt><dd className="text-3xl font-bold tracking-tight">{m(quote.totalMinor)}</dd></div>
           </dl>

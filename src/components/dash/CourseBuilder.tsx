@@ -11,15 +11,25 @@ import { FileUpload } from "./FileUpload";
 export type BuilderLesson = {
   id: string; title: string; type: string; position: number; is_preview: boolean; is_required: boolean;
   drip_days: number | null; duration_seconds: number; video_asset_id: string | null;
+  starts_at: string | null; live_minutes: number | null; zoom_meeting_id: string | null;
   video: { status: string } | null;
-  body: { body: { text?: string; files?: { name: string; path: string }[]; pass_pct?: number; questions?: QuizQuestionInput[] } } | null;
+  body: { body: { text?: string; files?: { name: string; path: string }[]; pass_pct?: number; questions?: QuizQuestionInput[]; join_url?: string } } | null;
 };
 export type BuilderChapter = { id: string; title: string; position: number; lessons: BuilderLesson[] };
 
 const TYPES = [
   { id: "video", label: "Video" }, { id: "text", label: "Text" }, { id: "pdf", label: "PDF" },
   { id: "quiz", label: "Quiz" }, { id: "audio", label: "Audio" }, { id: "download", label: "Download" },
+  { id: "live", label: "Live (Zoom)" },
 ];
+
+/** ISO -> value for <input type="datetime-local"> in the admin's own timezone */
+const toLocalInput = (iso: string | null) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+const zoomId = (url: string) => url.match(/\/j\/(\d{9,12})/)?.[1] ?? null;
 
 function TypeIcon({ type }: { type: string }) {
   const p = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
@@ -28,6 +38,7 @@ function TypeIcon({ type }: { type: string }) {
     case "text": return <svg {...p}><path d="M6 2.5h8l4 4v15H6z" /><path d="M14 2.5v4h4M9 12h6M9 15.5h6" /></svg>;
     case "pdf": return <svg {...p}><path d="M6 2.5h8l4 4v8M6 2.5v8" /><text x="5" y="21" fontSize="7" fontWeight="700" fill="currentColor" stroke="none">PDF</text></svg>;
     case "quiz": return <svg {...p}><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17M10 6h11M10 12h11M10 18h11" /></svg>;
+    case "live": return <svg {...p}><circle cx="12" cy="12" r="3" /><path d="M7.5 7.5a6.5 6.5 0 0 0 0 9M16.5 7.5a6.5 6.5 0 0 1 0 9M4.5 4.5a10.5 10.5 0 0 0 0 15M19.5 4.5a10.5 10.5 0 0 1 0 15" /></svg>;
     case "audio": return <svg {...p}><rect x="9" y="2.5" width="6" height="12" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v4" /></svg>;
     default: return <svg {...p}><path d="M12 3v12M7 10l5 5 5-5M4 20h16" /></svg>;
   }
@@ -139,6 +150,12 @@ function statusOf(l: BuilderLesson) {
     const s = l.video?.status;
     return s === "ready" ? { t: "Video ready", ok: true } : s ? { t: s === "errored" ? "Video failed" : "Processing…", ok: false } : { t: "No video", ok: false };
   }
+  if (l.type === "live") {
+    if (l.video?.status === "ready") return { t: "Recording ready", ok: true };
+    if (!l.starts_at) return { t: "No date set", ok: false };
+    const when = new Date(l.starts_at).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return { t: b.join_url ? `Live ${when}` : `${when} · no Zoom link`, ok: Boolean(b.join_url) };
+  }
   if (l.type === "quiz") return (b.questions?.length ?? 0) > 0 ? { t: `${b.questions!.length} questions`, ok: true } : { t: "No questions", ok: false };
   if (l.type === "pdf" || l.type === "download" || l.type === "audio") return (b.files?.length ?? 0) > 0 ? { t: `${b.files!.length} file(s)`, ok: true } : { t: "No file", ok: false };
   return b.text ? { t: "Has content", ok: true } : { t: "Empty", ok: false };
@@ -181,6 +198,10 @@ function LessonEditor({ courseId, lesson, onClose }: { courseId: string; lesson:
   const [files, setFiles] = useState(b.files ?? []);
   const [passPct, setPassPct] = useState(b.pass_pct ?? 70);
   const [questions, setQuestions] = useState<QuizQuestionInput[]>(b.questions ?? []);
+  const [startsAt, setStartsAt] = useState(toLocalInput(lesson.starts_at));
+  const [liveMinutes, setLiveMinutes] = useState(lesson.live_minutes?.toString() ?? "90");
+  const [joinUrl, setJoinUrl] = useState(b.join_url ?? "");
+  const [meetingId, setMeetingId] = useState(lesson.zoom_meeting_id ?? "");
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
   const [pending, start] = useTransition();
 
@@ -192,10 +213,17 @@ function LessonEditor({ courseId, lesson, onClose }: { courseId: string; lesson:
       await updateLesson(courseId, lesson.id, {
         title: title.trim() || "Untitled lesson", type, is_preview: preview, is_required: required,
         drip_days: drip === "" ? null : Math.max(0, Math.round(Number(drip))),
-        ...(type !== "video" ? { duration_seconds: Math.max(0, Math.round(Number(minutes || 0) * 60)) } : {}),
+        ...(type !== "video" && type !== "live" ? { duration_seconds: Math.max(0, Math.round(Number(minutes || 0) * 60)) } : {}),
+        ...(type === "live" ? {
+          starts_at: startsAt ? new Date(startsAt).toISOString() : null,
+          live_minutes: Math.max(1, Math.round(Number(liveMinutes || 60))),
+          zoom_meeting_id: (meetingId || zoomId(joinUrl) || "").replace(/\D/g, "") || null,
+          ...(lesson.video?.status !== "ready" ? { duration_seconds: Math.max(1, Math.round(Number(liveMinutes || 60))) * 60 } : {}),
+        } : {}),
       });
+      if (type === "live" && joinUrl && !/^https:\/\/([a-z0-9-]+\.)*zoom\.us\//i.test(joinUrl)) { setMsg({ ok: false, t: "The join link should be a zoom.us link." }); return; }
       await saveLessonBody(courseId, lesson.id, {
-        text, files, pass_pct: passPct,
+        text, files, pass_pct: passPct, join_url: joinUrl.trim(),
         questions: questions.map((q) => ({ ...q, options: q.options.filter((o) => o.text.trim()) })),
       });
       setMsg({ ok: true, t: "Saved" });
@@ -226,6 +254,40 @@ function LessonEditor({ courseId, lesson, onClose }: { courseId: string; lesson:
             }}
             onSuccess={() => { setMsg({ ok: true, t: "Uploaded — Mux is processing the video (usually a minute or two)." }); setTimeout(() => refreshCourse(courseId).then(() => router.refresh()), 5000); }}
           />
+        </div>
+      )}
+
+      {type === "live" && (
+        <div className="grid gap-3 rounded-md border border-line bg-bg p-3">
+          <p className="text-sm font-medium">Live session on Zoom</p>
+          <div className="grid gap-3 md:grid-cols-[1fr_140px]">
+            <label className="grid gap-1 text-sm">Starts (your time: {Intl.DateTimeFormat().resolvedOptions().timeZone})
+              <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className="fc-input" />
+            </label>
+            <label className="grid gap-1 text-sm">Length (minutes)<input value={liveMinutes} onChange={(e) => setLiveMinutes(e.target.value)} inputMode="numeric" className="fc-input" /></label>
+          </div>
+          <label className="grid gap-1 text-sm">Zoom join link (include the passcode)
+            <input value={joinUrl} onChange={(e) => { setJoinUrl(e.target.value); const id = zoomId(e.target.value); if (id) setMeetingId(id); }}
+              placeholder="https://us06web.zoom.us/j/85012345678?pwd=…" className="fc-input" />
+          </label>
+          <label className="grid gap-1 text-sm">Zoom meeting ID <span className="text-xs text-muted">Filled from the link. Used to bring the cloud recording in automatically.</span>
+            <input value={meetingId} onChange={(e) => setMeetingId(e.target.value)} inputMode="numeric" className="fc-input" />
+          </label>
+          <p className="text-xs text-muted">Only enrolled students see the link, and only from 15 minutes before the start. Everyone sees the time in their own timezone and can add it to their calendar.</p>
+          <div className="grid gap-2 border-t border-line pt-3">
+            <p className="text-sm font-medium">Recording {lesson.video?.status === "ready" ? <span className="text-success">· ready, students can replay it</span> : lesson.video ? <span className="text-muted">· {lesson.video.status.replace("_", " ")}</span> : <span className="text-muted">· not yet</span>}</p>
+            <p className="text-xs text-muted">With Zoom connected, the cloud recording is added here automatically after the session. Or upload the MP4 yourself:</p>
+            <MuxUploader
+              endpoint={async () => {
+                const res = await fetch("/api/video/uploads", { method: "POST", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ lessonId: lesson.id, title: `${title} (recording)` }) });
+                const j = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(j.error ?? "Video upload isn't available. Check the Mux settings.");
+                return j.uploadUrl as string;
+              }}
+              onSuccess={() => { setMsg({ ok: true, t: "Recording uploaded. Mux is processing it (usually a few minutes)." }); setTimeout(() => refreshCourse(courseId).then(() => router.refresh()), 5000); }}
+            />
+          </div>
         </div>
       )}
 

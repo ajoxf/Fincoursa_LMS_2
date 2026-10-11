@@ -71,6 +71,7 @@ export async function addLesson(courseId: string, chapterId: string, title: stri
 export type LessonPatch = {
   title?: string; is_preview?: boolean; is_required?: boolean; drip_days?: number | null;
   duration_seconds?: number; type?: string;
+  starts_at?: string | null; live_minutes?: number | null; zoom_meeting_id?: string | null;
 };
 
 export async function updateLesson(courseId: string, lessonId: string, patch: LessonPatch) {
@@ -85,6 +86,7 @@ export type BodyPatch = {
   files?: { name: string; path: string }[];
   pass_pct?: number;
   questions?: QuizQuestionInput[];
+  join_url?: string;
 };
 
 /** Merge-saves the protected lesson body (text, files, quiz). */

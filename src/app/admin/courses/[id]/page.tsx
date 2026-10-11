@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurriculum } from "@/lib/course-admin";
+import { syncPendingVideos } from "@/lib/mux";
 import { formatMoney, minorUnitsFactor } from "@/lib/money";
 import { Card } from "@/components/dash/Stat";
 import { CourseBuilder } from "@/components/dash/CourseBuilder";
@@ -22,6 +23,7 @@ const PRICE_TYPES = [
 export default async function EditCoursePage({ params }: PageProps<"/admin/courses/[id]">) {
   const { id } = await params;
   await requireRole(["admin"], `/admin/courses/${id}`);
+  await syncPendingVideos(id).catch(() => {});
   const db = createAdminClient();
   const [{ data: course }, { data: categories }, { data: instructors }, chapters, { data: enrolled }] = await Promise.all([
     db.from("courses").select("*, prices(*), course_instructors(instructor_id, is_primary, revenue_share_pct, instructor:instructors(name, default_revenue_share_pct))").eq("id", id).maybeSingle(),

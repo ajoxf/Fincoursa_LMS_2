@@ -13,6 +13,9 @@ import { VideoLesson } from "@/components/player/VideoLesson";
 import { CompleteButton } from "@/components/player/CompleteButton";
 import { CurriculumNav, type NavChapter } from "@/components/player/CurriculumNav";
 import { QuizLesson, type QuizQuestion } from "@/components/player/QuizLesson";
+import { LiveSession } from "@/components/player/LiveSession";
+import { joinWindow } from "@/lib/format";
+import { env } from "@/lib/env";
 
 export const metadata: Metadata = { robots: { index: false } };
 
@@ -21,6 +24,7 @@ type Body = {
   files?: { name: string; path: string }[];
   pass_pct?: number;
   questions?: (QuizQuestion & { correct?: string })[];
+  join_url?: string;
 };
 
 export default async function LessonPage({ params, searchParams }: PageProps<"/learn/[course]/[lesson]">) {
@@ -45,7 +49,7 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
   const previewing = !enrollment && Boolean(user && (user.roles.includes("admin") || user.roles.includes("instructor")));
 
   const [{ data: full }, { data: body }, { data: progressRows }] = await Promise.all([
-    supabase.from("lessons").select("id, type, video_asset_id, drip_days").eq("id", lessonId).single(),
+    supabase.from("lessons").select("id, type, video_asset_id, drip_days, starts_at, live_minutes").eq("id", lessonId).single(),
     supabase.from("lesson_bodies").select("body").eq("lesson_id", lessonId).maybeSingle(),
     user
       ? supabase.from("lesson_progress").select("lesson_id, completed_at, last_position_seconds").eq("course_id", course.id).eq("user_id", user.id)
@@ -56,7 +60,7 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
 
   // Video: sign playback only after the access check above
   let video: { playbackId: string; tokens: Record<string, string | undefined> } | null = null;
-  if (full?.type === "video" && full.video_asset_id && unlocked) {
+  if ((full?.type === "video" || full?.type === "live") && full.video_asset_id && unlocked) {
     const { data: asset } = await createAdminClient()
       .from("video_assets").select("playback_id, status").eq("id", full.video_asset_id).single();
     if (asset?.playback_id && asset.status === "ready") {
@@ -76,12 +80,21 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
   const nextHref = next ? `/learn/${slug}/${next.id}${focus ? "?focus=1" : ""}` : null;
   const tracking = Boolean(enrollment);
   const done = Boolean(progress.get(lessonId)?.completed_at);
-  const autoCompletes = full?.type === "video" || full?.type === "quiz";
+  const autoCompletes = full?.type === "video" || full?.type === "quiz" || full?.type === "live";
+  // Live: the Zoom link is only sent once the join window is open
+  const live = full?.type === "live" && full.starts_at ? joinWindow(full.starts_at, full.live_minutes) : null;
+  const gcal = full?.starts_at ? (() => {
+    const f = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const st = new Date(full.starts_at); const en = new Date(st.getTime() + (full.live_minutes ?? 60) * 60000);
+    const q = new URLSearchParams({ action: "TEMPLATE", text: `${course.title}: ${lesson.title}`, dates: `${f(st)}/${f(en)}`,
+      details: `Live on Zoom. Join from your FinCoursa account: ${env.siteUrl}/learn/${slug}/${lessonId}`, location: "Zoom" });
+    return `https://calendar.google.com/calendar/render?${q}`;
+  })() : "";
   const pct = enrollment ? Math.round(Number(enrollment.progress_pct)) : 0;
 
   const chapters: NavChapter[] = course.chapters.map((ch) => ({
     id: ch.id, title: ch.title,
-    lessons: ch.lessons.map((l) => ({ id: l.id, title: l.title, type: l.type, duration_seconds: l.duration_seconds, done: Boolean(progress.get(l.id)?.completed_at), locked: false })),
+    lessons: ch.lessons.map((l) => ({ id: l.id, title: l.title, type: l.type, duration_seconds: l.duration_seconds, done: Boolean(progress.get(l.id)?.completed_at), locked: false, starts_at: l.starts_at ?? null })),
   }));
 
   const expandIcon = focus
@@ -136,6 +149,18 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
                   watermark={user?.email ?? undefined} title={lesson.title} viewerId={user?.id} />
               ) : (
                 <div className="flex aspect-video items-center justify-center bg-surface text-muted">{full.video_asset_id ? "Video is processing. Check back shortly." : "The video for this lesson is coming soon."}</div>
+              )
+            ) : full?.type === "live" && video ? (
+              <VideoLesson lessonId={lessonId} courseId={course.id} playbackId={video.playbackId} tokens={video.tokens}
+                startAt={progress.get(lessonId)?.last_position_seconds ?? 0} track={tracking}
+                watermark={user?.email ?? undefined} title={lesson.title} viewerId={user?.id} />
+            ) : full?.type === "live" ? (
+              full.starts_at ? (
+                <LiveSession lessonId={lessonId} title={lesson.title} startsAt={full.starts_at} minutes={full.live_minutes ?? 60}
+                  joinUrl={live?.open && (tracking || previewing) ? (b.join_url || null) : null} ended={Boolean(live?.ended)}
+                  canAttend={tracking || previewing} track={tracking} gcalUrl={gcal} />
+              ) : (
+                <div className="flex aspect-video items-center justify-center bg-surface text-muted">The date for this session will be announced soon.</div>
               )
             ) : full?.type === "quiz" ? (
               <div className="mx-auto max-w-[680px] px-4 py-10">

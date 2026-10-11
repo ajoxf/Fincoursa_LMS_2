@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-export type NavLesson = { id: string; title: string; type: string; duration_seconds: number; done: boolean; locked: boolean };
+export type NavLesson = { id: string; title: string; type: string; duration_seconds: number; done: boolean; locked: boolean; starts_at?: string | null };
 export type NavChapter = { id: string; title: string; lessons: NavLesson[] };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -11,7 +11,8 @@ const TYPE_LABEL: Record<string, string> = {
 
 function meta(l: NavLesson) {
   const parts = [TYPE_LABEL[l.type] ?? l.type];
-  if (l.duration_seconds > 0) parts.push(l.duration_seconds < 60 ? "< 1 min" : `${Math.round(l.duration_seconds / 60)} min`);
+  if (l.type === "live" && l.starts_at) parts.push(new Date(l.starts_at).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }));
+  else if (l.duration_seconds > 0) parts.push(l.duration_seconds < 60 ? "< 1 min" : `${Math.round(l.duration_seconds / 60)} min`);
   if (l.locked) parts.push("Locked");
   return parts.join(" · ").toUpperCase();
 }
@@ -20,6 +21,7 @@ function TypeIcon({ type }: { type: string }) {
   const p = { width: 14, height: 14, viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: 1.3, "aria-hidden": true } as const;
   if (type === "video") return <svg {...p}><rect x="1.5" y="4" width="9" height="8" rx="1" /><path d="m10.5 7 4-2v6l-4-2" /></svg>;
   if (type === "quiz") return <svg {...p}><path d="M3 4h10M3 8h10M3 12h6" /></svg>;
+  if (type === "live") return <svg {...p}><circle cx="8" cy="8" r="1.8" /><path d="M5 5a4.2 4.2 0 0 0 0 6M11 5a4.2 4.2 0 0 1 0 6M3 3a7 7 0 0 0 0 10M13 3a7 7 0 0 1 0 10" /></svg>;
   return <svg {...p}><path d="M4 1.5h5.5L12.5 4.5V14.5H4z" /><path d="M6 8h4.5M6 10.5h4.5" /></svg>;
 }
 

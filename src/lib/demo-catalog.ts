@@ -21,15 +21,15 @@ const price = (id: string, amount: number) =>
 const courses: CourseCard[] = [
   { id: "c1", slug: "behavioral-chemistry-of-trading", title: "Behavioral Chemistry of Trading", subtitle: null,
     description: "Explore the psychological and chemical influences that drive trading decisions and behaviour.",
-    thumbnail_url: null, duration_minutes: 10, category: "Technical Finance", level: null, instructors: [instructors[1]],
+    thumbnail_url: null, duration_minutes: 10, category: "Technical Finance", level: null, liveSessions: [], instructors: [instructors[1]],
     price: price("p1", 36700), isFree: false },
   { id: "c2", slug: "commodities-market-analysis", title: "Commodities Market Analysis", subtitle: null,
     description: "Analyse commodities markets with the tools and frameworks used by professional traders.",
-    thumbnail_url: null, duration_minutes: 10, category: "Technical Finance", level: null, instructors: [instructors[0]],
+    thumbnail_url: null, duration_minutes: 10, category: "Technical Finance", level: null, liveSessions: [], instructors: [instructors[0]],
     price: price("p2", 36700), isFree: false },
   { id: "c3", slug: "technical-analysis-theory-and-history", title: "Technical Analysis: Theory and History", subtitle: null,
     description: "The foundations and history of technical analysis, from its origins to modern practice.",
-    thumbnail_url: null, duration_minutes: 10, category: "Technical Finance", level: null, instructors: [instructors[2]],
+    thumbnail_url: null, duration_minutes: 10, category: "Technical Finance", level: null, liveSessions: [], instructors: [instructors[2]],
     price: price("p3", 36700), isFree: false },
 ];
 
@@ -49,6 +49,7 @@ export const demoCatalog = {
     return {
       ...c,
       access_days: null,
+      highlights: [],
       certificate_enabled: true,
       chapters: [{ id: `${c.id}-ch1`, title: "Introduction", position: 1, lessons: [
         { id: `${c.id}-l1`, title: "Welcome to the course", type: "video", position: 1, is_preview: true, duration_seconds: 600 },

@@ -7,6 +7,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 /** Register new adapters here. */
 const gateways: PaymentGateway[] = [stripeGateway, manualGateway];
 
+/** All adapters in the code, connected or not (for the admin Payments page). */
+export function allGateways(): PaymentGateway[] {
+  return gateways;
+}
+
 export function getGateway(id: string): PaymentGateway | undefined {
   return gateways.find((g) => g.id === id);
 }

@@ -44,6 +44,7 @@ const details = z.object({
   access_days: z.string().optional(),
   seo_title: z.string().trim().max(200).optional(),
   seo_description: z.string().trim().max(400).optional(),
+  highlights: z.string().max(3000).optional(),
 });
 
 export async function saveCourseDetails(courseId: string, _: FormState, form: FormData): Promise<FormState> {
@@ -70,6 +71,7 @@ export async function saveCourseDetails(courseId: string, _: FormState, form: Fo
     access_days: days > 0 ? Math.round(days) : null,
     is_featured: form.get("is_featured") === "on", certificate_enabled: form.get("certificate_enabled") === "on",
     seo_title: d.seo_title || null, seo_description: d.seo_description || null,
+    highlights: (d.highlights ?? "").split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 12),
   }).eq("id", courseId);
   if (error) return { error: error.message };
   await audit(admin.id, "course.updated", courseId);

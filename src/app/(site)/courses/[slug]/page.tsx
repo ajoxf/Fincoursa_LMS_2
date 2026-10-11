@@ -8,6 +8,8 @@ import { formatMoney } from "@/lib/money";
 import { enrollFree } from "@/app/actions/enroll";
 import { PageHero, Chips } from "@/components/site/PageHero";
 import { FacultyBanner } from "@/components/site/FacultyBanner";
+import { LocalTime } from "@/components/site/LocalTime";
+import { SESSION_ZONES, sessionDay, sessionNotOver, sessionTimes } from "@/lib/format";
 
 export async function generateMetadata({ params }: PageProps<"/courses/[slug]">): Promise<Metadata> {
   const course = await getCourse((await params).slug);
@@ -30,41 +32,88 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
   const enrollment = user ? await getEnrollment(course.id) : null;
   const lessonCount = course.chapters.reduce((n, ch) => n + ch.lessons.length, 0);
   const progress = enrollment ? Number(enrollment.progress_pct) : 0;
+  const sessions = course.chapters.flatMap((c) => c.lessons)
+    .filter((l) => l.type === "live" && l.starts_at)
+    .sort((a, b) => a.starts_at!.localeCompare(b.starts_at!));
+  const isLive = sessions.length > 0;
+  const upcoming = sessions.filter((l) => sessionNotOver(l.starts_at!, l.live_minutes));
 
   const cta = enrollment ? (
     <Link href={`/learn/${course.slug}`} className="fc-btn fc-btn-primary w-full !py-4">
-      {progress >= 100 ? "Review Course" : progress > 0 ? "Resume Course" : "Start Course"}
+      {isLive && upcoming.length ? "View session details" : progress >= 100 ? "Review Course" : progress > 0 ? "Resume Course" : "Start Course"}
     </Link>
   ) : course.isFree ? (
     <form action={enrollFree.bind(null, course.id, course.slug)}>
-      <button className="fc-btn fc-btn-primary w-full !py-4">Enroll for Free</button>
+      <button className="fc-btn fc-btn-primary w-full !py-4">{isLive ? "Register for Free" : "Enroll for Free"}</button>
     </form>
   ) : (
-    <Link href={`/checkout?course=${course.slug}`} className="fc-btn fc-btn-primary w-full !py-4">Enroll Now</Link>
+    <Link href={`/checkout?course=${course.slug}`} className="fc-btn fc-btn-primary w-full !py-4">{isLive ? "Register Now →" : "Enroll Now"}</Link>
   );
 
   return (
     <>
-      <PageHero label="Courses" title={course.title}
+      <PageHero label={isLive ? "● Live Masterclass" : "Courses"} title={course.title}
         aside={
           <div className="w-full md:min-w-[230px] md:text-right">
+            {isLive && !course.isFree && <p className="text-[15px]">{course.price?.compare_at_minor ? "Introductory offer" : "Price"}</p>}
             {course.price?.compare_at_minor && !course.isFree && (
               <p className="text-lg text-white/50 line-through">{formatMoney(course.price.compare_at_minor, course.price.currency)}</p>
             )}
             <p className={`whitespace-nowrap font-bold tracking-tight ${course.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
               {course.isFree ? "Free" : course.price && formatMoney(course.price.amount_minor, course.price.currency)}
             </p>
-            <p className="mt-3 text-[15px]">{course.access_days ? `${course.access_days} days access` : "Full lifetime access"}</p>
+            <p className="mt-3 text-[15px]">{isLive ? "Live sessions + recordings" : course.access_days ? `${course.access_days} days access` : "Full lifetime access"}</p>
             <div className="mt-5 md:ml-auto md:w-[210px]">{cta}</div>
           </div>
         }>
         {course.description && <p className="mt-6 max-w-[560px] text-[15px] leading-relaxed">{course.description}</p>}
-        <Chips items={[course.level ?? "All Levels", plural(lessonCount, "lesson"), "Self-paced"]} />
+        <Chips items={isLive
+          ? ["Live on Zoom", plural(sessions.length, "session"), "Recordings included", course.level ?? "All Levels"]
+          : [course.level ?? "All Levels", plural(lessonCount, "lesson"), "Self-paced"]} />
       </PageHero>
 
       <section className="bg-surface">
         <div className="fc-container pb-24 pt-20">
           <div className="mx-auto max-w-[968px]">
+            {isLive && (
+              <div className="mb-16">
+                <p className="text-sm font-medium uppercase tracking-[0.14em] text-ink">Live sessions on Zoom</p>
+                <div className="mt-6 grid gap-3">
+                  {sessions.map((l) => {
+                    const past = !sessionNotOver(l.starts_at!, l.live_minutes);
+                    return (
+                      <div key={l.id} className="grid gap-4 rounded-2xl bg-black p-6 text-white md:grid-cols-[auto_1fr_auto] md:items-center">
+                        <span aria-hidden className="flex h-14 w-14 items-center justify-center rounded-full border border-white/70">
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M8 3v4M16 3v4M8 13h2M12 13h2M16 13h0M8 16.5h2M12 16.5h2" strokeLinecap="round" /></svg>
+                        </span>
+                        <div>
+                          <p className="text-2xl font-medium tracking-tight">{sessionDay(l.starts_at!)}</p>
+                          <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/85">
+                            {SESSION_ZONES.slice(0, 3).map((z) => <span key={z.tz}><span className="text-accent">●</span> {sessionTimes(l.starts_at!, l.live_minutes, z.tz)} {z.label}</span>)}
+                          </p>
+                          <p className="mt-1 text-sm text-white/70"><LocalTime iso={l.starts_at!} minutes={l.live_minutes} /></p>
+                        </div>
+                        <span className={`fc-chip ${past ? "text-white/70" : "fc-chip-lime"}`}>{past ? "Recording" : l.title}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {course.highlights.length > 0 && (
+              <div className="mb-16 rounded-2xl border border-accent bg-black p-6 text-white md:p-8">
+                <p className="text-sm font-medium uppercase tracking-[0.14em] text-accent">What&apos;s included</p>
+                <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {course.highlights.map((h) => (
+                    <li key={h} className="flex items-start gap-3 text-[15px]">
+                      <span aria-hidden className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent">
+                        <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5.2 4.1 7.2 8 3" fill="none" stroke="#101827" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      </span>{h}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {(course.subtitle || course.description) && (
               <p className="text-2xl font-light leading-snug tracking-tight text-ink md:text-[26px]">{course.subtitle || course.description}</p>
             )}

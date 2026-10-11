@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
-import { formatDate } from "@/lib/format";
+import { countryName, formatDate } from "@/lib/format";
 import { brand } from "@/components/site/brand";
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -10,10 +10,7 @@ const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.ch
 // UAE dirham is pegged to the US dollar; UAE rules require the VAT amount in AED on foreign-currency invoices.
 const AED_PER = { USD: 3.6725 } as Record<string, number>;
 
-const COUNTRY: Record<string, string> = {
-  AE: "United Arab Emirates", SA: "Saudi Arabia", QA: "Qatar", KW: "Kuwait", BH: "Bahrain", OM: "Oman", EG: "Egypt",
-  IN: "India", PK: "Pakistan", GB: "United Kingdom", US: "United States", SG: "Singapore",
-};
+
 
 /** Printable tax invoice in the FinCoursa theme (browser "Save as PDF"). Buyer sees own invoices; staff see all (RLS). */
 export async function GET(_req: NextRequest, ctx: RouteContext<"/api/invoices/[id]">) {
@@ -22,7 +19,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/invoices/[i
   const supabase = await createClient();
   const { data: o } = await supabase
     .from("orders")
-    .select("number, status, currency, subtotal_minor, discount_minor, tax_minor, total_minor, refunded_minor, tax_rate, billing_country, gateway, paid_at, created_at, user_id, order_items(title, unit_amount_minor, discount_minor, quantity)")
+    .select("number, status, currency, subtotal_minor, discount_minor, tax_minor, total_minor, refunded_minor, tax_rate, tax_name, billing_country, billing_company, billing_tax_id, reverse_charge, gateway, paid_at, created_at, user_id, order_items(title, unit_amount_minor, discount_minor, quantity)")
     .eq("id", id).maybeSingle();
   if (!o || o.status === "pending" || o.status === "failed") return NextResponse.json({ error: "not found" }, { status: 404 });
   const { data: buyer } = await supabase.from("profiles").select("full_name, email").eq("id", o.user_id).maybeSingle();
@@ -32,16 +29,21 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/invoices/[i
   const address = process.env.COMPANY_ADDRESS ?? "";
   const trn = process.env.COMPANY_TRN;
   const rate = Number(o.tax_rate) || 0;
-  const pct = `${(rate * 100).toFixed(0)}%`;
+  const pct = `${+(rate * 100).toFixed(1)}%`;
+  // Short tax name for column headings: "UAE VAT" -> "VAT", "India GST" -> "GST"
+  const taxShort = (o.tax_name?.split(" ").pop() || "VAT").toUpperCase();
   const items = o.order_items ?? [];
-  // Prices are VAT-inclusive: split each line into taxable amount + VAT so the lines add up to the totals.
-  const totalGross = items.reduce((n, i) => n + i.unit_amount_minor * i.quantity - (i.discount_minor ?? 0), 0) || 1;
-  const lines = items.map((i) => {
-    const gross = i.unit_amount_minor * i.quantity - (i.discount_minor ?? 0);
-    const vat = Math.round((o.tax_minor * gross) / totalGross);
-    return { ...i, gross, vat, net: gross - vat };
-  });
+  // Split the order's totals across lines by each line's share, so lines always add up to the totals
+  // (works for tax-inclusive, tax-added and reverse-charge orders alike).
   const net = o.total_minor - o.tax_minor;
+  const weights = items.map((i) => Math.max(0, i.unit_amount_minor * i.quantity - (i.discount_minor ?? 0)));
+  const wsum = weights.reduce((a, b) => a + b, 0) || 1;
+  const lines = items.map((i, k) => {
+    const lineNet = Math.round((net * weights[k]) / wsum);
+    const vat = Math.round((o.tax_minor * weights[k]) / wsum);
+    return { ...i, net: lineNet, vat, gross: lineNet + vat };
+  });
+  const removedTax = o.reverse_charge ? o.subtotal_minor - (o.discount_minor ?? 0) - o.total_minor : 0;
   const aed = AED_PER[o.currency];
   const status = o.refunded_minor >= o.total_minor && o.total_minor > 0 ? "Refunded" : o.refunded_minor > 0 ? "Partly refunded" : "Paid";
   const issued = formatDate(o.paid_at ?? o.created_at);
@@ -113,14 +115,16 @@ td.r,th.r{padding-left:16px}
       </div>
       <div class="box">
         <p class="label">Billed to</p>
-        <p><b>${esc(buyer?.full_name || buyer?.email)}</b></p>
+        <p><b>${esc(o.billing_company || buyer?.full_name || buyer?.email)}</b></p>
+        ${o.billing_company ? `<p class="muted">Attn: ${esc(buyer?.full_name || buyer?.email)}</p>` : ""}
         <p class="muted">${esc(buyer?.email)}</p>
-        ${o.billing_country ? `<p class="muted">${esc(COUNTRY[o.billing_country] ?? o.billing_country)}</p>` : ""}
+        ${o.billing_tax_id ? `<p class="muted">${esc(taxShort)} no. ${esc(o.billing_tax_id)}</p>` : ""}
+        ${o.billing_country ? `<p class="muted">${esc(countryName(o.billing_country))}</p>` : ""}
       </div>
     </div>
 
     <table>
-      <thead><tr><th>Description</th><th class="r">Qty</th><th class="r">Taxable amount</th><th class="r">VAT ${pct}</th><th class="r">Amount</th></tr></thead>
+      <thead><tr><th>Description</th><th class="r">Qty</th><th class="r">Taxable amount</th><th class="r">${esc(taxShort)} ${pct}</th><th class="r">Amount</th></tr></thead>
       <tbody>
       ${lines.map((l) => `<tr><td>${esc(l.title)}${l.discount_minor ? `<br><span class="muted">Price ${m(l.unit_amount_minor * l.quantity)} · discount −${m(l.discount_minor)}</span>` : ""}</td>
         <td class="r">${l.quantity}</td><td class="r">${m(l.net)}</td><td class="r">${m(l.vat)}</td><td class="r">${m(l.gross)}</td></tr>`).join("")}
@@ -131,14 +135,16 @@ td.r,th.r{padding-left:16px}
       <div><span>Subtotal</span><span>${m(o.subtotal_minor)}</span></div>
       ${o.discount_minor ? `<div><span>Discount</span><span>−${m(o.discount_minor)}</span></div>` : ""}
       <div><span>Taxable amount</span><span>${m(net)}</span></div>
-      <div><span>VAT ${pct}</span><span>${m(o.tax_minor)}</span></div>
-      ${aed && o.tax_minor ? `<div class="muted"><span>VAT in AED (1 ${esc(o.currency)} = ${aed} AED)</span><span>${esc(formatMoney(Math.round(o.tax_minor * aed), "AED"))}</span></div>` : ""}
+      ${removedTax > 0 ? `<div><span>${esc(taxShort)} not charged (reverse charge)</span><span>−${m(removedTax)}</span></div>` : ""}
+      ${o.reverse_charge ? "" : `<div><span>${esc(o.tax_name || taxShort)} ${pct}</span><span>${m(o.tax_minor)}</span></div>`}
+      ${aed && o.tax_minor && o.billing_country === "AE" ? `<div class="muted"><span>VAT in AED (1 ${esc(o.currency)} = ${aed} AED)</span><span>${esc(formatMoney(Math.round(o.tax_minor * aed), "AED"))}</span></div>` : ""}
       <div class="grand"><span>Total</span><span>${m(o.total_minor)}</span></div>
       ${o.refunded_minor ? `<div><span>Refunded</span><span>−${m(o.refunded_minor)}</span></div>` : ""}
       <div class="muted"><span>${status === "Paid" ? "Amount paid" : "Net paid"}</span><span>${m(o.total_minor - (o.refunded_minor ?? 0))}</span></div>
     </div>
 
-    <p class="note">Prices include VAT where applicable. Digital course access, lifetime unless stated on the course page.${o.gateway && o.gateway !== "manual" && o.gateway !== "thinkific" ? ` Paid via ${esc(o.gateway[0].toUpperCase() + o.gateway.slice(1))}.` : ""}</p>
+    ${o.reverse_charge ? `<p class="note"><b>Reverse charge:</b> ${esc(taxShort)} is not charged on this supply. The customer is responsible for accounting for ${esc(taxShort)} in their country.</p>` : ""}
+    <p class="note">Prices include tax where applicable. Digital course access, lifetime unless stated on the course page.${o.gateway && o.gateway !== "manual" && o.gateway !== "thinkific" ? ` Paid via ${esc(o.gateway[0].toUpperCase() + o.gateway.slice(1))}.` : ""}</p>
   </div>
   <div class="foot"><span>© ${new Date().getFullYear()} FinCoursa Academy</span><span>Questions about this invoice? Reply to your receipt email.</span></div>
 </div>

@@ -10,6 +10,8 @@ export type QuoteInput = {
   couponCode?: string;
   country: string | null;
   currency?: string;
+  /** Business buyer's VAT/GST number; triggers reverse charge where the country allows it */
+  businessTaxId?: string;
 };
 
 export type Quote = {
@@ -21,7 +23,9 @@ export type Quote = {
   totalMinor: number;
   taxRate: number;
   taxName: string | null;
+  taxLabel: string;
   pricesIncludeTax: boolean;
+  reverseCharge: boolean;
   coupon: { id: string; code: string } | null;
   couponError: string | null;
 };
@@ -71,16 +75,22 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
     }
   }
 
+  // Only countries switched on in Admin → Taxes are charged.
   const { data: tax } = input.country
-    ? await db.from("tax_rates").select("name, rate, prices_include_tax").eq("country_code", input.country).maybeSingle()
+    ? await db.from("tax_rates").select("name, label, rate, prices_include_tax, reverse_charge").eq("country_code", input.country).eq("is_active", true).maybeSingle()
     : { data: null };
   const rate = Number(tax?.rate ?? 0);
   const includes = tax?.prices_include_tax ?? true;
-  const t = computeTax(subtotal - discount, rate, includes);
+  const base = subtotal - discount;
+  const t = computeTax(base, rate, includes);
+  // Reverse charge: a business buyer with a tax ID pays the price before tax and accounts for the tax itself.
+  const reverseCharge = Boolean(tax?.reverse_charge && rate > 0 && input.businessTaxId?.trim());
+  const totalMinor = reverseCharge ? (includes ? base - t.tax : base) : t.total;
 
   return {
     item, currency: price.currency, subtotalMinor: subtotal, discountMinor: discount,
-    taxMinor: t.tax, totalMinor: t.total, taxRate: rate, taxName: tax?.name ?? null, pricesIncludeTax: includes,
+    taxMinor: reverseCharge ? 0 : t.tax, totalMinor, taxRate: reverseCharge ? 0 : rate,
+    taxName: tax?.name ?? null, taxLabel: tax?.label ?? "Tax", pricesIncludeTax: includes, reverseCharge,
     coupon, couponError,
   };
 }

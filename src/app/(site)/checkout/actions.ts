@@ -15,7 +15,9 @@ export async function startCheckout(form: FormData) {
   const user = await requireUser("/pages/paid-courses");
   if (!(await allow("checkout", user.id, LIMITS.checkout.limit, LIMITS.checkout.window))) throw new Error(TOO_MANY);
   const country = s("country")?.toUpperCase() ?? null;
-  const quote = await buildQuote({ courseSlug: s("course"), bundleSlug: s("bundle"), couponCode: s("coupon"), country });
+  const company = s("company")?.slice(0, 200) ?? null;
+  const taxId = s("tax_id")?.replace(/\s+/g, "").slice(0, 40) ?? null;
+  const quote = await buildQuote({ courseSlug: s("course"), bundleSlug: s("bundle"), couponCode: s("coupon"), country, businessTaxId: taxId ?? undefined });
   if (!quote) throw new Error("Item not found");
 
   const db = createAdminClient();
@@ -36,6 +38,7 @@ export async function startCheckout(form: FormData) {
     user_id: user.id, currency: quote.currency,
     subtotal_minor: quote.subtotalMinor, discount_minor: quote.discountMinor, tax_minor: quote.taxMinor, total_minor: quote.totalMinor,
     tax_rate: quote.taxRate, billing_country: country, coupon_id: quote.coupon?.id ?? null,
+    tax_name: quote.reverseCharge ? null : quote.taxName, billing_company: company, billing_tax_id: taxId, reverse_charge: quote.reverseCharge,
     affiliate_id: attr?.affiliateId ?? null, attribution: attr?.attribution ?? null, affiliate_campaign: attr?.campaign ?? null,
     gateway: gatewayId ?? "free",
   }).select("id, number").single();
