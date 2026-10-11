@@ -1,5 +1,5 @@
 "use client";
-import { assetUrl } from "@/lib/assets";
+import { assetUrl, isThinkificAsset } from "@/lib/assets";
 import { useActionState, useState } from "react";
 import { saveCourseDetails, type FormState } from "../actions";
 import { FileUpload } from "@/components/dash/FileUpload";
@@ -7,7 +7,7 @@ import { FileUpload } from "@/components/dash/FileUpload";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function CourseDetailsForm({ course, categories, allTags = [] }: { course: any; categories: { id: string; name: string }[]; allTags?: string[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveCourseDetails.bind(null, course.id), null);
-  const [thumb, setThumb] = useState<string>(course.thumbnail_url ?? "");
+  const [thumb, setThumb] = useState<string>(course.thumbnail_url && !isThinkificAsset(course.thumbnail_url) ? course.thumbnail_url : "");
 
   return (
     <form key={course.updated_at} action={action} className="grid gap-4">

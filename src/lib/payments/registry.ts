@@ -6,13 +6,14 @@ import { stripeGateway } from "./gateways/stripe";
 import { razorpayGateway } from "./gateways/razorpay";
 import { tapGateway } from "./gateways/tap";
 import { paypalGateway } from "./gateways/paypal";
+import { nowpaymentsGateway } from "./gateways/nowpayments";
 import { makeCustomGateway } from "./gateways/custom";
 import type { CustomGatewayRow } from "./types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptSecrets } from "./secrets";
 
 /** Register new adapters here. */
-const gateways: PaymentGateway[] = [stripeGateway, razorpayGateway, tapGateway, paypalGateway, manualGateway];
+const gateways: PaymentGateway[] = [stripeGateway, razorpayGateway, tapGateway, paypalGateway, nowpaymentsGateway, manualGateway];
 
 /** All adapters in the code, connected or not. */
 export function allGateways(): PaymentGateway[] {

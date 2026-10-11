@@ -15,6 +15,7 @@ const PLANNED = [
   { name: "Telr / Network International (N-Genius) / Checkout.com", where: "UAE and GCC cards with local acquiring" },
   { name: "PayTabs", where: "Saudi Arabia, Egypt, Jordan" },
   { name: "Paymob", where: "Egypt, Pakistan" },
+  { name: "Coinbase Commerce / Binance Pay / BitPay", where: "Other crypto processors" },
 ];
 
 export default async function PaymentsPage({ searchParams }: PageProps<"/admin/payments">) {

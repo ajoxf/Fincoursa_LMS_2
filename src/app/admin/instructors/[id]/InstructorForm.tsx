@@ -1,5 +1,5 @@
 "use client";
-import { assetUrl } from "@/lib/assets";
+import { assetUrl, isThinkificAsset } from "@/lib/assets";
 import { useActionState, useState } from "react";
 import { saveInstructor, type FormState } from "../actions";
 import { FileUpload } from "@/components/dash/FileUpload";
@@ -7,8 +7,10 @@ import { FileUpload } from "@/components/dash/FileUpload";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function InstructorForm({ ins, loginEmail }: { ins: any; loginEmail: string | null }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveInstructor.bind(null, ins.id), null);
-  const [photo, setPhoto] = useState<string>(ins.photo_url ?? "");
-  const [logo, setLogo] = useState<string>(ins.org_logo_url ?? "");
+  // old Thinkific image links no longer work: treat them as empty so the admin sees "Upload"
+  const live = (u: string | null) => (u && !isThinkificAsset(u) ? u : "");
+  const [photo, setPhoto] = useState<string>(live(ins.photo_url));
+  const [logo, setLogo] = useState<string>(live(ins.org_logo_url));
   return (
     <form key={JSON.stringify([ins.name, ins.title, ins.bio, ins.photo_url, ins.org_logo_url, ins.user_id, ins.is_published, ins.default_revenue_share_pct])} action={action} className="grid gap-4">
       <div className="grid gap-6 md:grid-cols-[200px_1fr]">
@@ -39,7 +41,7 @@ export function InstructorForm({ ins, loginEmail }: { ins: any; loginEmail: stri
           </div>
           <div className="rounded-md border border-line p-3">
             <p className="text-sm font-medium">Instructor login</p>
-            <p className="text-xs text-muted">{loginEmail ? `Linked to ${loginEmail}. They can see their earnings and students, and edit their courses.` : "Not linked. Enter the email they signed up with to give them an instructor dashboard."}</p>
+            <p className="text-xs text-muted">{loginEmail ? `Linked to ${loginEmail}. They can see their courses, students and earnings. Only admins can change course content.` : "Not linked. Enter the email they signed up with to give them an instructor dashboard."}</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <input name="login_email" type="email" placeholder={loginEmail ?? "instructor@example.com"} className="fc-input max-w-sm" />
               {loginEmail && <label className="flex items-center gap-2 text-xs"><input type="checkbox" name="unlink" />Unlink login</label>}

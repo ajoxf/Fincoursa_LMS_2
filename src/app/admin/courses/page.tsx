@@ -41,7 +41,7 @@ export default async function AdminCourses() {
         {(courses ?? []).map((c: any) => {
           const p = (c.prices ?? []).find((x: { is_active: boolean }) => x.is_active);
           const ins = c.course_instructors?.map((ci: { instructor: { name: string; photo_url: string | null } }) => ci.instructor).filter(Boolean) ?? [];
-          const img = c.thumbnail_url ?? ins[0]?.photo_url ?? null;
+          const img = [c.thumbnail_url, ins[0]?.photo_url].find((u) => u && !isThinkificAsset(u)) ?? null;
           return (
             <Link key={c.id} href={`/admin/courses/${c.id}`} className="fc-card group flex flex-col overflow-hidden transition hover:shadow-md">
               <div className="relative aspect-[310/171] overflow-hidden bg-surface">

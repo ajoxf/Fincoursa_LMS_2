@@ -1,5 +1,5 @@
 "use client";
-import { assetUrl } from "@/lib/assets";
+import { assetUrl, isThinkificAsset } from "@/lib/assets";
 import { useActionState, useState } from "react";
 import { saveBundle, type FormState } from "../actions";
 import { FileUpload } from "@/components/dash/FileUpload";
@@ -8,7 +8,7 @@ import { minorUnitsFactor } from "@/lib/money";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function BundleForm({ bundle, price }: { bundle: any; price: { amount_minor: number; currency: string } | null }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveBundle.bind(null, bundle.id), null);
-  const [thumb, setThumb] = useState<string>(bundle.thumbnail_url ?? "");
+  const [thumb, setThumb] = useState<string>(bundle.thumbnail_url && !isThinkificAsset(bundle.thumbnail_url) ? bundle.thumbnail_url : "");
   const cur = price?.currency ?? (process.env.NEXT_PUBLIC_DEFAULT_CURRENCY ?? "USD");
   return (
     <form key={JSON.stringify([bundle.title, bundle.slug, bundle.status, bundle.is_featured, bundle.thumbnail_url, price?.amount_minor])} action={action} className="grid gap-4">

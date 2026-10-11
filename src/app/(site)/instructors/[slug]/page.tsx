@@ -20,7 +20,7 @@ export default async function InstructorPage({ params }: PageProps<"/instructors
     <>
       {/* Full-width portrait fading into black */}
       <section className="relative bg-surface-dark text-white">
-        <div className="relative h-[640px] md:h-[880px]">
+        <div className={`relative ${person.photo_url ? "h-[640px] md:h-[880px]" : "h-[420px] md:h-[460px]"}`}>
           {person.photo_url && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={assetUrl(person.photo_url)} alt="" className="absolute inset-0 h-full w-full object-cover object-[50%_15%]" />
