@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
 import { simulatePayment } from "../actions";
+import { AutoRefresh } from "./AutoRefresh";
 import { connect } from "@/lib/payments/registry";
 import { applyGatewayEvents } from "@/lib/payments/apply";
 
@@ -60,8 +61,10 @@ export default async function SuccessPage({ searchParams }: PageProps<"/checkout
                 <p className="mt-4 text-[15px] text-ink/85">Thanks! We&apos;ll confirm payment for order FC-{order.number} shortly. You&apos;ll get an email and the course appears in your dashboard as soon as it&apos;s confirmed.{" "}
                   <Link href={`/checkout/pay/${order.id}`} className="underline">Payment details</Link></p>
               ) : (
-                <p className="mt-4 text-[15px] text-ink/85">This usually takes a few seconds. Refresh this page, or find the course in your dashboard once it&apos;s confirmed.</p>
+                <p className="mt-4 text-[15px] text-ink/85">This usually takes a few seconds. This page updates by itself.</p>
               )}
+              {/* card/wallet providers: keep checking until the provider confirms (not for manual or payment-link orders) */}
+              {order.gateway !== "manual" && !order.gateway?.startsWith("custom-") && <AutoRefresh />}
               {order.gateway === "manual" && process.env.ALLOW_TEST_PAYMENTS === "true" && (
                 <form action={simulatePayment.bind(null, order.id)} className="mt-8">
                   <button className="fc-btn fc-btn-dark fc-btn-lg">Simulate successful payment (test mode)</button>
