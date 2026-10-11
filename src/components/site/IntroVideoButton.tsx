@@ -4,13 +4,14 @@ import { useState } from "react";
 import MuxPlayer from "@mux/mux-player-react";
 import { brand } from "./brand";
 
-// Set NEXT_PUBLIC_INTRO_PLAYBACK_ID to a *public* Mux playback ID for the marketing intro video.
-const playbackId = process.env.NEXT_PUBLIC_INTRO_PLAYBACK_ID;
-
-/** Large rounded poster under the hero with a play button; plays the intro video inline. */
-export function IntroVideo() {
+/**
+ * Large rounded poster under the hero with a play button; plays the intro video inline.
+ * The video and cover image are uploaded by an admin on /admin/site.
+ */
+export function IntroVideo({ playbackId: fromAdmin, poster: posterUrl, thumbTime = 3 }: { playbackId?: string | null; poster?: string | null; thumbTime?: number }) {
+  const playbackId = fromAdmin ?? process.env.NEXT_PUBLIC_INTRO_PLAYBACK_ID ?? null;
   const [playing, setPlaying] = useState(false);
-  const poster = playbackId ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1600&time=3` : brand.heroPoster;
+  const poster = posterUrl ?? (playbackId ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1600&time=${thumbTime}` : brand.heroPoster);
 
   if (playing && playbackId) {
     return (

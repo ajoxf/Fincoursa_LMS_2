@@ -24,6 +24,7 @@ function navFor(u: SessionUser): { title: string; items: NavItem[] }[] {
       { href: "/admin/payouts", label: "Payouts" },
       { href: "/admin/taxes", label: "Taxes" },
       { href: "/admin/payments", label: "Payment gateways" },
+      { href: "/admin/site", label: "Home page" },
       { href: "/admin/leads", label: "Leads" },
       { href: "/admin/import", label: "Import from Thinkific" },
     ] });

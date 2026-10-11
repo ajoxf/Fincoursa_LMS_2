@@ -10,9 +10,10 @@ import { OrgTabs } from "@/components/site/OrgTabs";
 import { Faq } from "@/components/site/Faq";
 import { IntroVideo } from "@/components/site/IntroVideoButton";
 import { BundleTile } from "@/components/site/BundleTile";
+import { getIntroVideo } from "@/lib/site-settings";
 
 export default async function HomePage() {
-  const [courses, bundles, faculty, all] = await Promise.all([getCourses({ featured: true }), getBundles(), getInstructors(), getCourses()]);
+  const [courses, bundles, faculty, all, intro] = await Promise.all([getCourses({ featured: true }), getBundles(), getInstructors(), getCourses(), getIntroVideo()]);
   // Courses with upcoming live sessions get a compact "Upcoming live workshops" section
   const liveSlugs = all.filter((c) => c.liveSessions.some((t) => sessionNotOver(t, 180))).map((c) => c.slug);
   const live = (await Promise.all(liveSlugs.map((slug) => getCourse(slug)))).filter((c) => c !== null);
@@ -32,7 +33,7 @@ export default async function HomePage() {
               </div>
             </div>
           </div>
-          <div className="mx-auto max-w-[1080px]"><IntroVideo /></div>
+          <div className="mx-auto max-w-[1080px]"><IntroVideo playbackId={intro?.playback_id} poster={intro?.poster_url} thumbTime={intro?.thumb_time} /></div>
         </div>
       </section>
 

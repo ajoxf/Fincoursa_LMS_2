@@ -83,3 +83,11 @@ export async function syncPendingVideos(courseId: string) {
   }
   /* eslint-enable @typescript-eslint/no-explicit-any */
 }
+
+/** Direct upload for a public marketing video (e.g. the home page intro): anyone can watch it. */
+export async function createPublicUpload(corsOrigin: string) {
+  return mux().video.uploads.create({
+    cors_origin: corsOrigin,
+    new_asset_settings: { playback_policies: ["public"], video_quality: "basic", max_resolution_tier: "1080p" },
+  });
+}
