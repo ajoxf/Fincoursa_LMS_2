@@ -47,7 +47,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
                 <tr key={o.id} className="border-t border-line align-top">
                   <td className="p-3"><a href={`/api/invoices/${o.id}`} className="underline">{o.number}</a></td>
                   <td className="p-3">{formatDate(o.created_at)}</td>
-                  <td className="p-3"><a href={`/admin/students/${o.user_id}`} className="hover:underline">{o.user?.full_name || o.user?.email}</a></td>
+                  <td className="p-3"><a href={`/admin/customers/${o.user_id}`} className="hover:underline">{o.user?.full_name || o.user?.email}</a></td>
                   <td className="p-3">{o.order_items?.map((i: { title: string }) => i.title).join(", ")}</td>
                   <td className="p-3">{o.gateway}{o.billing_country && ` · ${o.billing_country}`}</td>
                   <td className="p-3">{o.affiliate?.code ?? "—"}</td>

@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { parseStudentFilters, searchStudents, spendFor } from "@/lib/students";
 import { minorUnitsFactor } from "@/lib/money";
 
-/** CSV of the student directory with the same filters as the Students page. Staff only; every export is logged. */
+/** CSV of the customer directory with the same filters as the Customers page. Staff only; every export is logged. */
 export async function GET(request: NextRequest) {
   const user = await getSessionUser();
   if (!user || !(hasRole(user, "admin") || hasRole(user, "finance") || hasRole(user, "support"))) {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const { rows } = await searchStudents(f, 100000, 0);
   const db = createAdminClient();
 
-  // course titles per student and spend, in chunks to keep requests small
+  // course titles per customer and spend, in chunks to keep requests small
   const titles = new Map<string, string[]>();
   const spend = new Map<string, Record<string, number>>();
   for (let i = 0; i < rows.length; i += 200) {
@@ -43,12 +43,12 @@ export async function GET(request: NextRequest) {
     lines.push([r.full_name, r.email, r.country_code, r.created_at?.slice(0, 10), r.last_sign_in_at?.slice(0, 10), r.last_activity_at?.slice(0, 10),
       r.active_courses, r.completed_courses, r.paid_orders, sp, r.marketing_opt_in ? "yes" : "no", (r.roles ?? []).join(" "), (titles.get(r.id) ?? []).join("; ")].map(cell).join(","));
   }
-  await db.from("audit_log").insert({ actor_id: user.id, action: "students.exported", entity: "profiles", entity_id: null, data: { rows: rows.length, filters: f } });
+  await db.from("audit_log").insert({ actor_id: user.id, action: "customers.exported", entity: "profiles", entity_id: null, data: { rows: rows.length, filters: f } });
 
   return new NextResponse("﻿" + lines.join("\r\n"), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="fincoursa-students-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Content-Disposition": `attachment; filename="fincoursa-customers-${new Date().toISOString().slice(0, 10)}.csv"`,
       "Cache-Control": "no-store",
     },
   });

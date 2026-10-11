@@ -19,7 +19,7 @@ function untilFrom(form: FormData): string | null {
   return new Date(`${v}T23:59:59+04:00`).toISOString(); // end of that day, UAE time
 }
 
-/** Give a student a course without payment (e.g. a scholarship, a support case, a corporate seat). */
+/** Give a customer a course without payment (e.g. a scholarship, a support case, a corporate seat). */
 export async function grantCourse(userId: string, form: FormData) {
   const admin = await requireRole(["admin", "support"]);
   const courseId = String(form.get("course_id") ?? "");
@@ -42,7 +42,7 @@ export async function grantCourse(userId: string, form: FormData) {
       await sendEmail({ to: p.email, ...m, template: "course_access", ref: `${userId}:${courseId}:${Date.now()}` });
     }
   }
-  revalidatePath(`/admin/students/${userId}`);
+  revalidatePath(`/admin/customers/${userId}`);
 }
 
 export async function setAccessUntil(userId: string, enrollmentId: string, form: FormData) {
@@ -50,21 +50,21 @@ export async function setAccessUntil(userId: string, enrollmentId: string, form:
   const until = untilFrom(form);
   await createAdminClient().from("enrollments").update({ expires_at: until, revoked_at: null }).eq("id", enrollmentId).eq("user_id", userId);
   await audit(admin.id, "enrollment.access_changed", enrollmentId, { until });
-  revalidatePath(`/admin/students/${userId}`);
+  revalidatePath(`/admin/customers/${userId}`);
 }
 
 export async function removeAccess(userId: string, enrollmentId: string) {
   const admin = await requireRole(["admin", "support"]);
   await createAdminClient().from("enrollments").update({ revoked_at: new Date().toISOString() }).eq("id", enrollmentId).eq("user_id", userId);
   await audit(admin.id, "enrollment.revoked", enrollmentId);
-  revalidatePath(`/admin/students/${userId}`);
+  revalidatePath(`/admin/customers/${userId}`);
 }
 
 export async function restoreAccess(userId: string, enrollmentId: string) {
   const admin = await requireRole(["admin", "support"]);
   await createAdminClient().from("enrollments").update({ revoked_at: null }).eq("id", enrollmentId).eq("user_id", userId);
   await audit(admin.id, "enrollment.restored", enrollmentId);
-  revalidatePath(`/admin/students/${userId}`);
+  revalidatePath(`/admin/customers/${userId}`);
 }
 
 export async function updateStudentProfile(userId: string, form: FormData) {
@@ -72,9 +72,9 @@ export async function updateStudentProfile(userId: string, form: FormData) {
   const name = String(form.get("full_name") ?? "").trim().slice(0, 120);
   const country = String(form.get("country_code") ?? "").trim().toUpperCase();
   const patch: Record<string, unknown> = { full_name: name || null, country_code: /^[A-Z]{2}$/.test(country) ? country : null };
-  // admins can only turn marketing emails OFF for someone (on request); opting in is the student's own choice
+  // admins can only turn marketing emails OFF for someone (on request); opting in is the customer's own choice
   if (form.get("unsubscribe") === "on") patch.marketing_opt_in = false;
   await createAdminClient().from("profiles").update(patch).eq("id", userId);
   await createAdminClient().from("audit_log").insert({ actor_id: admin.id, action: "profile.updated_by_staff", entity: "profiles", entity_id: userId, data: { fields: Object.keys(patch) } });
-  revalidatePath(`/admin/students/${userId}`);
+  revalidatePath(`/admin/customers/${userId}`);
 }

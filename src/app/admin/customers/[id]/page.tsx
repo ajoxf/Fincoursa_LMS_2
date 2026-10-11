@@ -8,14 +8,14 @@ import { ALL_COUNTRIES, countryName, formatDate, nowMs } from "@/lib/format";
 import { Card, Progress, Stat } from "@/components/dash/Stat";
 import { grantCourse, removeAccess, restoreAccess, setAccessUntil, updateStudentProfile } from "../actions";
 
-export const metadata: Metadata = { title: "Student" };
+export const metadata: Metadata = { title: "Customer" };
 
 const statusLabel: Record<string, string> = { paid: "Paid", pending: "Pending", failed: "Failed", cancelled: "Cancelled", refunded: "Refunded", partially_refunded: "Partly refunded" };
 const sourceLabel: Record<string, string> = { purchase: "Bought", bundle: "Bundle", free: "Free", admin: "Given by staff", organization: "Organisation", migration: "From Thinkific" };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export default async function StudentPage({ params }: PageProps<"/admin/students/[id]">) {
-  const me = await requireRole(["admin", "finance", "support"], "/admin/students");
+export default async function CustomerPage({ params }: PageProps<"/admin/customers/[id]">) {
+  const me = await requireRole(["admin", "finance", "support"], "/admin/customers");
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const db = createAdminClient();
@@ -41,7 +41,7 @@ export default async function StudentPage({ params }: PageProps<"/admin/students
   return (
     <div className="grid gap-6">
       <div>
-        <Link href="/admin/students" className="text-sm text-muted hover:underline">← All students</Link>
+        <Link href="/admin/customers" className="text-sm text-muted hover:underline">← All customers</Link>
         <h1 className="mt-2 text-3xl font-bold text-primary">{s.full_name || s.email}</h1>
         <p className="mt-1 text-sm text-muted">
           <a href={`mailto:${s.email}`} className="underline">{s.email}</a>
@@ -170,11 +170,11 @@ export default async function StudentPage({ params }: PageProps<"/admin/students
             <button className="fc-btn fc-btn-outline !min-w-0 !px-5 !py-2.5 text-ink">Save profile</button>
             {s.marketing_opt_in && (
               <label className="flex items-center gap-2 text-sm sm:col-span-2 lg:col-span-3">
-                <input type="checkbox" name="unsubscribe" /> Unsubscribe from marketing emails (when the student asks)
+                <input type="checkbox" name="unsubscribe" /> Unsubscribe from marketing emails (when the customer asks)
               </label>
             )}
           </form>
-          <p className="mt-3 text-xs text-muted">The email address is the student&apos;s login, so they change it themselves in Settings.</p>
+          <p className="mt-3 text-xs text-muted">The email address is the customer&apos;s login, so they change it themselves in Settings.</p>
         </Card>
       )}
     </div>

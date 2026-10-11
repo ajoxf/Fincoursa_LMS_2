@@ -7,14 +7,14 @@ import { ALL_COUNTRIES, countryName, daysAgoIso, formatDate } from "@/lib/format
 import { filtersToQuery, parseStudentFilters, searchStudents, spendFor } from "@/lib/students";
 import { Stat } from "@/components/dash/Stat";
 
-export const metadata: Metadata = { title: "Students" };
+export const metadata: Metadata = { title: "Customers" };
 const PER_PAGE = 50;
 
 const spendText = (m?: Record<string, number>) =>
   m && Object.keys(m).length ? Object.entries(m).filter(([, v]) => v > 0).map(([c, v]) => formatMoney(v, c)).join(" · ") || "—" : "—";
 
-export default async function StudentsPage({ searchParams }: PageProps<"/admin/students">) {
-  await requireRole(["admin", "finance", "support"], "/admin/students");
+export default async function CustomersPage({ searchParams }: PageProps<"/admin/customers">) {
+  await requireRole(["admin", "finance", "support"], "/admin/customers");
   const f = parseStudentFilters(await searchParams);
   const db = createAdminClient();
   const since = daysAgoIso(30);
@@ -28,19 +28,19 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
   const spend = await spendFor(rows.map((r) => r.id));
   const pages = Math.max(1, Math.ceil(total / PER_PAGE));
   const filtered = Boolean(f.q || f.course || f.country || f.consent);
-  const exportHref = `/api/admin/students-export?${filtersToQuery({ q: f.q, course: f.course, country: f.country, consent: f.consent, sort: f.sort })}`;
+  const exportHref = `/api/admin/customers-export?${filtersToQuery({ q: f.q, course: f.course, country: f.country, consent: f.consent, sort: f.sort })}`;
 
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold text-primary">Students</h1>
+        <h1 className="text-3xl font-bold text-primary">Customers</h1>
         <a href={exportHref} className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2 text-sm text-ink">Export CSV{filtered ? " (filtered)" : ""}</a>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <Stat label="All accounts" value={all.count ?? 0} />
         <Stat label="Agreed to marketing emails" value={consenting.count ?? 0} hint="Who promotions can be sent to" />
-        <Stat label="Studied in the last 30 days" value={active.count ?? 0} hint="Students with lesson activity" />
+        <Stat label="Studied in the last 30 days" value={active.count ?? 0} hint="Customers with lesson activity" />
       </div>
 
       <form className="fc-card grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[2fr_1.5fr_1fr_1fr_1fr_auto] lg:items-end">
@@ -71,17 +71,17 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
         </label>
         <div className="flex gap-3">
           <button className="fc-btn fc-btn-primary !min-w-0 !px-5 !py-2.5 text-sm">Filter</button>
-          {filtered && <Link href="/admin/students" className="self-center text-sm underline">Clear</Link>}
+          {filtered && <Link href="/admin/customers" className="self-center text-sm underline">Clear</Link>}
         </div>
       </form>
 
       <p className="-mb-3 text-sm text-muted">{total} {total === 1 ? "person" : "people"}{filtered ? " match" : ""}</p>
 
-      {/* phones: one card per student */}
+      {/* phones: one card per customer */}
       <ul className="grid gap-3 md:hidden">
         {rows.map((s) => (
           <li key={s.id}>
-            <Link href={`/admin/students/${s.id}`} className="fc-card block p-4">
+            <Link href={`/admin/customers/${s.id}`} className="fc-card block p-4">
               <p className="font-semibold text-ink">{s.full_name || s.email}</p>
               <p className="text-sm text-muted">{s.email}</p>
               <p className="mt-2 text-sm">{s.active_courses} courses · {spendText(spend.get(s.id))}{s.country_code ? ` · ${s.country_code}` : ""}</p>
@@ -95,13 +95,13 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
       <div className="fc-card hidden overflow-x-auto md:block">
         <table className="w-full min-w-[860px] text-sm">
           <thead className="text-left text-muted"><tr>
-            {["Student", "Country", "Courses", "Spent", "Last active", "Joined", "Marketing"].map((h) => <th key={h} className="p-3 font-medium">{h}</th>)}
+            {["Customer", "Country", "Courses", "Spent", "Last active", "Joined", "Marketing"].map((h) => <th key={h} className="p-3 font-medium">{h}</th>)}
           </tr></thead>
           <tbody>
             {rows.map((s) => (
               <tr key={s.id} className="border-t border-line align-top hover:bg-surface/60">
                 <td className="p-3">
-                  <Link href={`/admin/students/${s.id}`} className="font-medium text-ink hover:underline">{s.full_name || s.email}</Link>
+                  <Link href={`/admin/customers/${s.id}`} className="font-medium text-ink hover:underline">{s.full_name || s.email}</Link>
                   <div className="text-xs text-muted">{s.email}</div>
                   {(s.roles ?? []).filter((r) => r !== "student").map((r) => <span key={r} className="mr-1 mt-1 inline-block rounded-full bg-surface px-2 py-0.5 text-[11px] capitalize">{r}</span>)}
                 </td>
@@ -116,13 +116,13 @@ export default async function StudentsPage({ searchParams }: PageProps<"/admin/s
           </tbody>
         </table>
       </div>
-      {!rows.length && <p className="fc-card p-8 text-center text-sm text-muted">No students match these filters.</p>}
+      {!rows.length && <p className="fc-card p-8 text-center text-sm text-muted">No customers match these filters.</p>}
 
       {pages > 1 && (
         <nav className="flex items-center justify-between text-sm">
-          {f.page > 1 ? <Link className="underline" href={`/admin/students?${filtersToQuery({ ...f, page: f.page - 1 })}`}>← Previous</Link> : <span />}
+          {f.page > 1 ? <Link className="underline" href={`/admin/customers?${filtersToQuery({ ...f, page: f.page - 1 })}`}>← Previous</Link> : <span />}
           <span className="text-muted">Page {f.page} of {pages}</span>
-          {f.page < pages ? <Link className="underline" href={`/admin/students?${filtersToQuery({ ...f, page: f.page + 1 })}`}>Next →</Link> : <span />}
+          {f.page < pages ? <Link className="underline" href={`/admin/customers?${filtersToQuery({ ...f, page: f.page + 1 })}`}>Next →</Link> : <span />}
         </nav>
       )}
     </div>

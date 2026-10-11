@@ -26,6 +26,9 @@ const nextConfig: NextConfig = {
       { source: "/users/password", destination: "/users/reset-password", permanent: false },
       { source: "/users/password/:path+", destination: "/users/reset-password", permanent: false },
       { source: "/users/sign_out", destination: "/", permanent: false },
+      // admin "Students" was renamed "Customers"
+      { source: "/admin/students", destination: "/admin/customers", permanent: true },
+      { source: "/admin/students/:path+", destination: "/admin/customers/:path+", permanent: true },
       // old checkout links (/order?ct=…) go to the catalogue; prices and gateways changed
       { source: "/order", destination: "/pages/paid-courses", permanent: false },
       { source: "/order/:path*", destination: "/pages/paid-courses", permanent: false },

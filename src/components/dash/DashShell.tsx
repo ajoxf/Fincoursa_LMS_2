@@ -16,7 +16,7 @@ function navFor(u: SessionUser): { title: string; items: NavItem[] }[] {
   if (u.roles.some((r) => ["admin", "finance", "support"].includes(r))) {
     groups.push({ title: "Admin", items: [
       { href: "/admin", label: "Overview" },
-      { href: "/admin/students", label: "Students" },
+      { href: "/admin/customers", label: "Customers" },
       { href: "/admin/orders", label: "Orders & refunds" },
       { href: "/admin/courses", label: "Courses" },
       { href: "/admin/bundles", label: "Bundles" },
