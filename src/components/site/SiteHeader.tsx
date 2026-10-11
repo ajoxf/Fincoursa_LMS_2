@@ -3,6 +3,7 @@ import { HeaderBar } from "./HeaderBar";
 
 export const learnLinks = [
   { href: "/pages/bundles", label: "Bundles" },
+  { href: "/pages/live-courses", label: "Live Courses" },
   { href: "/pages/free-courses", label: "Free Courses" },
   { href: "/pages/paid-courses", label: "Paid Courses" },
 ];

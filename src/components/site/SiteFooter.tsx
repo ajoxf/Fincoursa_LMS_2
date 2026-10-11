@@ -5,6 +5,7 @@ import { brand } from "./brand";
 const links = [
   { href: "/pages/bundles", label: "Bundles" },
   { href: "/pages/paid-courses", label: "Courses" },
+  { href: "/pages/live-courses", label: "Live Courses" },
   { href: "/pages/free-courses", label: "Free Courses" },
   { href: "/pages/instructors", label: "Instructors" },
   { href: "/#org-section", label: "For Organisations" },

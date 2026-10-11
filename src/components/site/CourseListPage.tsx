@@ -3,11 +3,12 @@ import { CourseCard } from "./CourseCard";
 import { PageHero, Chips } from "./PageHero";
 import { SectionHeading } from "./SectionHeading";
 
-export function CourseListPage({ title, courses }: { title: string; courses: Course[] }) {
+export function CourseListPage({ title, courses, chips }: { title: string; courses: Course[]; chips?: string[] }) {
   return (
     <>
       <PageHero label="Courses" title={title}>
-        <Chips firstLime items={[`${courses.length} ${courses.length === 1 ? "course" : "courses"}`, "Guided order", ...(courses.some((c) => c.certificate) ? ["Certificates available"] : []), "Lifetime access"]} />
+        <Chips firstLime items={[`${courses.length} ${courses.length === 1 ? "course" : "courses"}`,
+          ...(chips ?? ["Guided order", ...(courses.some((c) => c.certificate) ? ["Certificates available"] : []), "Lifetime access"])]} />
       </PageHero>
       <section className="bg-surface">
         <div className="fc-container py-24">

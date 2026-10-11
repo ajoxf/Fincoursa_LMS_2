@@ -25,6 +25,7 @@ export function LinkBuilder({ base, code, courses }: { base: string; code: strin
             <option value="/">Home page</option>
             <option value="/pages/paid-courses">All courses</option>
             <option value="/pages/bundles">Bundles</option>
+            <option value="/pages/live-courses">Live courses</option>
             <option value="/pages/free-courses">Free courses</option>
             {courses.map((c) => <option key={c.slug} value={`/courses/${c.slug}`}>Course: {c.title}</option>)}
           </select>
