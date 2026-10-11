@@ -7,6 +7,7 @@ import { SectionHeading } from "@/components/site/SectionHeading";
 import { PageHero, Chips } from "@/components/site/PageHero";
 import { formatMoney } from "@/lib/money";
 import { enrollFreeBundle } from "@/app/actions/enroll";
+import { assetUrl } from "@/lib/assets";
 
 export async function generateMetadata({ params }: PageProps<"/bundles/[slug]">): Promise<Metadata> {
   const b = await getBundle((await params).slug);
@@ -37,6 +38,10 @@ export default async function BundlePage({ params }: PageProps<"/bundles/[slug]"
         }>
         {bundle.description && <p className="mt-6 max-w-[560px] text-[15px] leading-relaxed">{bundle.description}</p>}
         <Chips items={[`${bundle.courses.length} ${bundle.courses.length === 1 ? "course" : "courses"}`, `${hours} hours`, "Self-paced"]} />
+        {bundle.thumbnail_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={assetUrl(bundle.thumbnail_url)} alt="" className="mt-8 aspect-video w-full max-w-[560px] rounded-2xl object-cover" />
+        )}
       </PageHero>
       <section className="bg-surface">
         <div className="fc-container py-24">
