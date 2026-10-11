@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
+import { MyAgreements } from "@/components/dash/MyAgreements";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
 import { env } from "@/lib/env";
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: "Instructor dashboard" };
 type CourseRow = { course_id: string; title: string; slug: string; students: number; avg_progress: number; completions: number; earnings_minor: number };
 
 export default async function InstructorDashboard({ searchParams }: PageProps<"/instructor">) {
-  await requireRole(["instructor"], "/instructor");
+  const me = await requireRole(["instructor"], "/instructor");
   const days = Math.min(365, Math.max(7, Number((await searchParams).days) || 30));
   const cur = env.defaultCurrency;
   const supabase = await createClient();
@@ -79,6 +80,7 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
           </ul>
         ) : <p className="text-sm text-muted">No payouts yet.</p>}
       </Card>
+      <MyAgreements userId={me.id} />
     </div>
   );
 }

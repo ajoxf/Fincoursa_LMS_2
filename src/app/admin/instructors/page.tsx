@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/dash/Stat";
 import { createInstructor } from "./actions";
+import { agreementStatus } from "@/lib/agreements";
 
 export const metadata: Metadata = { title: "Instructors" };
 
@@ -12,6 +13,7 @@ export default async function AdminInstructors() {
   await requireRole(["admin"], "/admin/instructors");
   const { data } = await createAdminClient()
     .from("instructors").select("id, name, title, photo_url, is_published, user_id, default_revenue_share_pct, course_instructors(course_id)").order("sort_order");
+  const signed = await agreementStatus("instructor");
   return (
     <div className="grid gap-6">
       <h1 className="text-3xl font-bold text-primary">Instructors</h1>
@@ -34,6 +36,9 @@ export default async function AdminInstructors() {
               <span className="block truncate text-muted">{i.title}</span>
               <span className="mt-1 block text-xs text-muted">
                 {i.course_instructors?.length ?? 0} courses · {Number(i.default_revenue_share_pct)}% share · {i.user_id ? "login linked" : "no login"} · {i.is_published ? "on site" : "hidden"}
+              </span>
+              <span className={`mt-1 block text-xs ${signed.get(i.id) === "signed" ? "text-success" : signed.get(i.id) ? "text-warning" : "text-muted"}`}>
+                {signed.get(i.id) === "signed" ? "Agreement signed" : signed.get(i.id) ? "Agreement sent, not signed yet" : "No agreement on file"}
               </span>
             </span>
           </Link>

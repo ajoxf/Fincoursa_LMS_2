@@ -5,6 +5,8 @@ import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/dash/Stat";
 import { InstructorForm } from "./InstructorForm";
+import { AgreementsPanel } from "@/components/dash/AgreementsPanel";
+import { agreementsFor } from "@/lib/agreements";
 
 export const metadata: Metadata = { title: "Edit instructor" };
 
@@ -15,6 +17,7 @@ export default async function EditInstructor({ params }: PageProps<"/admin/instr
   const { data: ins } = await db.from("instructors").select("*, course_instructors(course:courses(id, title))").eq("id", id).maybeSingle();
   if (!ins) notFound();
   const { data: login } = ins.user_id ? await db.from("profiles").select("email").eq("id", ins.user_id).maybeSingle() : { data: null };
+  const agreements = await agreementsFor({ type: "instructor", id });
   return (
     <div className="grid gap-6">
       <div>
@@ -22,6 +25,9 @@ export default async function EditInstructor({ params }: PageProps<"/admin/instr
         <h1 className="mt-2 text-3xl font-bold text-primary">{ins.name}</h1>
       </div>
       <Card title="Profile"><InstructorForm ins={ins} loginEmail={login?.email ?? null} /></Card>
+      <Card title="Agreement">
+        <AgreementsPanel party="instructor" partyId={id} items={agreements} defaultTitle="Instructor agreement" />
+      </Card>
       <Card title="Courses">
         <ul className="text-sm">
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

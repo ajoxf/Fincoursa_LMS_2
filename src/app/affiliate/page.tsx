@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
+import { MyAgreements } from "@/components/dash/MyAgreements";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
@@ -89,6 +90,7 @@ export default async function AffiliatePage({ searchParams }: PageProps<"/affili
       {tab === "campaigns" && <Campaigns d={d} m={m} code={p.code} />}
       {tab === "team" && <Team d={d} m={m} code={p.code} />}
       {tab === "payouts" && <Payouts m={m} details={(aff.payout_details ?? {}) as any} money={money} />}
+      {(tab === "overview" || tab === "payouts") && <MyAgreements userId={user.id} />}
       {!p.has_payout_details && tab !== "payouts" && (
         <p className="rounded-card bg-warning/10 p-4 text-sm text-warning">Add your payout details so we can pay you. <Link href="/affiliate?tab=payouts" className="font-semibold underline">Add them now</Link></p>
       )}

@@ -337,3 +337,28 @@ export function staffInviteEmail(o: { name?: string | null; role: "instructor" |
     }),
   };
 }
+
+/** Admin invited someone as a partner (affiliate / IB): code, commission, link, and account set-up if new. */
+export function partnerInviteEmail(o: { name?: string | null; code: string; commissionPct: number; link: string; setupUrl?: string | null; dashboardUrl: string }): Rendered {
+  return {
+    subject: "You've been invited as a FinCoursa partner",
+    ...layout({
+      preheader: `Your referral code ${o.code} is ready.`,
+      heading: `Hi ${first(o.name)}, welcome aboard`,
+      body: join(
+        p(`FinCoursa Academy has invited you to join as a partner. You earn ${o.commissionPct}% commission on every course sale you refer.`),
+        { html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin:4px 0 16px;background:${T.surface};border-radius:12px">
+<tr><td style="padding:12px 16px 4px;color:${T.muted}">Your code</td><td align="right" style="padding:12px 16px 4px;font-family:monospace;font-weight:700">${esc(o.code)}</td></tr>
+<tr><td style="padding:4px 16px;color:${T.muted}">Commission</td><td align="right" style="padding:4px 16px;font-weight:700">${esc(o.commissionPct)}%</td></tr>
+<tr><td colspan="2" style="padding:4px 16px 12px;color:${T.muted}">Your referral link<br><a href="${esc(o.link)}" style="color:${T.text};word-break:break-all">${esc(o.link)}</a></td></tr></table>`,
+          text: `Your code: ${o.code}\nCommission: ${o.commissionPct}%\nYour referral link: ${o.link}` },
+        p("Share your link anywhere. Sales from people who sign up through it are credited to you, and commission becomes payable 30 days after each sale, once the refund window has passed."),
+        o.setupUrl
+          ? p("Click the button and we'll email you a one-click sign-in link. No password needed; you can set one later in Settings. Then add your payout details in the partner dashboard.")
+          : p("Sign in with your existing FinCoursa account to see your partner dashboard, and add your payout details there."),
+      ),
+      cta: { label: o.setupUrl ? "Set up my account" : "Open my partner dashboard", url: o.setupUrl || o.dashboardUrl },
+      footer: "You're receiving this because FinCoursa invited you to its partner programme.",
+    }),
+  };
+}

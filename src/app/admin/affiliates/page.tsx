@@ -5,8 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 import { partnerCodesEnabled } from "@/lib/env";
-import { Stat } from "@/components/dash/Stat";
+import { Card, Stat } from "@/components/dash/Stat";
 import { createAffiliateCoupon, setAffiliateStatus } from "../actions";
+import { InviteAffiliateForm } from "./InviteForm";
+import { AgreementsPanel } from "@/components/dash/AgreementsPanel";
+import { agreementsByParty } from "@/lib/agreements";
 
 export const metadata: Metadata = { title: "Affiliates & IBs" };
 
@@ -14,10 +17,11 @@ export const metadata: Metadata = { title: "Affiliates & IBs" };
 export default async function AdminAffiliates() {
   await requireRole(["admin"], "/admin/affiliates");
   const db = createAdminClient();
-  const [{ data: affs }, { data: stats }, { data: coupons }] = await Promise.all([
+  const [{ data: affs }, { data: stats }, { data: coupons }, agreements] = await Promise.all([
     db.from("affiliates").select("id, code, status, commission_pct, override_pct, cookie_days, parent_affiliate_id, website, notes, created_at, approved_at, payout_details, user:profiles!affiliates_user_id_fkey(email, full_name)").order("created_at", { ascending: false }),
     (await createClient()).rpc("admin_affiliate_stats"),
     db.from("coupons").select("code, percent_off, redeemed_count, affiliate_id, is_active").not("affiliate_id", "is", null),
+    agreementsByParty("affiliate"),
   ]);
   const list = (affs ?? []) as any[];
   const byId = new Map(list.map((a) => [a.id, a]));
@@ -39,12 +43,17 @@ export default async function AdminAffiliates() {
         <Stat label="Revenue from partners" value={formatMoney(totals.revenue)} hint="excl. VAT, all time" />
         <Stat label="Unpaid commission" value={formatMoney(totals.owed)} />
       </div>
+      <Card title="Invite a partner">
+        <InviteAffiliateForm codesEnabled={partnerCodesEnabled} />
+      </Card>
       <div className="grid gap-3">
         {list.map((a) => {
           const s = st.get(a.id) ?? { clicks: 0, clients: 0, sales: 0, revenue: 0, owed: 0, override: 0 };
           const parent = a.parent_affiliate_id ? byId.get(a.parent_affiliate_id) : null;
           const subs = list.filter((x) => x.parent_affiliate_id === a.id).length;
           const myCoupons = (coupons ?? []).filter((c) => c.affiliate_id === a.id);
+          const docs = agreements.get(a.id) ?? [];
+          const signed = docs.some((d) => d.status === "signed");
           return (
             <details key={a.id} className="fc-card group" open={a.status === "pending"}>
               <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-6 gap-y-2 p-4 text-sm">
@@ -59,6 +68,9 @@ export default async function AdminAffiliates() {
                 <span className="tabular-nums">{s.sales} sales</span>
                 <span className="tabular-nums">{formatMoney(s.revenue)} referred</span>
                 <span className="tabular-nums font-medium">{formatMoney(s.owed)} unpaid</span>
+                <span className={`rounded-button px-2 py-0.5 text-xs ${signed ? "bg-success/10 text-success" : docs.length ? "bg-warning/10 text-warning" : "bg-surface text-muted"}`}>
+                  {signed ? "Agreement signed" : docs.length ? "Agreement sent" : "No agreement"}
+                </span>
                 <span className={`rounded-button px-2 py-0.5 text-xs font-semibold ${a.status === "approved" ? "bg-success/15 text-success" : a.status === "pending" ? "bg-warning/15 text-warning" : "bg-danger/10 text-danger"}`}>{a.status}</span>
               </summary>
               <div className="grid gap-4 border-t border-line p-4 lg:grid-cols-2">
@@ -96,6 +108,10 @@ export default async function AdminAffiliates() {
                     {a.status !== "suspended" && <button formAction={setAffiliateStatus.bind(null, a.id, "suspended")} className="fc-btn fc-btn-outline !px-4 !py-2 text-sm text-danger">Suspend</button>}
                   </div>
                 </form>
+              </div>
+              <div className="border-t border-line p-4">
+                <p className="mb-3 text-sm font-semibold">Agreement</p>
+                <AgreementsPanel party="affiliate" partyId={a.id} items={docs} defaultTitle="Partner agreement" />
               </div>
             </details>
           );

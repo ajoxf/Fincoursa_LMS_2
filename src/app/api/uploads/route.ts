@@ -6,6 +6,8 @@ import { allow, LIMITS } from "@/lib/rate-limit";
 const BUCKETS = {
   "course-images": { maxMb: 10, types: /^image\/(png|jpe?g|webp|gif|svg\+xml)$/ },
   "course-files": { maxMb: 500, types: /.*/ },
+  // signed agreements with instructors and partners (PDF, Word or a photo/scan)
+  agreements: { maxMb: 25, types: /^(application\/pdf|image\/(png|jpe?g|webp)|application\/(msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document))$/ },
 } as const;
 
 /**
