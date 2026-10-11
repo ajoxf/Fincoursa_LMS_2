@@ -70,6 +70,9 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* 3b. Upcoming live workshops (only when scheduled) */}
+      <UpcomingLive courses={live} />
+
       {/* 4. Learning paths */}
       <section className="bg-surface-dark">
         <div className="fc-container py-24">
@@ -93,9 +96,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* 5b. Upcoming live workshops (only when scheduled) */}
-      <UpcomingLive courses={live} />
 
       {/* 6. Faculty */}
       <section className="bg-surface-dark">
