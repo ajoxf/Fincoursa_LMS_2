@@ -1,11 +1,11 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 
-// All writes use the signed-in user's client, so RLS limits them to admins and the course's own instructors.
+// Course authoring is admin-only. Writes also go through the signed-in user's client, so RLS enforces it again.
 async function db() {
-  await requireUser();
+  await requireRole(["admin"]);
   return createClient();
 }
 const done = (courseId: string) => {

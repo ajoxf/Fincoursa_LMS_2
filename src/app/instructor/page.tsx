@@ -59,7 +59,7 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
                   <td className="py-3 pl-6"><Progress pct={Number(c.avg_progress)} /></td>
                   <td className="py-3 text-right tabular-nums">{c.completions}</td>
                   <td className="py-3 text-right tabular-nums">{m(c.earnings_minor)}</td>
-                  <td className="py-3 text-right"><Link href={`/instructor/courses/${c.course_id}`} className="text-primary underline">Manage</Link></td>
+                  <td className="py-3 text-right"><Link href={`/instructor/courses/${c.course_id}`} className="text-primary underline">View report</Link></td>
                 </tr>
               ))}
               {!courses.length && <tr><td colSpan={6} className="py-6 text-center text-muted">No courses assigned yet.</td></tr>}

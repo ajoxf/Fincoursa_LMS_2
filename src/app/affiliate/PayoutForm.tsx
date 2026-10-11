@@ -24,7 +24,7 @@ export function PayoutForm({ details }: { details: Details }) {
       ) : (
         <label className="grid gap-1 text-sm font-medium">Account email<input name="email" type="email" defaultValue={details.email} className="fc-input" /></label>
       )}
-      <label className="grid max-w-40 gap-1 text-sm font-medium">Payout currency<input name="currency" defaultValue={details.currency ?? "AED"} maxLength={3} className="fc-input uppercase" /></label>
+      <label className="grid max-w-40 gap-1 text-sm font-medium">Payout currency<input name="currency" defaultValue={details.currency ?? (process.env.NEXT_PUBLIC_DEFAULT_CURRENCY ?? "USD")} maxLength={3} className="fc-input uppercase" /></label>
       <div className="flex items-center gap-3">
         <button disabled={pending} className="fc-btn fc-btn-primary">{pending ? "Saving…" : "Save payout details"}</button>
         {state?.ok && <span className="text-sm text-success">Saved</span>}

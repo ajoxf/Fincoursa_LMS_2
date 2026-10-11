@@ -21,26 +21,36 @@ export default async function SuccessPage({ searchParams }: PageProps<"/checkout
   const courseSlug = (first?.course as any)?.slug as string | undefined;
 
   return (
-    <section className="fc-container max-w-xl py-20 text-center">
-      {paid ? (
-        <>
-          <p className="text-5xl">🎉</p>
-          <h1 className="mt-4 text-3xl font-bold text-primary">You&apos;re enrolled!</h1>
-          <p className="mt-3 text-muted">Order #{order.number} · {formatMoney(order.total_minor, order.currency)}. A receipt is on its way to your inbox.</p>
-          <Link href={courseSlug ? `/learn/${courseSlug}` : "/dashboard"} className="fc-btn fc-btn-primary mt-8">Start learning</Link>
-        </>
-      ) : (
-        <>
-          <h1 className="text-3xl font-bold text-primary">Confirming your payment…</h1>
-          <p className="mt-3 text-muted">This usually takes a few seconds. Refresh this page, or find the course in your dashboard once it&apos;s confirmed.</p>
-          {order.gateway === "manual" && process.env.ALLOW_TEST_PAYMENTS === "true" && (
-            <form action={simulatePayment.bind(null, order.id)} className="mt-8">
-              <button className="fc-btn fc-btn-dark">Simulate successful payment (test mode)</button>
-            </form>
+    <section className="bg-surface">
+      <div className="fc-container py-20 lg:py-28">
+        <div className="mx-auto max-w-[620px] rounded-2xl bg-white p-8 text-center md:p-12">
+          {paid ? (
+            <>
+              <span aria-hidden className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent">
+                <svg width="24" height="24" viewBox="0 0 10 10"><path d="M2 5.2 4.1 7.2 8 3" fill="none" stroke="#101827" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </span>
+              <h1 className="fc-h2 mt-6 text-ink">You&apos;re enrolled!</h1>
+              <p className="mt-4 text-[15px] text-ink/85">Order #{order.number} · {formatMoney(order.total_minor, order.currency)}. Your receipt and tax invoice are on their way to your inbox.</p>
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <Link href={courseSlug ? `/learn/${courseSlug}` : "/dashboard"} className="fc-btn fc-btn-primary fc-btn-lg">Start learning</Link>
+                <Link href="/dashboard/purchases" className="fc-btn fc-btn-outline fc-btn-lg text-ink">View invoice</Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="fc-pill">Payment</span>
+              <h1 className="fc-h2 mt-4 text-ink">Confirming your payment…</h1>
+              <p className="mt-4 text-[15px] text-ink/85">This usually takes a few seconds. Refresh this page, or find the course in your dashboard once it&apos;s confirmed.</p>
+              {order.gateway === "manual" && process.env.ALLOW_TEST_PAYMENTS === "true" && (
+                <form action={simulatePayment.bind(null, order.id)} className="mt-8">
+                  <button className="fc-btn fc-btn-dark fc-btn-lg">Simulate successful payment (test mode)</button>
+                </form>
+              )}
+              <Link href="/dashboard" className="mt-6 block text-sm text-ink underline">Go to my dashboard</Link>
+            </>
           )}
-          <Link href="/dashboard" className="mt-6 block text-sm text-primary underline">Go to my dashboard</Link>
-        </>
-      )}
+        </div>
+      </div>
     </section>
   );
 }

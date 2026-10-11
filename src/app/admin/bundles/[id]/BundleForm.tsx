@@ -8,7 +8,7 @@ import { minorUnitsFactor } from "@/lib/money";
 export function BundleForm({ bundle, price }: { bundle: any; price: { amount_minor: number; currency: string } | null }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveBundle.bind(null, bundle.id), null);
   const [thumb, setThumb] = useState<string>(bundle.thumbnail_url ?? "");
-  const cur = price?.currency ?? "AED";
+  const cur = price?.currency ?? (process.env.NEXT_PUBLIC_DEFAULT_CURRENCY ?? "USD");
   return (
     <form key={JSON.stringify([bundle.title, bundle.slug, bundle.status, bundle.is_featured, bundle.thumbnail_url, price?.amount_minor])} action={action} className="grid gap-4">
       <div className="grid gap-4 lg:grid-cols-[1fr_260px]">

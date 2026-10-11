@@ -104,6 +104,16 @@ do $$ declare s jsonb; p jsonb; begin
   assert (select count(*) from public.instructor_earnings) = 1, 'instructor sees own earnings';
   begin perform public.course_progress_report((select id from public.courses where slug = 'commodities-market-analysis'));
     assert false, 'not their course'; exception when raise_exception then null; end;
+  -- course authoring is admin-only: an instructor can't publish/unpublish or edit even their own course
+  update public.courses set status = 'draft', title = 'hijacked' where slug = 'technical-analysis-theory-and-history';
+  assert (select status from public.courses where slug = 'technical-analysis-theory-and-history') = 'published', 'instructor cannot change status';
+  begin
+    insert into public.lessons (course_id, chapter_id, title)
+    select course_id, id, 'sneaky' from public.chapters where course_id = (select id from public.courses where slug = 'technical-analysis-theory-and-history') limit 1;
+    assert false, 'instructor cannot add lessons';
+  exception when insufficient_privilege then null; end;
+  update public.lessons set title = 'renamed' where course_id = (select id from public.courses where slug = 'technical-analysis-theory-and-history');
+  assert not exists (select 1 from public.lessons where title = 'renamed'), 'instructor cannot rename lessons';
 end $$;
 
 -- ---- Affiliate ----

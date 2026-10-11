@@ -41,67 +41,79 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   const ref = (await cookies()).get("fc_ref")?.value;
   const m = (n: number) => formatMoney(n, quote.currency);
 
+  const field = "w-full rounded-lg bg-surface px-4 py-3.5 text-[15px] text-ink focus:outline-2 focus:outline-accent";
   return (
-    <section className="fc-container grid gap-10 py-16 lg:grid-cols-[1fr_380px]">
-      <div>
-        <h1 className="text-3xl font-bold text-primary">Checkout</h1>
+    <section className="bg-surface">
+      <div className="fc-container grid gap-8 py-16 lg:grid-cols-[1fr_400px] lg:py-24">
+        <div className="grid content-start gap-6">
+          <div>
+            <span className="fc-pill">Checkout</span>
+            <h1 className="fc-h2 mt-4 text-ink">Complete your enrollment</h1>
+          </div>
 
-        <form className="fc-card mt-8 grid gap-4 p-6" method="get">
-          {courseSlug && <input type="hidden" name="course" value={courseSlug} />}
-          {bundleSlug && <input type="hidden" name="bundle" value={bundleSlug} />}
-          <label className="grid gap-1 text-sm font-medium">Billing country
-            <select name="country" defaultValue={country} className="fc-input">
-              {COUNTRIES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
-              {!COUNTRIES.some(([c]) => c === country) && <option value={country}>{country}</option>}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-medium">Coupon code
-            <div className="flex gap-2"><input name="coupon" defaultValue={one("coupon")} className="fc-input" /><button className="fc-btn fc-btn-outline">Apply</button></div>
-          </label>
-          {quote.couponError && <p className="text-sm text-danger">{quote.couponError}</p>}
-          {quote.coupon && <p className="text-sm text-success">Code {quote.coupon.code} applied.</p>}
-        </form>
+          <form className="grid gap-4 rounded-2xl bg-white p-6 md:p-8" method="get">
+            <p className="text-sm font-medium uppercase tracking-[0.14em] text-ink">1 · Billing details</p>
+            {courseSlug && <input type="hidden" name="course" value={courseSlug} />}
+            {bundleSlug && <input type="hidden" name="bundle" value={bundleSlug} />}
+            <label className="grid gap-1.5 text-sm text-ink/80">Billing country
+              <select name="country" defaultValue={country} className={field}>
+                {COUNTRIES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+                {!COUNTRIES.some(([c]) => c === country) && <option value={country}>{country}</option>}
+              </select>
+            </label>
+            <label className="grid gap-1.5 text-sm text-ink/80">Coupon code
+              <span className="flex gap-2"><input name="coupon" defaultValue={one("coupon")} placeholder="Enter code" className={field} /><button className="fc-btn fc-btn-outline !min-w-0 text-ink">Apply</button></span>
+            </label>
+            <button className="justify-self-start text-sm text-ink underline underline-offset-4">Update total</button>
+            {quote.couponError && <p className="text-sm text-danger">{quote.couponError}</p>}
+            {quote.coupon && <p className="text-sm text-success">Code {quote.coupon.code} applied.</p>}
+          </form>
 
-        <form action={startCheckout} className="mt-8 grid gap-4">
-          <input type="hidden" name="course" value={courseSlug ?? ""} />
-          <input type="hidden" name="bundle" value={bundleSlug ?? ""} />
-          <input type="hidden" name="coupon" value={quote.coupon?.code ?? ""} />
-          <input type="hidden" name="country" value={country} />
-          {quote.totalMinor === 0 ? (
-            <button className="fc-btn fc-btn-primary">Complete enrollment</button>
-          ) : gateways.length === 0 ? (
-            <p className="fc-card p-5 text-sm text-danger">Online payment isn&apos;t available for this country yet. Please contact us to enroll.</p>
-          ) : (
-            <>
-              <fieldset className="grid gap-2">
-                <legend className="mb-2 text-sm font-medium">Payment method</legend>
-                {gateways.map((g, i) => (
-                  <label key={g.id} className="fc-card flex items-center gap-3 p-4">
-                    <input type="radio" name="gateway" value={g.id} defaultChecked={i === 0} />{g.label}
-                  </label>
-                ))}
-              </fieldset>
-              <button className="fc-btn fc-btn-primary">Pay {m(quote.totalMinor)}</button>
-            </>
-          )}
-          {ref && <p className="text-xs text-muted">Referred by partner code {ref}.</p>}
-        </form>
+          <form action={startCheckout} className="grid gap-4 rounded-2xl bg-white p-6 md:p-8">
+            <p className="text-sm font-medium uppercase tracking-[0.14em] text-ink">2 · Payment</p>
+            <input type="hidden" name="course" value={courseSlug ?? ""} />
+            <input type="hidden" name="bundle" value={bundleSlug ?? ""} />
+            <input type="hidden" name="coupon" value={quote.coupon?.code ?? ""} />
+            <input type="hidden" name="country" value={country} />
+            {quote.totalMinor === 0 ? (
+              <button className="fc-btn fc-btn-primary fc-btn-lg justify-self-start">Complete enrollment</button>
+            ) : gateways.length === 0 ? (
+              <p className="rounded-lg bg-danger/10 p-4 text-sm text-danger">Online payment isn&apos;t available for this country yet. Please contact us to enroll.</p>
+            ) : (
+              <>
+                <fieldset className="grid gap-2">
+                  <legend className="sr-only">Payment method</legend>
+                  {gateways.map((g, i) => (
+                    <label key={g.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-line p-4 text-[15px] text-ink has-[:checked]:border-ink">
+                      <input type="radio" name="gateway" value={g.id} defaultChecked={i === 0} className="accent-black" />{g.label}
+                    </label>
+                  ))}
+                </fieldset>
+                <button className="fc-btn fc-btn-primary fc-btn-lg justify-self-start">Pay {m(quote.totalMinor)}</button>
+                <p className="text-xs text-muted">Card details are entered on the payment provider&apos;s secure page. We never see or store them.</p>
+              </>
+            )}
+            {ref && <p className="text-xs text-muted">Referred by partner {ref}.</p>}
+          </form>
+        </div>
+
+        <aside className="self-start rounded-2xl bg-white p-6 md:p-8">
+          <p className="text-sm font-medium uppercase tracking-[0.14em] text-ink">Order summary</p>
+          <p className="mt-4 text-2xl font-normal leading-snug tracking-tight text-ink">{quote.item.title}</p>
+          <p className="mt-1 text-sm text-muted">{quote.item.kind === "bundle" ? `Bundle · ${quote.item.courseIds.length} courses` : "Course"} · Lifetime access</p>
+          <dl className="mt-6 grid gap-3 text-[15px] text-ink">
+            <div className="flex justify-between"><dt>Price</dt><dd>{m(quote.subtotalMinor)}</dd></div>
+            {quote.discountMinor > 0 && <div className="flex justify-between text-success"><dt>Discount ({quote.coupon?.code})</dt><dd>−{m(quote.discountMinor)}</dd></div>}
+            {quote.taxMinor > 0 && (
+              <div className="flex justify-between text-muted">
+                <dt>{quote.taxName ?? "Tax"} ({(quote.taxRate * 100).toFixed(0)}%){quote.pricesIncludeTax ? " included" : ""}</dt><dd>{m(quote.taxMinor)}</dd>
+              </div>
+            )}
+            <div className="mt-2 flex items-baseline justify-between border-t border-ink pt-4"><dt className="font-medium">Total</dt><dd className="text-3xl font-bold tracking-tight">{m(quote.totalMinor)}</dd></div>
+          </dl>
+          <p className="mt-4 text-xs text-muted">A receipt and tax invoice are emailed after payment.</p>
+        </aside>
       </div>
-
-      <aside className="fc-card self-start p-6">
-        <h2 className="font-semibold text-primary">Order summary</h2>
-        <p className="mt-4 font-medium">{quote.item.title}</p>
-        <dl className="mt-4 grid gap-2 text-sm">
-          <div className="flex justify-between"><dt>Price</dt><dd>{m(quote.subtotalMinor)}</dd></div>
-          {quote.discountMinor > 0 && <div className="flex justify-between text-success"><dt>Discount</dt><dd>−{m(quote.discountMinor)}</dd></div>}
-          {quote.taxMinor > 0 && (
-            <div className="flex justify-between text-muted">
-              <dt>{quote.taxName ?? "Tax"} ({(quote.taxRate * 100).toFixed(0)}%){quote.pricesIncludeTax ? " included" : ""}</dt><dd>{m(quote.taxMinor)}</dd>
-            </div>
-          )}
-          <div className="mt-2 flex justify-between border-t border-line pt-3 text-base font-bold"><dt>Total</dt><dd>{m(quote.totalMinor)}</dd></div>
-        </dl>
-      </aside>
     </section>
   );
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { env } from "@/lib/env";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
@@ -133,7 +134,7 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
 }
 
 function PriceFields({ p }: { p: { type: string; currency: string; amount_minor: number; compare_at_minor: number | null; installments: number | null; interval: string | null } | null }) {
-  const cur = p?.currency ?? "AED";
+  const cur = p?.currency ?? env.defaultCurrency;
   const f = minorUnitsFactor(cur);
   return (
     <>

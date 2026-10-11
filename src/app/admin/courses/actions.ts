@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { env } from "@/lib/env";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
@@ -26,7 +27,7 @@ export async function createCourseDraft(form: FormData) {
   const { data: c, error } = await db.from("courses").insert({ title, slug, status: "draft" }).select("id").single();
   if (error || !c) throw new Error(error?.message ?? "Could not create course");
   await db.from("chapters").insert({ course_id: c.id, title: "Introduction", position: 1 });
-  await db.from("prices").insert({ course_id: c.id, type: "one_time", currency: "AED", amount_minor: 0 });
+  await db.from("prices").insert({ course_id: c.id, type: "one_time", currency: env.defaultCurrency, amount_minor: 0 });
   await audit(admin.id, "course.created", c.id);
   redirect(`/admin/courses/${c.id}`);
 }
@@ -90,7 +91,7 @@ export async function setCourseStatus(courseId: string, status: "draft" | "publi
 
 export async function savePrice(courseId: string, priceId: string | null, form: FormData) {
   await requireRole(["admin"]);
-  const currency = String(form.get("currency") ?? "AED").toUpperCase().slice(0, 3);
+  const currency = String(form.get("currency") ?? env.defaultCurrency).toUpperCase().slice(0, 3);
   const type = String(form.get("type") ?? "one_time");
   const f = minorUnitsFactor(currency);
   const amount = Math.round(Number(form.get("amount") || 0) * f);

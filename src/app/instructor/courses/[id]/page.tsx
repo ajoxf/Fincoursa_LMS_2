@@ -5,14 +5,13 @@ import { getSessionUser, hasRole, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Stat, Card } from "@/components/dash/Stat";
 import { BarList } from "@/components/dash/BarList";
-import { CourseBuilder } from "@/components/dash/CourseBuilder";
 import { getCurriculum } from "@/lib/course-admin";
 
 export const metadata: Metadata = { title: "Manage course" };
 
 type LessonStat = { lesson_id: string; title: string; chapter: string; started: number; completed: number };
 
-/** Shared by instructors (own courses) and admins: progress analytics + curriculum builder. */
+/** Shared by instructors (own courses) and admins: progress analytics + read-only curriculum. Editing is admin-only. */
 export default async function ManageCourse({ params }: PageProps<"/instructor/courses/[id]">) {
   const { id } = await params;
   await requireUser(`/instructor/courses/${id}`);
@@ -56,7 +55,29 @@ export default async function ManageCourse({ params }: PageProps<"/instructor/co
         </Card>
       </div>
       <Card title="Curriculum">
-        <CourseBuilder courseId={course.id} chapters={chapters} />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
+          <span>{chapters.length} chapters · {chapters.reduce((n, c) => n + c.lessons.length, 0)} lessons</span>
+          {hasRole(user, "admin")
+            ? <Link href={`/admin/courses/${id}`} className="fc-btn fc-btn-dark !min-w-0 !px-4 !py-2">Edit course</Link>
+            : <span>Course content and publishing are managed by the FinCoursa team. Contact us to request changes.</span>}
+        </div>
+        <ol className="grid gap-3">
+          {[...chapters].sort((a, b) => a.position - b.position).map((ch, ci) => (
+            <li key={ch.id} className="rounded-card border border-line">
+              <p className="border-b border-line bg-surface px-4 py-2 font-semibold"><span className="mr-2 text-xs font-medium text-muted">Chapter {ci + 1}</span>{ch.title}</p>
+              <ul className="divide-y divide-line">
+                {[...ch.lessons].sort((a, b) => a.position - b.position).map((l) => (
+                  <li key={l.id} className="flex items-center gap-4 px-4 py-2.5 text-sm">
+                    <span className="w-16 text-xs font-semibold uppercase text-muted">{l.type}</span>
+                    <span className="flex-1">{l.title}</span>
+                    {l.is_preview && <span className="rounded-full bg-accent px-2 py-0.5 text-xs">Free preview</span>}
+                    {l.duration_seconds > 0 && <span className="text-muted">{Math.ceil(l.duration_seconds / 60)} min</span>}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ol>
       </Card>
     </div>
   );

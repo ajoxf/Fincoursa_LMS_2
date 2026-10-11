@@ -45,9 +45,12 @@ select c.id, i.id, true from public.courses c join public.instructors i on
                        ('technical-analysis-theory-and-history','tom-robson'))
 on conflict do nothing;
 
--- Placeholder prices (AED). Replace with real prices during migration.
+-- Prices in USD (the store currency). Behavioral Chemistry is free on the live site;
+-- the other two are placeholders until the real prices are confirmed.
 insert into public.prices (course_id, type, currency, amount_minor)
-select id, 'one_time', 'AED', 36700 from public.courses
+select id, case when slug = 'behavioral-chemistry-of-trading' then 'free' else 'one_time' end::public.price_type,
+       'USD', case when slug = 'behavioral-chemistry-of-trading' then 0 else 9999 end
+from public.courses
 where slug in ('behavioral-chemistry-of-trading','commodities-market-analysis','technical-analysis-theory-and-history')
   and not exists (select 1 from public.prices p where p.course_id = courses.id);
 
@@ -72,7 +75,7 @@ on conflict do nothing;
 
 -- The live site shows this bundle as "Free"
 insert into public.prices (bundle_id, type, currency, amount_minor)
-select id, 'free', 'AED', 0 from public.bundles b where slug = 'technical-analysis-track'
+select id, 'free', 'USD', 0 from public.bundles b where slug = 'technical-analysis-track'
   and not exists (select 1 from public.prices p where p.bundle_id = b.id);
 update public.instructors set bio = 'Experienced financial leader serving as Chief Investment Officer & Head of Wealth Management for a Single Family Office across Dubai, London, and New York. Specializes in investment strategies, estate planning, market analysis, and global fund selection. Currently leads Banking, Wealth, and M&A at Emerald Group, bringing deep expertise across asset management, private equity, and venture capital. A seasoned advisor and former steering committee member with a strong track record in FinTech, Blockchain, and regulatory frameworks, consulting for top-tier global firms and institutions.'
  where slug = 'nicholas-roper' and bio is null;

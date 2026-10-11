@@ -16,7 +16,7 @@ const instructors: Instructor[] = [
 ];
 
 const price = (id: string, amount: number) =>
-  ({ id, type: "one_time" as const, currency: "AED", amount_minor: amount, compare_at_minor: null, interval: null, installments: null });
+  ({ id, type: "one_time" as const, currency: "USD", amount_minor: amount, compare_at_minor: null, interval: null, installments: null });
 
 const courses: CourseCard[] = [
   { id: "c1", slug: "behavioral-chemistry-of-trading", title: "Behavioral Chemistry of Trading", subtitle: null,

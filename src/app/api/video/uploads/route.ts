@@ -4,22 +4,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createDirectUpload } from "@/lib/mux";
 import { env } from "@/lib/env";
 
-// Instructor/admin asks for an upload URL; the browser then uploads straight to Mux.
+// Admin asks for an upload URL; the browser then uploads straight to Mux. Course authoring is admin-only.
 export async function POST(request: Request) {
   const user = await getSessionUser();
-  if (!user || !(hasRole(user, "instructor") || hasRole(user, "admin"))) {
+  if (!user || !hasRole(user, "admin")) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   const { title, lessonId } = (await request.json().catch(() => ({}))) as { title?: string; lessonId?: string };
   const db = createAdminClient();
 
-  if (lessonId && !hasRole(user, "admin")) {
-    const { data: lesson } = await db.from("lessons").select("course_id").eq("id", lessonId).single();
-    const { data: own } = await db
-      .from("course_instructors").select("instructor:instructors!inner(user_id)")
-      .eq("course_id", lesson?.course_id ?? "").eq("instructor.user_id", user.id).maybeSingle();
-    if (!own) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
 
   const { data: asset, error } = await db.from("video_assets")
     .insert({ title: title ?? null, created_by: user.id, status: "waiting_upload" }).select("id").single();

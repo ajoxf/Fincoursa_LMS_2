@@ -131,7 +131,7 @@ function Overview({ d, m, days }: { d: Dash; m: (n: number) => string; days: num
         <Card title="Conversion funnel">
           <BarList rows={steps.map((s, i) => ({ label: s.label, value: s.value, sub: i === 0 ? undefined : `${pct(s.value, steps[i - 1].value)} of previous` }))} format={(n) => n.toLocaleString()} />
         </Card>
-        <Card title="Commission per day"><ColumnChart label="Commission" currency="AED" data={series.map((x) => ({ x: x.day, y: Number(x.commission_minor) }))} /></Card>
+        <Card title="Commission per day"><ColumnChart label="Commission" currency={env.defaultCurrency} data={series.map((x) => ({ x: x.day, y: Number(x.commission_minor) }))} /></Card>
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
         <Card title="Clicks per day"><ColumnChart label="Clicks" data={series.map((x) => ({ x: x.day, y: Number(x.clicks) }))} /></Card>

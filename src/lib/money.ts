@@ -8,7 +8,7 @@ export function minorUnitsFactor(currency: string) {
   return 100;
 }
 
-export function formatMoney(minor: number | bigint | string | null | undefined, currency = "AED") {
+export function formatMoney(minor: number | bigint | string | null | undefined, currency = (process.env.NEXT_PUBLIC_DEFAULT_CURRENCY ?? "USD").toUpperCase()) {
   const value = Number(minor ?? 0) / minorUnitsFactor(currency);
   return new Intl.NumberFormat("en-AE", { style: "currency", currency, maximumFractionDigits: 2 }).format(value);
 }

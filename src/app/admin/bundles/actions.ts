@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { env } from "@/lib/env";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -18,7 +19,7 @@ export async function createBundle(form: FormData) {
   if ((await db.from("bundles").select("id").eq("slug", slug).maybeSingle()).data) slug = `${slug}-${Date.now().toString(36)}`;
   const { data: b, error } = await db.from("bundles").insert({ title, slug, status: "draft" }).select("id").single();
   if (error || !b) throw new Error(error?.message ?? "Could not create bundle");
-  await db.from("prices").insert({ bundle_id: b.id, type: "free", currency: "AED", amount_minor: 0 });
+  await db.from("prices").insert({ bundle_id: b.id, type: "free", currency: env.defaultCurrency, amount_minor: 0 });
   redirect(`/admin/bundles/${b.id}`);
 }
 
@@ -37,7 +38,7 @@ export async function saveBundle(bundleId: string, _: FormState, form: FormData)
   }).eq("id", bundleId);
   if (error) return { error: error.message };
 
-  const currency = String(form.get("currency") ?? "AED").toUpperCase().slice(0, 3);
+  const currency = String(form.get("currency") ?? env.defaultCurrency).toUpperCase().slice(0, 3);
   const amount = Math.max(0, Math.round(Number(form.get("amount") || 0) * minorUnitsFactor(currency)));
   const row = { bundle_id: bundleId, type: amount ? "one_time" : "free", currency, amount_minor: amount, is_active: true };
   const { data: current } = await db.from("prices").select("id").eq("bundle_id", bundleId).eq("is_active", true).limit(1).maybeSingle();

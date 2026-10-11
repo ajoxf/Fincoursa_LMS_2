@@ -10,7 +10,7 @@ const BUCKETS = {
 
 /**
  * Issues a signed upload URL (valid ~2h) so the browser uploads straight to Supabase Storage.
- * Admins may upload anywhere; instructors only course files/images for their own courses.
+ * Only admins upload course images and files (course authoring is admin-only).
  */
 export async function POST(request: Request) {
   const user = await getSessionUser();
@@ -25,12 +25,7 @@ export async function POST(request: Request) {
   if (contentType && !rule.types.test(contentType)) return NextResponse.json({ error: "File type not allowed" }, { status: 415 });
 
   const db = createAdminClient();
-  if (!hasRole(user, "admin")) {
-    if (!hasRole(user, "instructor") || !courseId) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-    const { data: own } = await db.from("course_instructors").select("course_id, instructor:instructors!inner(user_id)")
-      .eq("course_id", courseId).eq("instructor.user_id", user.id).maybeSingle();
-    if (!own) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  if (!hasRole(user, "admin")) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const safe = filename.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(-80) || "file";
   const path = `${courseId ?? "site"}/${Date.now()}-${safe}`;
