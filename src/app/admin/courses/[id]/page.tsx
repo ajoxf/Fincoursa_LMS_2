@@ -25,13 +25,15 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
   await requireRole(["admin"], `/admin/courses/${id}`);
   await syncPendingVideos(id).catch(() => {});
   const db = createAdminClient();
-  const [{ data: course }, { data: categories }, { data: instructors }, chapters, { data: enrolled }] = await Promise.all([
+  const [{ data: course }, { data: categories }, { data: instructors }, chapters, { data: enrolled }, { data: tagRows }] = await Promise.all([
     db.from("courses").select("*, prices(*), course_instructors(instructor_id, is_primary, revenue_share_pct, instructor:instructors(name, default_revenue_share_pct))").eq("id", id).maybeSingle(),
     db.from("categories").select("id, name").order("sort_order"),
     db.from("instructors").select("id, name").order("sort_order"),
     getCurriculum(id),
     db.from("enrollments").select("progress_pct, completed_at").eq("course_id", id).is("revoked_at", null),
+    db.from("courses").select("tags"),
   ]);
+  const allTags = Array.from(new Set((tagRows ?? []).flatMap((r: { tags: string[] | null }) => r.tags ?? []))).sort();
   if (!course) notFound();
   const prices = (course.prices ?? []).filter((p: { is_active: boolean }) => p.is_active);
   const lessons = chapters.reduce((n, c) => n + c.lessons.length, 0);
@@ -68,7 +70,7 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
       </div>
 
       <Card title="1 · Course details">
-        <CourseDetailsForm course={course} categories={categories ?? []} />
+        <CourseDetailsForm course={course} categories={categories ?? []} allTags={allTags} />
       </Card>
 
       <Card title="2 · Pricing">

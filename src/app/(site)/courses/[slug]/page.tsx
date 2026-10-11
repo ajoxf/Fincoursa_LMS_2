@@ -67,9 +67,13 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
           </div>
         }>
         {course.description && <p className="mt-6 max-w-[560px] text-[15px] leading-relaxed">{course.description}</p>}
-        <Chips items={isLive
-          ? ["Live on Zoom", plural(sessions.length, "session"), "Recordings included", course.level ?? "All Levels"]
-          : [course.level ?? "All Levels", plural(lessonCount, "lesson"), "Self-paced"]} />
+        <Chips firstLime={Boolean(course.category)} items={[...new Set([
+          ...(course.category ? [course.category] : []),
+          ...(isLive
+            ? ["Live on Zoom", plural(sessions.length, "session"), "Recordings included", course.level ?? "All Levels"]
+            : [course.level ?? "All Levels", plural(lessonCount, "lesson"), "Self-paced"]),
+          ...course.tags,
+        ])]} />
       </PageHero>
 
       <section className="bg-surface">

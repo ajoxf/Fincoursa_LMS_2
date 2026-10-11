@@ -32,6 +32,17 @@ export async function createCourseDraft(form: FormData) {
   redirect(`/admin/courses/${c.id}`);
 }
 
+/** "Crypto, beginner,  Crypto" → ["Crypto", "beginner"]: trimmed, de-duplicated (ignoring case), at most 8. */
+function parseTags(raw?: string) {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of (raw ?? "").split(",")) {
+    const v = t.trim().replace(/\s+/g, " ").slice(0, 30);
+    if (v && !seen.has(v.toLowerCase())) { seen.add(v.toLowerCase()); out.push(v); }
+  }
+  return out.slice(0, 8);
+}
+
 const details = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),
   slug: z.string().trim().min(1).max(80),
@@ -45,6 +56,7 @@ const details = z.object({
   seo_title: z.string().trim().max(200).optional(),
   seo_description: z.string().trim().max(400).optional(),
   highlights: z.string().max(3000).optional(),
+  tags: z.string().max(1000).optional(),
 });
 
 export async function saveCourseDetails(courseId: string, _: FormState, form: FormData): Promise<FormState> {
@@ -71,6 +83,7 @@ export async function saveCourseDetails(courseId: string, _: FormState, form: Fo
     access_days: days > 0 ? Math.round(days) : null,
     is_featured: form.get("is_featured") === "on", certificate_enabled: form.get("certificate_enabled") === "on",
     seo_title: d.seo_title || null, seo_description: d.seo_description || null,
+    tags: parseTags(d.tags),
     highlights: (d.highlights ?? "").split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 12),
   }).eq("id", courseId);
   if (error) return { error: error.message };

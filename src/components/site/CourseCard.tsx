@@ -11,7 +11,7 @@ export function minsLabel(m: number) {
 }
 
 /** Instructor-photo panel with category, duration and instructor name laid over it. */
-export function CourseImage({ course, className = "" }: { course: Course; className?: string }) {
+export function CourseImage({ course, className = "", maxTags = 3 }: { course: Course; className?: string; maxTags?: number }) {
   const ins = course.instructors[0];
   const img = course.thumbnail_url ?? ins?.photo_url ?? null;
   const mins = minsLabel(course.duration_minutes);
@@ -28,6 +28,7 @@ export function CourseImage({ course, className = "" }: { course: Course; classN
         <div className="flex flex-wrap gap-3">
           {course.category && <span className="fc-chip fc-chip-lime !py-0.5 text-xs">{course.category}</span>}
           {live ? <span className="fc-chip !py-0.5 text-xs text-white">{live}</span> : mins && <span className="fc-chip !py-0.5 text-xs text-white">{mins}</span>}
+          {(course.tags ?? []).slice(0, maxTags).map((t) => <span key={t} className="fc-chip !py-0.5 text-xs text-white">{t}</span>)}
         </div>
         {ins && (
           <div className="mt-10 max-w-[80%] text-white">

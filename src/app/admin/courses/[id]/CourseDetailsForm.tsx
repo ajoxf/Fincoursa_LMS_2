@@ -5,7 +5,7 @@ import { saveCourseDetails, type FormState } from "../actions";
 import { FileUpload } from "@/components/dash/FileUpload";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export function CourseDetailsForm({ course, categories }: { course: any; categories: { id: string; name: string }[] }) {
+export function CourseDetailsForm({ course, categories, allTags = [] }: { course: any; categories: { id: string; name: string }[]; allTags?: string[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveCourseDetails.bind(null, course.id), null);
   const [thumb, setThumb] = useState<string>(course.thumbnail_url ?? "");
 
@@ -54,6 +54,12 @@ export function CourseDetailsForm({ course, categories }: { course: any; categor
           <input name="access_days" type="number" min={0} defaultValue={course.access_days ?? ""} placeholder="Lifetime" className="fc-input" />
         </label>
       </div>
+
+      <label className="grid gap-1 text-sm font-medium">Tags
+        <input name="tags" list="course-tags" defaultValue={(course.tags ?? []).join(", ")} placeholder="e.g. Beginner, Crypto, Options" className="fc-input" />
+        <datalist id="course-tags">{allTags.map((t) => <option key={t} value={t} />)}</datalist>
+        <span className="text-xs font-normal text-muted">Separate with commas, up to 8. Shown as chips on the course and as filters in the catalog. A new tag is created just by typing it.</span>
+      </label>
 
       <div className="flex flex-wrap gap-6 text-sm">
         <label className="flex items-center gap-2"><input type="checkbox" name="is_featured" defaultChecked={course.is_featured} />Show in Featured Courses on the home page</label>

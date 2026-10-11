@@ -53,6 +53,8 @@ export type CourseCard = {
   duration_minutes: number;
   category: string | null;
   level: string | null;
+  /** Extra labels shown as chips and catalog filters */
+  tags: string[];
   /** Start times of live (Zoom) sessions, oldest first; empty for recorded-only courses */
   liveSessions: string[];
   instructors: Instructor[];
@@ -74,7 +76,7 @@ export type BundleCard = {
   totalMinutes: number;
 };
 
-const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, duration_minutes, access_days, certificate_enabled, level,
+const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, duration_minutes, access_days, certificate_enabled, level, tags,
   sort_order, is_featured, live_lessons:lessons(starts_at),
   category:categories(name),
   course_instructors(is_primary, instructor:instructors(id, slug, name, title, bio, photo_url, org_logo_url)),
@@ -101,6 +103,7 @@ function toCourseCard(row: any): CourseCard {
     duration_minutes: row.duration_minutes ?? 0,
     category: row.category?.name ?? null,
     level: row.level ?? null,
+    tags: row.tags ?? [],
     liveSessions: (row.live_lessons ?? []).map((l: { starts_at: string | null }) => l.starts_at).filter(Boolean).sort(),
     instructors: (row.course_instructors ?? [])
       .sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary))
