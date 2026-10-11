@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getBundles, getCourses, getInstructors } from "@/lib/catalog";
+import { getBundles, getCourse, getCourses, getInstructors } from "@/lib/catalog";
+import { LiveBanner } from "@/components/site/LiveBanner";
+import { sessionNotOver } from "@/lib/format";
 import { brand } from "@/components/site/brand";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { CatalogFilter } from "@/components/site/CatalogFilter";
@@ -10,7 +12,12 @@ import { IntroVideo } from "@/components/site/IntroVideoButton";
 import { BundleTile } from "@/components/site/BundleTile";
 
 export default async function HomePage() {
-  const [courses, bundles, faculty] = await Promise.all([getCourses({ featured: true }), getBundles(), getInstructors()]);
+  const [courses, bundles, faculty, all] = await Promise.all([getCourses({ featured: true }), getBundles(), getInstructors(), getCourses()]);
+  // Next live masterclass (earliest upcoming session) gets the banner under the hero
+  const nextLive = all
+    .map((c) => ({ c, t: c.liveSessions.find((t) => sessionNotOver(t, 180)) }))
+    .filter((x) => x.t).sort((a, b) => a.t!.localeCompare(b.t!))[0]?.c;
+  const live = nextLive ? await getCourse(nextLive.slug) : null;
 
   return (
     <>
@@ -30,6 +37,8 @@ export default async function HomePage() {
           <div className="mx-auto mt-20 max-w-[1080px]"><IntroVideo /></div>
         </div>
       </section>
+
+      {live && <LiveBanner course={live} />}
 
       {/* 2. Industry experts */}
       <section className="bg-white">

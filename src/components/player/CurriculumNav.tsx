@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { TIME_ZONE } from "@/lib/format";
 
 export type NavLesson = { id: string; title: string; type: string; duration_seconds: number; done: boolean; locked: boolean; starts_at?: string | null };
 export type NavChapter = { id: string; title: string; lessons: NavLesson[] };
@@ -11,7 +12,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 function meta(l: NavLesson) {
   const parts = [TYPE_LABEL[l.type] ?? l.type];
-  if (l.type === "live" && l.starts_at) parts.push(new Date(l.starts_at).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }));
+  if (l.type === "live" && l.starts_at) parts.push(new Date(l.starts_at).toLocaleDateString("en-GB", { timeZone: TIME_ZONE, weekday: "short", day: "numeric", month: "short" }));
   else if (l.duration_seconds > 0) parts.push(l.duration_seconds < 60 ? "< 1 min" : `${Math.round(l.duration_seconds / 60)} min`);
   if (l.locked) parts.push("Locked");
   return parts.join(" · ").toUpperCase();

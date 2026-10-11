@@ -7,6 +7,7 @@ import {
   saveLessonBody, syncCourseDuration, updateLesson, type QuizQuestionInput,
 } from "@/app/actions/curriculum";
 import { FileUpload } from "./FileUpload";
+import { TIME_ZONE } from "@/lib/format";
 
 export type BuilderLesson = {
   id: string; title: string; type: string; position: number; is_preview: boolean; is_required: boolean;
@@ -153,7 +154,7 @@ function statusOf(l: BuilderLesson) {
   if (l.type === "live") {
     if (l.video?.status === "ready") return { t: "Recording ready", ok: true };
     if (!l.starts_at) return { t: "No date set", ok: false };
-    const when = new Date(l.starts_at).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    const when = new Date(l.starts_at).toLocaleString("en-GB", { timeZone: TIME_ZONE, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + " GST";
     return { t: b.join_url ? `Live ${when}` : `${when} · no Zoom link`, ok: Boolean(b.join_url) };
   }
   if (l.type === "quiz") return (b.questions?.length ?? 0) > 0 ? { t: `${b.questions!.length} questions`, ok: true } : { t: "No questions", ok: false };
