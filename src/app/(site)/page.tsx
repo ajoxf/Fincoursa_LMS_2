@@ -1,110 +1,122 @@
 import Link from "next/link";
-import { getBundles, getCourses, getInstructors, formatDuration } from "@/lib/catalog";
+import { getBundles, getCourses, getInstructors } from "@/lib/catalog";
 import { brand } from "@/components/site/brand";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { CatalogFilter } from "@/components/site/CatalogFilter";
 import { FacultyCard } from "@/components/site/FacultyCard";
 import { OrgTabs } from "@/components/site/OrgTabs";
 import { Faq } from "@/components/site/Faq";
-import { IntroVideoButton } from "@/components/site/IntroVideoButton";
+import { IntroVideo } from "@/components/site/IntroVideoButton";
+import { BundleTile } from "@/components/site/BundleTile";
 
 export default async function HomePage() {
   const [courses, bundles, faculty] = await Promise.all([getCourses({ featured: true }), getBundles(), getInstructors()]);
-  const track = bundles[0];
 
   return (
     <>
       {/* 1. Hero */}
-      <section className="bg-primary text-white">
-        <div className="fc-container py-20 md:py-28">
-          <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight md:text-6xl">Real-World Expertise for the Future of Business</h1>
-          <p className="mt-5 max-w-xl text-lg text-on-dark/85">Learn from industry practitioners. Build skills that work in the real world.</p>
-          <div className="mt-8 flex flex-wrap items-center gap-4">
-            <Link href="/pages/paid-courses" className="fc-btn fc-btn-primary">Browse Course</Link>
-            <Link href="/pages/instructors" className="fc-btn fc-btn-outline">Meet the faculty</Link>
-            <IntroVideoButton />
+      <section className="bg-surface-dark text-white">
+        <div className="fc-container pb-24 pt-20 md:pt-36">
+          <div className="grid items-start gap-10 md:grid-cols-[1.1fr_1fr]">
+            <h1 className="fc-display max-w-[500px] text-[2.6rem] md:text-[3.75rem]">Real-World Expertise for the Future of Business</h1>
+            <div>
+              <p className="max-w-[470px] text-xl font-light leading-snug text-white/75 md:text-[26px]">Learn from industry practitioners. Build skills that work in the real world.</p>
+              <div className="mt-12 flex flex-wrap gap-4">
+                <Link href="/pages/paid-courses" className="fc-btn fc-btn-primary fc-btn-lg">Browse Course</Link>
+                <Link href="/pages/instructors" className="fc-btn fc-btn-outline fc-btn-lg text-white">Meet the faculty</Link>
+              </div>
+            </div>
           </div>
+          <div className="mx-auto mt-20 max-w-[1080px]"><IntroVideo /></div>
         </div>
       </section>
 
-      {/* 2. Industry experts strip */}
-      <section className="border-b border-line">
-        <div className="fc-container flex flex-col items-center gap-6 py-10 md:flex-row md:justify-between">
-          <p className="fc-label !text-muted">Industry Experts</p>
-          <div className="flex flex-wrap items-center justify-center gap-10">
-            {brand.partners.map((p) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={p.name} src={p.src} alt={p.name} className="h-7 w-auto opacity-70 grayscale" />
-            ))}
+      {/* 2. Industry experts */}
+      <section className="bg-white">
+        <div className="fc-container pt-28">
+          <p className="text-center text-base font-medium tracking-wide text-ink">INDUSTRY EXPERTS</p>
+          <div className="fc-marquee mx-auto mt-10 max-w-[1040px] overflow-hidden">
+            <div className="fc-marquee-track items-center gap-20">
+              {[0, 1, 2, 3].flatMap((k) => brand.partners.map((p) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={`${k}-${p.name}`} src={p.src} alt={k === 0 ? p.name : ""} aria-hidden={k > 0} className="h-6 w-auto shrink-0 md:h-7" />
+              )))}
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* 3. Built for growth */}
-      <section className="fc-container py-20">
-        <SectionHeading label="Built for growth" title="Turn knowledge into real returns." sub={
-          <>
-            <p>Every FinCoursa course is built to move a number that matters — your income, your next role, your portfolio.</p>
-            <p className="mt-2">Practical, high-leverage skills from people who&apos;ve actually done it, not theory.</p>
-          </>
-        } />
+        {/* 3. Built for growth */}
+        <div className="fc-container grid items-center gap-8 pb-16 pt-24 md:grid-cols-2">
+          <div>
+            <span className="fc-pill">Built for growth</span>
+            <h2 className="fc-h2 mt-4 max-w-md text-ink">Turn knowledge into real returns.</h2>
+          </div>
+          <p className="max-w-lg text-[15px] leading-relaxed text-ink/85 md:mt-14">
+            Every FinCoursa course is built to move a number that matters — your income, your next role, your portfolio. Practical, high-leverage skills from people who&apos;ve actually done it, not theory.
+          </p>
+        </div>
       </section>
 
       {/* 4. Learning paths */}
-      <section className="bg-surface">
-        <div className="fc-container py-20">
-          <SectionHeading label="Learning paths" title="Structured tracks, not scattered videos." />
-          {track && (
-            <div className="fc-card mt-10 flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-sm text-muted">{track.courses.length} Courses | {formatDuration(track.totalMinutes)}</p>
-                <h3 className="mt-1 text-2xl font-semibold text-primary">{track.title}</h3>
-              </div>
-              <div className="flex items-center gap-4">
-                {track.isFree && <span className="rounded-button bg-success/10 px-3 py-1 text-sm font-semibold text-success">Free</span>}
-                <Link href={`/bundles/${track.slug}`} className="fc-btn fc-btn-dark">View Bundle</Link>
-              </div>
-            </div>
-          )}
-          <Link href="/pages/bundles" className="mt-6 inline-block font-semibold text-primary underline-offset-4 hover:underline">View All Bundle →</Link>
+      <section className="bg-surface-dark">
+        <div className="fc-container py-24">
+          <SectionHeading dark label="Learning paths" title="Structured tracks, not scattered videos." />
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {bundles.slice(0, 3).map((b) => <BundleTile key={b.id} bundle={b} />)}
+          </div>
+          <div className="mt-10 text-center">
+            <Link href="/pages/bundles" className="fc-btn fc-btn-outline-lime fc-btn-lg">View All Bundle</Link>
+          </div>
         </div>
       </section>
 
       {/* 5. Featured catalog */}
-      <section className="fc-container py-20">
-        <SectionHeading label="Catalog" title="Featured Courses" sub="A hand-picked place to start — pay per course, own it for life." />
-        <div className="mt-8"><CatalogFilter courses={courses} /></div>
-        <Link href="/pages/paid-courses" className="mt-8 inline-block font-semibold text-primary underline-offset-4 hover:underline">View all courses →</Link>
+      <section className="bg-surface">
+        <div className="fc-container py-24">
+          <SectionHeading label="Catalog" title="Featured Courses" sub="A hand-picked place to start — pay per course, own it for life." />
+          <div className="mt-12"><CatalogFilter courses={courses} /></div>
+          <div className="mt-10 text-center">
+            <Link href="/pages/paid-courses" className="fc-btn fc-btn-primary fc-btn-lg">View all courses</Link>
+          </div>
+        </div>
       </section>
 
       {/* 6. Faculty */}
       <section className="bg-surface-dark">
-        <div className="fc-container py-20">
+        <div className="fc-container py-24">
           <SectionHeading dark label="The Faculty" title="Learn from practitioners."
             sub="Industry leaders who have built and run real money — now teaching exactly what worked." />
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mx-auto mt-16 grid max-w-[1064px] gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {faculty.slice(0, 3).map((p) => <FacultyCard key={p.id} person={p} />)}
           </div>
-          <Link href="/pages/instructors" className="fc-btn fc-btn-primary mt-10">View All Faculties</Link>
+          <div className="mt-16 text-center">
+            <Link href="/pages/instructors" className="fc-btn fc-btn-primary fc-btn-lg">View All Faculties</Link>
+          </div>
         </div>
       </section>
 
       {/* 7. For organizations */}
-      <section id="org-section" className="scroll-mt-20 bg-primary">
-        <div className="fc-container grid gap-12 py-20 lg:grid-cols-2">
-          <div>
-            <SectionHeading dark title="Bring FinCoursa to your organization."
-              sub="Corporate, university or fully custom — tell us your goals and we'll scope a program that fits. One conversation, one team to work with." />
-            <Link href="/pages/contact-us" className="fc-btn fc-btn-primary mt-8">Talk to our Team</Link>
+      <section id="org-section" className="scroll-mt-24 bg-surface-dark">
+        <div className="fc-container pb-24 pt-8">
+          <SectionHeading dark label="For Organizations" title="Corporate, university & custom training."
+            sub="Bring FinCoursa to your team, business school, or training program — with seat licensing, analytics, accredited tracks, and curriculum built around your goals." />
+          <div className="mt-12"><OrgTabs /></div>
+          <div className="mx-auto mt-12 grid max-w-[1064px] gap-6 rounded-3xl bg-white p-8 md:grid-cols-2 md:p-10">
+            <h3 className="fc-h2 max-w-sm text-ink">Bring FinCoursa to your organization.</h3>
+            <div>
+              <p className="text-[15px] leading-relaxed text-ink/85">Corporate, university or fully custom — tell us your goals and we&apos;ll scope a program that fits. One conversation, one team to work with.</p>
+              <Link href="/pages/contact-us" className="fc-btn fc-btn-primary mt-5 fc-btn-lg">Talk to our Team</Link>
+            </div>
           </div>
-          <OrgTabs />
         </div>
       </section>
 
       {/* 8. FAQ */}
-      <section className="fc-container py-20">
-        <SectionHeading label="FAQ" title="Frequently asked questions" />
-        <div className="mt-8 max-w-3xl"><Faq /></div>
+      <section className="bg-surface">
+        <div className="fc-container py-24">
+          <div className="text-center"><span className="fc-pill">FAQ</span></div>
+          <div className="mx-auto mt-14 max-w-[780px]"><Faq /></div>
+        </div>
       </section>
     </>
   );

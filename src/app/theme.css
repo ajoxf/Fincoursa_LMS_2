@@ -1,37 +1,37 @@
 /* =====================================================================
    FinCoursa design tokens — THE ONLY FILE TO EDIT FOR VISUAL STYLING.
-   Values below are PLACEHOLDERS. They will be replaced with the exact
-   colours, fonts and radii from the live fincoursa.com Thinkific theme
-   once it has been audited. Page structure does not change.
+   Colours sampled from fincoursa.com screenshots (Oct 2026).
    ===================================================================== */
 :root {
   /* Brand */
-  --fc-primary: #0b1f3a;          /* nav, headings, dark sections */
+  --fc-primary: #101827;          /* headings and dark buttons on light backgrounds */
   --fc-primary-contrast: #ffffff;
-  --fc-accent: #c8a24a;           /* buttons, highlights */
-  --fc-accent-contrast: #0b1f3a;
+  --fc-accent: #d6fd3b;           /* lime: buttons, pills, highlights */
+  --fc-accent-contrast: #101827;
 
   /* Surfaces & text */
   --fc-bg: #ffffff;
-  --fc-surface: #f5f6f8;          /* alternate section background */
-  --fc-surface-dark: #0b1f3a;     /* faculty / organizations sections */
-  --fc-border: #e3e6eb;
-  --fc-text: #1b2533;
-  --fc-text-muted: #5b6676;
-  --fc-text-on-dark: #e9edf3;
+  --fc-surface: #f3f4f6;          /* light-grey sections (catalogue, FAQ, course content) */
+  --fc-surface-dark: #000000;     /* hero, faculty, organisations, footer */
+  --fc-surface-raised: #1c1c1c;   /* cards on black (bundle card) */
+  --fc-border: #e5e7eb;
+  --fc-text: #101827;
+  --fc-text-muted: #4b5563;
+  --fc-text-on-dark: #e0e1e3;
 
   /* Status */
   --fc-success: #1f8a5b;
   --fc-warning: #b7791f;
   --fc-danger: #c0392b;
 
-  /* Type */
-  --fc-font-heading: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --fc-font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --fc-label-tracking: 0.14em;    /* small uppercase section labels, e.g. "LEARNING PATHS" */
+  /* Type: Satoshi from Fontshare (loaded in app/layout.tsx) */
+  --fc-font-heading: "Satoshi", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fc-font-body: "Satoshi", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fc-heading-weight: 400;       /* fincoursa.com uses light, large headings */
+  --fc-label-tracking: 0.14em;    /* pill labels, e.g. "LEARNING PATHS" */
 
   /* Shape */
-  --fc-radius: 12px;
-  --fc-radius-button: 999px;
-  --fc-container: 1200px;
+  --fc-radius: 16px;              /* cards */
+  --fc-radius-button: 8px;        /* buttons are softly rounded, pills are fully round */
+  --fc-container: 1168px;         /* 1120px content + gutters */
 }

@@ -12,23 +12,21 @@ const links = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-auto bg-surface-dark text-on-dark">
-      <div className="fc-container flex flex-col gap-8 py-12 md:flex-row md:items-center md:justify-between">
-        <Link href="/" aria-label={brand.name}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={brand.logoFooter} alt={brand.name} className="h-8 w-auto" />
-        </Link>
-        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-          {links.map((l) => <Link key={l.label} href={l.href} className="opacity-80 hover:opacity-100">{l.label}</Link>)}
-        </nav>
-      </div>
-      <div className="border-t border-white/10">
-        <div className="fc-container flex flex-col gap-2 py-5 text-xs opacity-70 md:flex-row md:justify-between">
-          <span>© {new Date().getFullYear()} FinCoursa Academy .</span>
-          <span className="flex gap-4">
-            <Link href="/pages/privacy-policy">Privacy Policy</Link>
-            <Link href="/pages/terms-conditions">Terms &amp; Conditions</Link>
-          </span>
+    <footer className="mt-auto bg-surface-dark text-white/85">
+      <div className="fc-container">
+        <div className="flex flex-col gap-8 py-14 md:flex-row md:items-center md:justify-between">
+          <Link href="/" aria-label={brand.name}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={brand.logoFooter} alt={brand.name} className="h-7 w-auto" />
+          </Link>
+          <nav className="flex flex-wrap gap-x-10 gap-y-3 text-[15px]">
+            {links.map((l) => <Link key={l.label} href={l.href} className="hover:text-white">{l.label}</Link>)}
+          </nav>
+        </div>
+        <div className="border-t border-white/20 py-6 text-[15px]">
+          © {new Date().getFullYear()} FinCoursa Academy .{" "}
+          <Link href="/pages/privacy-policy" className="hover:text-white">Privacy Policy</Link> |{" "}
+          <Link href="/pages/terms-conditions" className="hover:text-white">Terms &amp; Conditions</Link>
         </div>
       </div>
     </footer>

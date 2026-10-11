@@ -1,24 +1,25 @@
+import Link from "next/link";
 import type { Instructor } from "@/lib/catalog";
 
+/** Tall portrait card with a thin lime edge, organisation logo, name and title over the photo. */
 export function FacultyCard({ person }: { person: Instructor }) {
   return (
-    <div className="overflow-hidden rounded-card bg-white/5 ring-1 ring-white/10">
-      <div className="aspect-[4/5] bg-white/10">
-        {person.photo_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={person.photo_url} alt={person.name} className="h-full w-full object-cover" />
-        )}
-      </div>
-      <div className="flex items-end justify-between gap-4 p-5">
-        <div>
-          <h3 className="text-lg font-semibold text-white">{person.name}</h3>
-          {person.title && <p className="mt-1 text-sm text-on-dark/75">{person.title}</p>}
-        </div>
+    <Link href={`/instructors/${person.slug}`}
+      className="group relative block aspect-[338/460] overflow-hidden rounded-2xl border border-accent/60 bg-[#14100c] [border-bottom-color:transparent]">
+      {person.photo_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={person.photo_url} alt={person.name} className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 via-35% to-transparent to-60%" />
+      <div className="absolute inset-x-4 bottom-4 text-white">
         {person.org_logo_url && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={person.org_logo_url} alt="" className="h-6 w-auto opacity-90" />
+          <img src={person.org_logo_url} alt="" className="mb-4 h-6 w-auto max-w-[70%] object-contain object-left" />
         )}
+        <hr className="mb-4 w-2/3 border-white/80" />
+        <h3 className="text-xl font-medium tracking-tight">{person.name}</h3>
+        {person.title && <p className="mt-1 text-sm leading-relaxed">{person.title}</p>}
       </div>
-    </div>
+    </Link>
   );
 }

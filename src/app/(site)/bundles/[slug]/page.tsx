@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getBundle, formatDuration } from "@/lib/catalog";
+import { getBundle } from "@/lib/catalog";
 import { CourseCard } from "@/components/site/CourseCard";
+import { SectionHeading } from "@/components/site/SectionHeading";
+import { PageHero, Chips } from "@/components/site/PageHero";
 import { formatMoney } from "@/lib/money";
 import { enrollFreeBundle } from "@/app/actions/enroll";
 
@@ -14,28 +16,35 @@ export async function generateMetadata({ params }: PageProps<"/bundles/[slug]">)
 export default async function BundlePage({ params }: PageProps<"/bundles/[slug]">) {
   const bundle = await getBundle((await params).slug);
   if (!bundle) notFound();
+  const hours = Math.round((bundle.totalMinutes / 60) * 10) / 10;
   return (
     <>
-      <section className="bg-primary text-white">
-        <div className="fc-container py-16">
-          <p className="fc-label">Learning path</p>
-          <h1 className="mt-2 text-4xl font-bold">{bundle.title}</h1>
-          <p className="mt-2 text-on-dark/80">{bundle.courses.length} Courses | {formatDuration(bundle.totalMinutes)}</p>
-          {bundle.description && <p className="mt-4 max-w-2xl text-lg text-on-dark/85">{bundle.description}</p>}
-          <div className="mt-8 flex items-center gap-4">
-            <span className="text-2xl font-bold">{bundle.isFree ? "Free" : bundle.price && formatMoney(bundle.price.amount_minor, bundle.price.currency)}</span>
-            {bundle.isFree ? (
-              <form action={enrollFreeBundle.bind(null, bundle.id)}><button className="fc-btn fc-btn-primary">Enroll for free</button></form>
-            ) : (
-              <Link href={`/checkout?bundle=${bundle.slug}`} className="fc-btn fc-btn-primary">Enroll now</Link>
-            )}
+      <PageHero label="Learning path" title={bundle.title}
+        aside={
+          <div className="w-full md:min-w-[230px] md:text-right">
+            <p className={`whitespace-nowrap font-bold tracking-tight ${bundle.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
+              {bundle.isFree ? "Free" : bundle.price && formatMoney(bundle.price.amount_minor, bundle.price.currency)}
+            </p>
+            <p className="mt-3 text-[15px]">Full lifetime access</p>
+            <div className="mt-5 md:ml-auto md:w-[210px]">
+              {bundle.isFree ? (
+                <form action={enrollFreeBundle.bind(null, bundle.id)}><button className="fc-btn fc-btn-primary w-full !py-4">Enroll for Free</button></form>
+              ) : (
+                <Link href={`/checkout?bundle=${bundle.slug}`} className="fc-btn fc-btn-primary w-full !py-4">Enroll Now</Link>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
-      <section className="fc-container py-16">
-        <h2 className="text-2xl font-semibold text-primary">What&apos;s included</h2>
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {bundle.courses.map((c) => <CourseCard key={c.id} course={c} />)}
+        }>
+        {bundle.description && <p className="mt-6 max-w-[560px] text-[15px] leading-relaxed">{bundle.description}</p>}
+        <Chips items={[`${bundle.courses.length} ${bundle.courses.length === 1 ? "course" : "courses"}`, `${hours} hours`, "Self-paced"]} />
+      </PageHero>
+      <section className="bg-surface">
+        <div className="fc-container py-24">
+          <SectionHeading label="What’s included" title="Courses in this track"
+            sub="Work through them in sequence — each course builds on the last." />
+          <div className="mx-auto mt-12 grid max-w-[968px] gap-6">
+            {bundle.courses.map((c) => <CourseCard key={c.id} course={c} />)}
+          </div>
         </div>
       </section>
     </>

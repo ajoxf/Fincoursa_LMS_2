@@ -14,20 +14,25 @@ export function OrgTabs() {
   const [active, setActive] = useState(tabs[0].id);
   const t = tabs.find((x) => x.id === active)!;
   return (
-    <div>
-      <div role="tablist" className="flex flex-wrap gap-2">
+    <div className="mx-auto grid max-w-[580px] gap-8 sm:grid-cols-[220px_1fr] sm:gap-10">
+      <div role="tablist" aria-orientation="vertical" className="flex flex-col gap-3">
         {tabs.map((x) => (
           <button key={x.id} role="tab" aria-selected={x.id === active} onClick={() => setActive(x.id)}
-            className={`rounded-button px-4 py-2 text-sm font-medium transition ${x.id === active ? "bg-accent text-accent-contrast" : "bg-white/10 text-on-dark hover:bg-white/15"}`}>
+            className={`rounded-full px-5 py-4 text-sm transition ${x.id === active ? "bg-white text-ink" : "bg-[#262626] text-white hover:bg-[#333]"}`}>
             {x.label}
           </button>
         ))}
       </div>
-      <div role="tabpanel" className="mt-6 rounded-card bg-white/5 p-6 ring-1 ring-white/10">
-        <h3 className="text-xl font-semibold text-white">{t.title}</h3>
-        <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div role="tabpanel">
+        <h3 className="text-xl font-normal leading-snug tracking-tight text-white">{t.title}</h3>
+        <ul className="mt-4 grid gap-2.5">
           {t.bullets.map((b) => (
-            <li key={b} className="flex items-center gap-2 text-on-dark"><span className="text-accent" aria-hidden>✓</span>{b}</li>
+            <li key={b} className="flex items-center gap-3 text-sm text-white">
+              <span aria-hidden className="flex h-5 w-5 items-center justify-center rounded-full bg-accent">
+                <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5.2 4.1 7.2 8 3" fill="none" stroke="#101827" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </span>
+              {b}
+            </li>
           ))}
         </ul>
       </div>

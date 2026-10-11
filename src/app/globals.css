@@ -9,6 +9,7 @@
   --color-bg: var(--fc-bg);
   --color-surface: var(--fc-surface);
   --color-surface-dark: var(--fc-surface-dark);
+  --color-surface-raised: var(--fc-surface-raised);
   --color-line: var(--fc-border);
   --color-ink: var(--fc-text);
   --color-muted: var(--fc-text-muted);
@@ -31,15 +32,45 @@
 @layer components {
   .fc-container { width: 100%; max-width: var(--fc-container); margin-inline: auto; padding-inline: 16px; }
   @media (min-width: 768px) { .fc-container { padding-inline: 24px; } }
-  .fc-label { font-size: 0.75rem; font-weight: 600; letter-spacing: var(--fc-label-tracking); text-transform: uppercase; color: var(--fc-accent); }
+
+  /* Large light display headings, as on fincoursa.com */
+  .fc-display { font-family: var(--fc-font-heading); font-weight: var(--fc-heading-weight); letter-spacing: -0.03em; line-height: 1.05; }
+  .fc-h2 { font-family: var(--fc-font-heading); font-weight: var(--fc-heading-weight); letter-spacing: -0.03em; line-height: 1.12;
+           font-size: 1.875rem; }
+  @media (min-width: 768px) { .fc-h2 { font-size: 2.6rem; } }
+
+  /* Section label pills: outlined, uppercase. Lime on dark backgrounds, ink on light. */
+  .fc-label, .fc-pill { display: inline-flex; align-items: center; border: 1px solid currentColor; border-radius: 999px;
+            padding: .3rem .95rem; font-size: .8rem; font-weight: 500; letter-spacing: var(--fc-label-tracking);
+            text-transform: uppercase; line-height: 1.2; color: var(--fc-text); }
+  .fc-pill-dark { color: var(--fc-accent); }
+  /* Small info chips ("All Levels", "3 lessons"), "10 mins" on cards, and the filled lime variant */
+  .fc-chip { display: inline-flex; align-items: center; border: 1px solid currentColor; border-radius: 999px;
+             padding: .2rem .75rem; font-size: .8rem; letter-spacing: .06em; line-height: 1.3; }
+  .fc-chip-lime { background: var(--fc-accent); border-color: var(--fc-accent); color: var(--fc-accent-contrast); }
+
   .fc-btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border-radius: var(--fc-radius-button);
-            padding: .75rem 1.5rem; font-weight: 600; font-size: .95rem; transition: opacity .15s, background .15s; }
+            padding: .85rem 1.75rem; min-width: 10rem; font-weight: 500; font-size: .95rem; line-height: 1.2;
+            border: 1.5px solid transparent; transition: opacity .15s, background .15s, color .15s; }
+  .fc-btn-lg { min-width: 210px; padding: 1.05rem 1.75rem; font-size: 1rem; font-weight: 600; }
   .fc-btn:disabled { opacity: .5; cursor: not-allowed; }
   .fc-btn-primary { background: var(--fc-accent); color: var(--fc-accent-contrast); }
-  .fc-btn-primary:hover { opacity: .9; }
-  .fc-btn-outline { border: 1px solid currentColor; }
+  .fc-btn-primary:hover { opacity: .88; }
+  .fc-btn-outline { border-color: currentColor; }
+  .fc-btn-outline:hover { opacity: .8; }
+  .fc-btn-outline-lime { border-color: var(--fc-accent); color: var(--fc-accent); }
+  .fc-btn-outline-lime:hover { background: var(--fc-accent); color: var(--fc-accent-contrast); }
   .fc-btn-dark { background: var(--fc-primary); color: var(--fc-primary-contrast); }
+  .fc-btn-dark:hover { opacity: .9; }
+
   .fc-card { background: var(--fc-bg); border: 1px solid var(--fc-border); border-radius: var(--fc-radius); }
   .fc-input { width: 100%; border: 1px solid var(--fc-border); border-radius: 8px; padding: .65rem .8rem; background: var(--fc-bg); color: var(--fc-text); }
   .fc-input:focus { outline: 2px solid var(--fc-accent); outline-offset: 1px; }
+
+  /* Logo strip: slow continuous scroll, faded at both edges */
+  .fc-marquee { mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+  .fc-marquee-track { display: flex; width: max-content; animation: fc-marquee 40s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { .fc-marquee-track { animation: none; } }
 }
+
+@keyframes fc-marquee { to { transform: translateX(-50%); } }

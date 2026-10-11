@@ -9,15 +9,15 @@ export function CatalogFilter({ courses }: { courses: Course[] }) {
   const shown = active ? courses.filter((c) => c.category === active) : courses;
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap justify-center gap-3">
         {[null, ...categories].map((c) => (
           <button key={c ?? "all"} onClick={() => setActive(c)}
-            className={`rounded-button border px-4 py-2 text-sm font-medium ${active === c ? "border-primary bg-primary text-white" : "border-line hover:border-primary"}`}>
+            className={`rounded-full px-3.5 py-1.5 text-[15px] transition ${active === c ? "bg-black text-white" : "bg-white text-ink hover:bg-white/70"}`}>
             {c ?? "All Products"}
           </button>
         ))}
       </div>
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mx-auto mt-10 grid max-w-[968px] gap-4">
         {shown.map((c) => <CourseCard key={c.id} course={c} />)}
       </div>
     </>

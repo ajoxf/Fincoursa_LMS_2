@@ -44,6 +44,7 @@ export type CourseCard = {
   thumbnail_url: string | null;
   duration_minutes: number;
   category: string | null;
+  level: string | null;
   instructors: Instructor[];
   price: Price | null;
   isFree: boolean;
@@ -63,7 +64,7 @@ export type BundleCard = {
   totalMinutes: number;
 };
 
-const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, duration_minutes, access_days, certificate_enabled,
+const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, duration_minutes, access_days, certificate_enabled, level,
   sort_order, is_featured,
   category:categories(name),
   course_instructors(is_primary, instructor:instructors(id, slug, name, title, bio, photo_url, org_logo_url)),
@@ -89,6 +90,7 @@ function toCourseCard(row: any): CourseCard {
     thumbnail_url: row.thumbnail_url ?? null,
     duration_minutes: row.duration_minutes ?? 0,
     category: row.category?.name ?? null,
+    level: row.level ?? null,
     instructors: (row.course_instructors ?? [])
       .sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary))
       .map((ci: any) => ci.instructor)
@@ -176,6 +178,19 @@ export const getInstructors = cache(async (): Promise<Instructor[]> => {
     .order("sort_order");
   if (error) throw error;
   return data ?? [];
+});
+
+/** One instructor with their published courses and total lesson count (for the instructor page). */
+export const getInstructor = cache(async (slug: string) => {
+  const person = (await getInstructors()).find((i) => i.slug === slug);
+  if (!person) return null;
+  const courses = (await getCourses()).filter((c) => c.instructors.some((i) => i.id === person.id));
+  let lessons = 0;
+  for (const c of courses) {
+    const d = await getCourse(c.slug);
+    lessons += d?.chapters.reduce((n, ch) => n + ch.lessons.length, 0) ?? 0;
+  }
+  return { person, courses, lessons };
 });
 
 export { formatDuration } from "@/lib/format";
