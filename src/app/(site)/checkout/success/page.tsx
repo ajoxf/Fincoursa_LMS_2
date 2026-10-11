@@ -5,6 +5,22 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
 import { simulatePayment } from "../actions";
+import { connect } from "@/lib/payments/registry";
+import { applyGatewayEvents } from "@/lib/payments/apply";
+
+/** Buyer is back from the provider: ask the provider directly instead of waiting for the webhook. */
+async function confirmWithProvider(order: { id: string; gateway: string | null; gateway_session_id: string | null }) {
+  if (!order.gateway || !order.gateway_session_id) return false;
+  const conn = await connect(order.gateway);
+  if (!conn?.gateway.verify) return false;
+  try {
+    const events = await conn.gateway.verify({ orderId: order.id, sessionId: order.gateway_session_id }, conn.cfg);
+    return events.length > 0 && (await applyGatewayEvents(order.gateway, events));
+  } catch (e) {
+    console.error(`[payments:${order.gateway}] verify on return failed`, e);
+    return false;
+  }
+}
 
 export const metadata: Metadata = { title: "Order", robots: { index: false } };
 
@@ -13,9 +29,9 @@ export default async function SuccessPage({ searchParams }: PageProps<"/checkout
   if (typeof id !== "string") notFound();
   await requireUser();
   const { data: order } = await (await createClient())
-    .from("orders").select("id, number, status, total_minor, currency, gateway, order_items(title, course:courses(slug))").eq("id", id).maybeSingle();
+    .from("orders").select("id, number, status, total_minor, currency, gateway, gateway_session_id, order_items(title, course:courses(slug))").eq("id", id).maybeSingle();
   if (!order) notFound();
-  const paid = order.status === "paid";
+  const paid = order.status === "paid" || (order.status === "pending" && (await confirmWithProvider(order)));
   const first = order.order_items?.[0];
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const courseSlug = (first?.course as any)?.slug as string | undefined;

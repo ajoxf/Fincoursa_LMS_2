@@ -23,3 +23,14 @@ export function computeTax(amountMinor: number, rate: number, pricesIncludeTax: 
   const tax = Math.round(amountMinor * rate);
   return { net: amountMinor, tax, total: amountMinor + tax };
 }
+
+/** Minor units → provider "major" string, e.g. 12999 USD → "129.99", 1500 KWD → "1.500". */
+export function toMajorString(minor: number, currency: string) {
+  const f = minorUnitsFactor(currency);
+  return (minor / f).toFixed(Math.round(Math.log10(f)));
+}
+
+/** Provider "major" amount → minor units. */
+export function fromMajor(major: number | string, currency: string) {
+  return Math.round(Number(major) * minorUnitsFactor(currency));
+}

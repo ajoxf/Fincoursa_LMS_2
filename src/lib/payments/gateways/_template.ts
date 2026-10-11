@@ -4,7 +4,7 @@
  *
  * 1. Copy this file to gateways/<id>.ts and implement the four methods using the provider's API.
  * 2. Add it to the `gateways` list in registry.ts.
- * 3. Add its env vars to .env.example and Vercel.
+ * 3. List its keys in `fields` — admins then enter them on /admin/payments (stored encrypted).
  * 4. In the provider dashboard, point the webhook/callback to  https://<site>/api/webhooks/payments/<id>
  * 5. Route buyers to it with a row in `payment_routes`, e.g. ('AE', 'AED', '<id>', 10).
  *
@@ -18,9 +18,13 @@ import type { PaymentGateway } from "../types";
 
 export const templateGateway: PaymentGateway = {
   id: "template",
+  name: "Provider name",
   label: "Pay with …",
+  regions: "Where it's used",
+  keysHelp: "Where to find the keys in the provider dashboard",
+  webhookEvents: [],
+  fields: [{ key: "secret_key", label: "Secret key", secret: true, required: true }],
   currencies: ["AED", "SAR", "USD"],
-  isConfigured: () => false,
   async createCheckout() {
     throw new Error("not implemented");
   },

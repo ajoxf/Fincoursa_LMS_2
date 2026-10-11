@@ -6,7 +6,12 @@ import type { PaymentGateway } from "../types";
  */
 export const manualGateway: PaymentGateway = {
   id: "manual",
+  name: "Test payments",
   label: "Test payment",
+  regions: "Testing only: no money moves",
+  keysHelp: "Turned on by ALLOW_TEST_PAYMENTS=true in Vercel. Set it to false before launch.",
+  webhookEvents: [],
+  fields: [],
   currencies: null,
   isConfigured: () => process.env.ALLOW_TEST_PAYMENTS === "true",
   async createCheckout(input) {

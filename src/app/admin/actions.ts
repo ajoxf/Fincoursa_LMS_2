@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getGateway } from "@/lib/payments/registry";
+import { connect } from "@/lib/payments/registry";
 import { minorUnitsFactor } from "@/lib/money";
 import { partnerCodesEnabled } from "@/lib/env";
 import { sendPartnerApproved, sendPayoutPaid } from "@/lib/email/events";
@@ -20,9 +20,9 @@ export async function refundOrder(orderId: string, form: FormData) {
   if (!o) throw new Error("Order not found");
   const amount = Math.round(Number(form.get("amount")) * minorUnitsFactor(o.currency));
   if (!(amount > 0)) throw new Error("Enter an amount");
-  const gw = o?.gateway ? getGateway(o.gateway) : undefined;
-  if (gw?.refund && o.gateway_session_id) {
-    const { refundId } = await gw.refund({ orderId, sessionId: o.gateway_session_id, amountMinor: amount, currency: o.currency });
+  const conn = o?.gateway ? await connect(o.gateway) : null;
+  if (conn?.gateway.refund && o.gateway_session_id) {
+    const { refundId } = await conn.gateway.refund({ orderId, sessionId: o.gateway_session_id, amountMinor: amount, currency: o.currency }, conn.cfg);
     await db.rpc("apply_refund", { p_order: orderId, p_amount: amount, p_reason: reason, p_gateway_refund_id: refundId, p_actor: admin.id });
   } else {
     await db.rpc("apply_refund", { p_order: orderId, p_amount: amount, p_reason: reason || "manual refund", p_gateway_refund_id: null, p_actor: admin.id });

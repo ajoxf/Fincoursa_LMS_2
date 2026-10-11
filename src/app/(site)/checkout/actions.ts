@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { buildQuote, resolveAttribution } from "@/lib/checkout";
-import { gatewaysFor, getGateway } from "@/lib/payments/registry";
+import { connect, gatewaysFor } from "@/lib/payments/registry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { after } from "next/server";
@@ -58,14 +58,16 @@ export async function startCheckout(form: FormData) {
     redirect(`/checkout/success?order=${order.id}`);
   }
 
-  const gateway = getGateway(gatewayId!)!;
-  const session = await gateway.createCheckout({
+  const conn = await connect(gatewayId!);
+  if (!conn) throw new Error("No payment method available");
+  const session = await conn.gateway.createCheckout({
     orderId: order.id, orderNumber: order.number, currency: quote.currency, totalMinor: quote.totalMinor,
     lines: [{ title: quote.item.title, amountMinor: quote.totalMinor, quantity: 1 }],
     customer: { id: user.id, email: user.email ?? "", name: user.fullName, country },
     successUrl: `${env.siteUrl}/checkout/success?order=${order.id}`,
     cancelUrl: `${env.siteUrl}/checkout?${quote.item.kind}=${quote.item.slug}`,
-  });
+    webhookUrl: `${env.siteUrl}/api/webhooks/payments/${conn.gateway.id}`,
+  }, conn.cfg);
   await db.from("orders").update({ gateway_session_id: session.sessionId }).eq("id", order.id);
   redirect(session.redirectUrl);
 }
