@@ -89,30 +89,113 @@ export async function sendLiveReminders(hoursAhead = 30) {
   return sent;
 }
 
-/** Sent once per certificate, the moment a course reaches 100%. */
+/**
+ * Sent once when a course reaches 100%. Courses with certificates link to it (ref = certificate id);
+ * courses without one get the plain congratulations (ref = enrolment id).
+ */
 export async function sendCourseCompleted(userId: string, courseId: string) {
   const db = createAdminClient();
-  const { data: c } = await db.from("certificates").select("id, serial, course:courses(title)").eq("user_id", userId).eq("course_id", courseId).maybeSingle();
-  if (!c) return;
+  const { data: e } = await db.from("enrollments").select("id, completed_at, course:courses(title, slug)")
+    .eq("user_id", userId).eq("course_id", courseId).maybeSingle();
+  if (!e?.completed_at) return;
+  const { data: c } = await db.from("certificates").select("id, serial").eq("user_id", userId).eq("course_id", courseId).maybeSingle();
   const p = await profile(userId);
   if (!p?.email) return;
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const course = (c.course as any)?.title ?? "your course";
-  const t = T.courseCompletedEmail({ name: p.full_name, course, certificateUrl: `${site()}/certificates/${c.serial}`, nextUrl: `${site()}/pages/paid-courses` });
-  await sendEmail({ ...t, to: p.email, template: "course_completed", ref: c.id });
+  const course = (e.course as any) as { title: string; slug: string } | null;
+  const t = T.courseCompletedEmail({
+    name: p.full_name, course: course?.title ?? "your course", nextUrl: `${site()}/pages/paid-courses`,
+    certificateUrl: c ? `${site()}/certificates/${c.serial}` : null, courseUrl: course ? `${site()}/learn/${course.slug}` : undefined,
+  });
+  await sendEmail({ ...t, to: p.email, template: "course_completed", ref: c?.id ?? e.id });
 }
 
-/** Catch-up for any certificate issued without its email (runs from the daily cron). */
+/** Catch-up for any completion that didn't get its email (runs from the daily cron). */
 export async function sendMissedCompletionEmails(sinceHours = 72) {
   const db = createAdminClient();
   const since = new Date(Date.now() - sinceHours * 3600_000).toISOString();
-  const { data: certs } = await db.from("certificates").select("id, user_id, course_id").gte("issued_at", since).limit(500);
-  if (!certs?.length) return 0;
-  const { data: sent } = await db.from("email_log").select("ref").eq("template", "course_completed").in("ref", certs.map((c) => c.id));
-  const done = new Set((sent ?? []).map((s) => s.ref));
+  const { data: done } = await db.from("enrollments").select("id, user_id, course_id").gte("completed_at", since).limit(500);
+  if (!done?.length) return 0;
+  const { data: certs } = await db.from("certificates").select("id, user_id, course_id").in("user_id", [...new Set(done.map((d) => d.user_id))]);
+  const certOf = new Map((certs ?? []).map((c) => [`${c.user_id}:${c.course_id}`, c.id]));
+  const refs = done.map((d) => certOf.get(`${d.user_id}:${d.course_id}`) ?? d.id);
+  const { data: sent } = await db.from("email_log").select("ref").eq("template", "course_completed").in("ref", refs);
+  const already = new Set((sent ?? []).map((s) => s.ref));
   let n = 0;
-  for (const c of certs) if (!done.has(c.id)) { await sendCourseCompleted(c.user_id, c.course_id); n++; }
+  for (let i = 0; i < done.length; i++) if (!already.has(refs[i])) { await sendCourseCompleted(done[i].user_id, done[i].course_id); n++; }
   return n;
+}
+
+/** "You're enrolled" for free enrolments: a free course, a free bundle, or an order paid in full by a coupon. */
+export async function sendEnrolled(userId: string, what: { courseId?: string; bundleId?: string }, ref: string) {
+  const db = createAdminClient();
+  const p = await profile(userId);
+  if (!p?.email) return;
+  let title = "", url = `${site()}/dashboard`, courses: string[] | undefined;
+  let courseIds: string[] = [];
+  if (what.bundleId) {
+    const { data: b } = await db.from("bundles").select("title, bundle_courses(position, course:courses(id, title))").eq("id", what.bundleId).maybeSingle();
+    if (!b) return;
+    title = b.title;
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const list = ((b.bundle_courses ?? []) as any[]).sort((x, y) => (x.position ?? 0) - (y.position ?? 0)).map((x) => x.course).filter(Boolean);
+    courses = list.map((c) => c.title);
+    courseIds = list.map((c) => c.id);
+  } else if (what.courseId) {
+    const { data: c } = await db.from("courses").select("id, title, slug").eq("id", what.courseId).maybeSingle();
+    if (!c) return;
+    title = c.title; url = `${site()}/learn/${c.slug}`; courseIds = [c.id];
+  } else return;
+  const { data: e } = courseIds.length === 1
+    ? await db.from("enrollments").select("expires_at").eq("user_id", userId).eq("course_id", courseIds[0]).maybeSingle()
+    : { data: null };
+  const { data: live } = courseIds.length
+    ? await db.from("lessons").select("title, starts_at, live_minutes").in("course_id", courseIds).eq("type", "live").gte("starts_at", new Date().toISOString()).order("starts_at")
+    : { data: [] as { title: string; starts_at: string; live_minutes: number | null }[] };
+  const t = T.enrolledEmail({
+    name: p.full_name, title, courses, url, until: e?.expires_at ? formatDate(e.expires_at, "long") : null,
+    sessions: (live ?? []).map((l) => sessionLine(l.title, l.starts_at, l.live_minutes)),
+  });
+  await sendEmail({ ...t, to: p.email, template: "enrolled", ref });
+}
+
+/** Free order (e.g. a 100% coupon): the receipt is skipped, so confirm the enrolment instead. */
+export async function sendEnrolledForOrder(orderId: string) {
+  const { data: o } = await createAdminClient().from("orders").select("id, user_id, status, total_minor, order_items(course_id, bundle_id)").eq("id", orderId).maybeSingle();
+  if (!o || o.status !== "paid" || o.total_minor > 0) return;
+  const i = o.order_items?.[0];
+  if (i) await sendEnrolled(o.user_id, { courseId: i.course_id ?? undefined, bundleId: i.bundle_id ?? undefined }, o.id);
+}
+
+/** Refund confirmation, once per refund (the admin action and the provider's webhook may both call it). */
+export async function sendRefund(orderId: string) {
+  const db = createAdminClient();
+  const { data: o } = await db.from("orders").select("id, number, user_id, status, currency, gateway, order_items(title)").eq("id", orderId).maybeSingle();
+  if (!o || !["refunded", "partially_refunded"].includes(o.status)) return;
+  const { data: r } = await db.from("refunds").select("id, amount_minor").eq("order_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!r) return;
+  const p = await profile(o.user_id);
+  if (!p?.email) return;
+  const t = T.refundEmail({
+    name: p.full_name, orderNumber: o.number, item: (o.order_items ?? []).map((i) => i.title).join(", ") || "your order",
+    amount: formatMoney(r.amount_minor, o.currency), full: o.status === "refunded", invoiceUrl: `${site()}/api/invoices/${o.id}`,
+    method: o.gateway?.startsWith("custom-") || o.gateway === "manual" ? "account you paid from" : null,
+  });
+  await sendEmail({ ...t, to: p.email, template: "refund", ref: r.id });
+}
+
+/** For providers where the buyer pays outside the site: the amount, reference and a link back to the pay page. */
+export async function sendPaymentPending(orderId: string, provider: string, instructions?: string | null) {
+  const db = createAdminClient();
+  const { data: o } = await db.from("orders").select("id, number, user_id, status, currency, total_minor, order_items(title)").eq("id", orderId).maybeSingle();
+  if (!o || o.status !== "pending") return;
+  const p = await profile(o.user_id);
+  if (!p?.email) return;
+  const t = T.paymentPendingEmail({
+    name: p.full_name, orderNumber: o.number, item: (o.order_items ?? []).map((i) => i.title).join(", "),
+    amount: formatMoney(o.total_minor, o.currency), provider, instructions, payUrl: `${site()}/checkout/pay/${o.id}`,
+  });
+  await sendEmail({ ...t, to: p.email, template: "payment_pending", ref: o.id });
 }
 
 export async function sendPartnerApproved(affiliateId: string) {

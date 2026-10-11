@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { after } from "next/server";
 import { allow, LIMITS, TOO_MANY } from "@/lib/rate-limit";
-import { sendReceipt } from "@/lib/email/events";
+import { sendEnrolledForOrder, sendPaymentPending, sendReceipt } from "@/lib/email/events";
 import { applyGatewayEvents } from "@/lib/payments/apply";
 
 export async function startCheckout(form: FormData) {
@@ -69,6 +69,7 @@ export async function startCheckout(form: FormData) {
   // Free (e.g. 100% coupon): fulfil immediately
   if (quote.totalMinor === 0) {
     await db.rpc("fulfill_order", { p_order: order.id, p_gateway_ref: "free" });
+    after(async () => { await sendReceipt(order.id); await sendEnrolledForOrder(order.id); });
     redirect(`/checkout/success?order=${order.id}`);
   }
 
@@ -83,6 +84,8 @@ export async function startCheckout(form: FormData) {
     webhookUrl: `${env.siteUrl}/api/webhooks/payments/${conn.gateway.id}`,
   }, conn.cfg);
   await db.from("orders").update({ gateway_session_id: session.sessionId, gateway_redirect_url: session.redirectUrl }).eq("id", order.id);
+  // paying outside the site (bank transfer, payment link): email the amount, reference and a way back
+  if (conn.gateway.custom) after(() => sendPaymentPending(order.id, conn.gateway.custom!.label || conn.gateway.name, conn.gateway.custom!.instructions));
   redirect(session.redirectUrl);
 }
 

@@ -1,7 +1,7 @@
 import "server-only";
 import type { GatewayEvent } from "./types";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendReceipt } from "@/lib/email/events";
+import { sendReceipt, sendRefund } from "@/lib/email/events";
 
 /**
  * Apply provider events to orders. Every event is stored once (unique gateway+event_id), then applied
@@ -41,6 +41,7 @@ export async function applyGatewayEvents(gatewayId: string, events: GatewayEvent
       ({ error: err } = await db.rpc("apply_refund", {
         p_order: ev.orderId, p_amount: ev.amountMinor, p_reason: "gateway refund", p_gateway_refund_id: ev.refundId, p_actor: null,
       }));
+      if (!err) await sendRefund(ev.orderId).catch((e) => console.error("[email] refund", e));
     }
     if (err) {
       console.error(`[payments:${gatewayId}] failed to apply ${ev.type}`, err);

@@ -1,14 +1,18 @@
 "use server";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUser } from "@/lib/auth";
+import { sendEnrolled } from "@/lib/email/events";
 
 export async function enrollFree(courseId: string, slug: string) {
-  await requireUser(`/courses/${slug}`);
+  const user = await requireUser(`/courses/${slug}`);
   const supabase = await createClient();
   const { error } = await supabase.rpc("enroll_free", { p_course: courseId });
   if (error) throw new Error(error.message);
+  // once per person per course (email log)
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) after(() => sendEnrolled(user.id, { courseId }, `${user.id}:${courseId}`));
   redirect(`/learn/${slug}`);
 }
 
@@ -29,6 +33,7 @@ export async function enrollFreeBundle(bundleId: string) {
   if (rows.length) {
     const { error } = await admin.from("enrollments").upsert(rows, { onConflict: "user_id,course_id", ignoreDuplicates: true });
     if (error) throw new Error(error.message);
+    after(() => sendEnrolled(user.id, { bundleId }, `${user.id}:${bundleId}`));
   }
   redirect("/dashboard");
 }

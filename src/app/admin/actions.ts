@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { connect } from "@/lib/payments/registry";
 import { minorUnitsFactor } from "@/lib/money";
 import { partnerCodesEnabled } from "@/lib/env";
-import { sendPartnerApproved, sendPayoutPaid } from "@/lib/email/events";
+import { sendPartnerApproved, sendPayoutPaid, sendRefund } from "@/lib/email/events";
 
 async function audit(actor: string, action: string, entity: string, entityId: string, data?: object) {
   await createAdminClient().from("audit_log").insert({ actor_id: actor, action, entity, entity_id: entityId, data });
@@ -27,6 +27,7 @@ export async function refundOrder(orderId: string, form: FormData) {
   } else {
     await db.rpc("apply_refund", { p_order: orderId, p_amount: amount, p_reason: reason || "manual refund", p_gateway_refund_id: null, p_actor: admin.id });
   }
+  await sendRefund(orderId).catch((e) => console.error("[email] refund", e)); // once per refund (email log)
   revalidatePath("/admin/orders");
 }
 

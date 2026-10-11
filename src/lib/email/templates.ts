@@ -135,17 +135,93 @@ export function passwordResetEmail(o: { url: string; minutes: number }): Rendere
   };
 }
 
-export function courseCompletedEmail(o: { name?: string | null; course: string; certificateUrl: string; nextUrl: string }): Rendered {
+/** Sent when a course reaches 100%. With a certificate (courses where the admin switched it on) it links to it. */
+export function courseCompletedEmail(o: { name?: string | null; course: string; certificateUrl?: string | null; nextUrl: string; courseUrl?: string }): Rendered {
+  const cert = !!o.certificateUrl;
   return {
     subject: `Congratulations, you completed ${o.course}`,
     ...layout({
-      preheader: "Your certificate is ready to view and share.",
+      preheader: cert ? "Your certificate is ready to view and share." : "You've finished every lesson. Here's what's next.",
       heading: `Well done, ${first(o.name)}!`,
       body: join(
-        p(`You've completed ${o.course}. Your certificate of completion is ready. It has its own verification link you can add to your CV or LinkedIn profile.`),
-        { html: `<p style="margin:0 0 12px">Ready for the next step? <a href="${esc(o.nextUrl)}" style="color:${T.primary}">See what to learn next</a>.</p>`, text: `Next course ideas: ${o.nextUrl}` },
+        cert
+          ? p(`You've completed ${o.course}. Your certificate of completion is ready. It has its own verification link you can add to your CV or LinkedIn profile.`)
+          : p(`You've completed every lesson in ${o.course}. The course stays in your account, so you can go back to any lesson whenever you want a refresher.`),
+        cert
+          ? { html: `<p style="margin:0 0 12px">Ready for the next step? <a href="${esc(o.nextUrl)}" style="color:${T.primary}">See what to learn next</a>.</p>`, text: `Next course ideas: ${o.nextUrl}` }
+          : o.courseUrl
+            ? { html: `<p style="margin:0 0 12px"><a href="${esc(o.courseUrl)}" style="color:${T.primary}">Go back to the course</a> any time, or see what to learn next below.</p>`, text: `Go back to the course: ${o.courseUrl}` }
+            : p("Ready for the next step? Have a look at what to learn next."),
       ),
-      cta: { label: "View your certificate", url: o.certificateUrl },
+      cta: cert ? { label: "View your certificate", url: o.certificateUrl! } : { label: "See what to learn next", url: o.nextUrl },
+    }),
+  };
+}
+
+/** Free enrolment (free course, free bundle or a 100% coupon). Paid orders get the receipt instead. */
+export function enrolledEmail(o: { name?: string | null; title: string; courses?: string[]; url: string; sessions?: SessionLine[]; until?: string | null }): Rendered {
+  const list = o.courses?.length
+    ? { html: `<ul style="margin:0 0 12px;padding-left:20px">${o.courses.map((c) => `<li style="margin:0 0 4px">${esc(c)}</li>`).join("")}</ul>`, text: o.courses.map((c) => `- ${c}`).join("\n") }
+    : null;
+  return {
+    subject: `You're enrolled: ${o.title}`,
+    ...layout({
+      preheader: `${o.title} is ready in your FinCoursa account.`,
+      heading: "You're enrolled",
+      body: join(
+        p(`Hi ${first(o.name)}, ${o.title} is now in your FinCoursa account${o.until ? `, with access until ${o.until}` : ""}.`),
+        ...(list ? [p("It includes these courses:"), list] : []),
+        p("Start whenever you like. Your progress is saved as you go, and you can pick up on any device."),
+        ...(o.sessions?.length ? [{ html: sessionsHtml(o.sessions), text: `Your live sessions:\n${sessionsText(o.sessions)}` }] : []),
+      ),
+      cta: { label: "Start learning", url: o.url },
+    }),
+  };
+}
+
+/** Refund confirmation (full or partial), sent once per refund. */
+export function refundEmail(o: { name?: string | null; orderNumber: number; item: string; amount: string; full: boolean; invoiceUrl: string; method?: string | null }): Rendered {
+  return {
+    subject: `Your refund for order #${o.orderNumber}`,
+    ...layout({
+      preheader: `We've refunded ${o.amount}.`,
+      heading: "Your refund is on its way",
+      body: join(
+        p(`Hi ${first(o.name)}, we've refunded ${o.amount} for ${o.item} (order #${o.orderNumber}).`),
+        p(`The money goes back to the ${o.method ? o.method : "card or account you paid with"}. Depending on your bank it usually shows within 5–10 business days.`),
+        o.full
+          ? p("As this was a full refund, the course has been removed from your account.")
+          : p("This was a partial refund, so your course access stays as it is."),
+        { html: `<p style="margin:0 0 12px"><a href="${esc(o.invoiceUrl)}" style="color:${T.primary}">View your updated invoice</a></p>`, text: `Updated invoice: ${o.invoiceUrl}` },
+      ),
+      footer: "Questions about this refund? Just reply to this email.",
+    }),
+  };
+}
+
+/** Sent for providers where the buyer pays outside the site (bank transfer, payment link): how to finish paying. */
+export function paymentPendingEmail(o: { name?: string | null; orderNumber: number; item: string; amount: string; provider: string; instructions?: string | null; payUrl: string }): Rendered {
+  const box = {
+    html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin:4px 0 16px;background:${T.surface};border-radius:12px">
+<tr><td style="padding:12px 16px 4px;color:${T.muted}">Course</td><td align="right" style="padding:12px 16px 4px">${esc(o.item)}</td></tr>
+<tr><td style="padding:4px 16px;color:${T.muted}">Payment method</td><td align="right" style="padding:4px 16px">${esc(o.provider)}</td></tr>
+<tr><td style="padding:4px 16px;color:${T.muted}">Amount to pay</td><td align="right" style="padding:4px 16px;font-weight:700">${esc(o.amount)}</td></tr>
+<tr><td style="padding:4px 16px 12px;color:${T.muted}">Payment reference</td><td align="right" style="padding:4px 16px 12px;font-family:monospace;font-weight:700">FC-${o.orderNumber}</td></tr></table>`,
+    text: `Course: ${o.item}\nPayment method: ${o.provider}\nAmount to pay: ${o.amount}\nPayment reference: FC-${o.orderNumber}`,
+  };
+  return {
+    subject: `Complete your payment for ${o.item}`,
+    ...layout({
+      preheader: `Pay ${o.amount} with reference FC-${o.orderNumber} to unlock your course.`,
+      heading: "One step left",
+      body: join(
+        p(`Hi ${first(o.name)}, your order is reserved. There's one step left: complete your payment, and the course unlocks.`),
+        box,
+        ...(o.instructions ? [richText(o.instructions)] : []),
+        p(`Please pay exactly ${o.amount} and include the reference FC-${o.orderNumber}, so we can match your payment. Your course unlocks as soon as it's confirmed, and your receipt is emailed to you.`),
+      ),
+      cta: { label: "Complete payment", url: o.payUrl },
+      footer: "Already paid? You can ignore this email. Changed your mind? Nothing more is needed; the order lapses on its own.",
     }),
   };
 }
