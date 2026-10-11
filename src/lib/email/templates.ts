@@ -1,15 +1,16 @@
 // Branded HTML email templates. Email clients don't support CSS variables, so the brand colours are
 // repeated here: keep EMAIL_THEME in step with src/app/theme.css when the final theme is applied.
 export const EMAIL_THEME = {
-  primary: "#0b1f3a",
-  accent: "#c8a24a",
-  accentText: "#0b1f3a",
-  text: "#1b2533",
-  muted: "#5b6676",
-  border: "#e3e6eb",
-  surface: "#f5f6f8",
-  font: "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-  logo: "https://import.cdn.thinkific.com/1229196/custom_site_themes/id/nheg0rh2QRqGIOXG8FBU_header-logo.png",
+  primary: "#000000",      // header band
+  accent: "#d6fd3b",       // lime buttons
+  accentText: "#101827",
+  text: "#101827",
+  muted: "#4b5563",
+  border: "#e5e7eb",
+  surface: "#f3f4f6",
+  font: "Satoshi, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  // white logo for the black header band
+  logo: "https://import.cdn.thinkific.com/1229196/custom_site_themes/id/K7xJCUqTUCsenKNBD5zw_header-logo.png",
 };
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -24,15 +25,15 @@ function layout(opts: { preheader: string; heading: string; body: Block; cta?: {
 <body style="margin:0;background:${T.surface};font-family:${T.font};color:${T.text}">
 <span style="display:none;max-height:0;overflow:hidden">${esc(opts.preheader)}</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${T.surface};padding:24px 12px"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid ${T.border};border-radius:12px">
-<tr><td style="background:${T.primary};border-radius:12px 12px 0 0;padding:20px 28px"><img src="${T.logo}" alt="FinCoursa Academy" height="28" style="display:block;height:28px;color:#ffffff;font-size:18px;font-weight:700"></td></tr>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden">
+<tr><td style="background:${T.primary};padding:24px 28px"><img src="${T.logo}" alt="FinCoursa Academy" height="28" style="display:block;height:28px;color:#ffffff;font-size:18px;font-weight:700"></td></tr>
 <tr><td style="padding:28px">
-<h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:${T.primary}">${esc(opts.heading)}</h1>
+<h1 style="margin:0 0 16px;font-size:28px;line-height:1.15;font-weight:400;letter-spacing:-0.5px;color:${T.text}">${esc(opts.heading)}</h1>
 <div style="font-size:15px;line-height:1.6">${opts.body.html}</div>
-${opts.cta ? `<p style="margin:28px 0 8px"><a href="${esc(opts.cta.url)}" style="display:inline-block;background:${T.accent};color:${T.accentText};text-decoration:none;font-weight:600;padding:12px 24px;border-radius:999px">${esc(opts.cta.label)}</a></p>
+${opts.cta ? `<p style="margin:28px 0 8px"><a href="${esc(opts.cta.url)}" style="display:inline-block;background:${T.accent};color:${T.accentText};text-decoration:none;font-weight:600;padding:14px 28px;border-radius:8px">${esc(opts.cta.label)}</a></p>
 <p style="margin:0;font-size:12px;color:${T.muted}">Or paste this link into your browser:<br><span style="word-break:break-all">${esc(opts.cta.url)}</span></p>` : ""}
 </td></tr>
-<tr><td style="border-top:1px solid ${T.border};padding:16px 28px;font-size:12px;color:${T.muted}">${opts.footer ? esc(opts.footer) + "<br>" : ""}FinCoursa Academy · <a href="${site}" style="color:${T.muted}">${site.replace(/^https?:\/\//, "")}</a></td></tr>
+<tr><td style="background:${T.primary};padding:16px 28px;font-size:12px;color:#d1d5db">${opts.footer ? esc(opts.footer) + "<br>" : ""}FinCoursa Academy · <a href="${site}" style="color:#d1d5db">${site.replace(/^https?:\/\//, "")}</a></td></tr>
 </table></td></tr></table></body></html>`;
   const text = `${opts.heading}\n\n${opts.body.text}${opts.cta ? `\n\n${opts.cta.label}: ${opts.cta.url}` : ""}\n\n—\nFinCoursa Academy · ${site}${opts.footer ? `\n${opts.footer}` : ""}`;
   return { html, text };
