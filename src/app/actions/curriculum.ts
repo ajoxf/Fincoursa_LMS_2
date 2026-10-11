@@ -80,7 +80,10 @@ export async function updateLesson(courseId: string, lessonId: string, patch: Le
   await syncCourseDuration(courseId);
 }
 
-export type QuizQuestionInput = { id: string; prompt: string; options: { id: string; text: string }[]; correct: string };
+/** image: optional picture shown with the question (e.g. a chart), a public link from the course-images bucket. */
+export type QuizQuestionInput = { id: string; prompt: string; image?: string | null; options: { id: string; text: string }[]; correct: string };
+
+const httpUrl = (u: unknown) => (typeof u === "string" && /^https?:\/\/\S+$/i.test(u.trim()) ? u.trim().slice(0, 2000) : null);
 export type BodyPatch = {
   text?: string;
   files?: { name: string; path: string }[];
@@ -93,6 +96,7 @@ export type BodyPatch = {
 export async function saveLessonBody(courseId: string, lessonId: string, patch: BodyPatch) {
   const s = await db();
   const { data } = await s.from("lesson_bodies").select("body").eq("lesson_id", lessonId).maybeSingle();
+  if (patch.questions) patch = { ...patch, questions: patch.questions.slice(0, 200).map((q) => ({ ...q, image: httpUrl(q.image) })) };
   const body = { ...((data?.body as object) ?? {}), ...patch };
   fail((await s.from("lesson_bodies").upsert({ lesson_id: lessonId, body })).error);
   done(courseId);

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { notifyLessonCompleted } from "@/app/actions/progress";
 
-export type QuizQuestion = { id: string; prompt: string; options: { id: string; text: string }[] };
+export type QuizQuestion = { id: string; prompt: string; image?: string | null; options: { id: string; text: string }[] };
 
 export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit }: {
   lessonId: string; courseId: string; questions: QuizQuestion[]; passPct: number; canSubmit: boolean;
@@ -29,7 +29,13 @@ export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit }
     }}>
       {questions.map((q, i) => (
         <fieldset key={q.id} className="fc-card p-5">
-          <legend className="px-1 font-semibold">{i + 1}. {q.prompt}</legend>
+          <legend className="px-1 font-semibold"><span className="whitespace-pre-line">{i + 1}. {q.prompt}</span></legend>
+          {q.image && (
+            <a href={q.image} target="_blank" rel="noopener noreferrer" className="mt-3 block" title="Open full size">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={q.image} alt={`Chart for question ${i + 1}`} loading="lazy" className="max-h-[420px] w-full rounded-md border border-line bg-white object-contain" />
+            </a>
+          )}
           <div className="mt-3 grid gap-2">
             {q.options.map((o) => (
               <label key={o.id} className="flex items-center gap-3 rounded-md border border-line p-3 hover:bg-surface">

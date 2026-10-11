@@ -7,6 +7,7 @@ import {
   saveLessonBody, syncCourseDuration, updateLesson, type QuizQuestionInput,
 } from "@/app/actions/curriculum";
 import { FileUpload } from "./FileUpload";
+import { parseQuizJson, QUIZ_JSON_EXAMPLE } from "@/lib/quiz-import";
 import { TIME_ZONE } from "@/lib/format";
 
 export type BuilderLesson = {
@@ -311,7 +312,7 @@ function LessonEditor({ courseId, lesson, onClose }: { courseId: string; lesson:
         </div>
       )}
 
-      {type === "quiz" && <QuizEditor questions={questions} setQuestions={setQuestions} passPct={passPct} setPassPct={setPassPct} />}
+      {type === "quiz" && <QuizEditor courseId={courseId} questions={questions} setQuestions={setQuestions} passPct={passPct} setPassPct={setPassPct} />}
 
       <label className="grid gap-1 text-sm font-medium">{type === "text" ? "Lesson content" : "Notes shown with the lesson (optional)"}
         <textarea rows={type === "text" ? 10 : 4} value={text} onChange={(e) => setText(e.target.value)} className="fc-input" />
@@ -339,10 +340,26 @@ function LessonEditor({ courseId, lesson, onClose }: { courseId: string; lesson:
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 
-function QuizEditor({ questions, setQuestions, passPct, setPassPct }: {
-  questions: QuizQuestionInput[]; setQuestions: (q: QuizQuestionInput[]) => void; passPct: number; setPassPct: (n: number) => void;
+function QuizEditor({ courseId, questions, setQuestions, passPct, setPassPct }: {
+  courseId: string; questions: QuizQuestionInput[]; setQuestions: (q: QuizQuestionInput[]) => void; passPct: number; setPassPct: (n: number) => void;
 }) {
   const update = (i: number, q: QuizQuestionInput) => setQuestions(questions.map((x, k) => (k === i ? q : x)));
+  const [note, setNote] = useState<{ ok: boolean; t: string } | null>(null);
+
+  async function importJson(file: File) {
+    setNote(null);
+    try {
+      if (file.size > 2 * 1024 * 1024) throw new Error("That file is over 2 MB. A quiz file should be much smaller.");
+      const r = parseQuizJson(await file.text());
+      const replace = questions.length > 0 && confirm(
+        `Found ${r.questions.length} questions.\n\nOK: replace the ${questions.length} questions already here.\nCancel: add them after the existing ones.`);
+      setQuestions(replace || !questions.length ? r.questions : [...questions, ...r.questions]);
+      if (r.passPct !== null) setPassPct(r.passPct);
+      setNote({ ok: true, t: `Imported ${r.questions.length} ${r.questions.length === 1 ? "question" : "questions"}${r.skipped.length ? `. Skipped ${r.skipped.length}: ${r.skipped.slice(0, 3).join("; ")}${r.skipped.length > 3 ? "…" : ""}` : ""}. Check them, then click Save lesson.` });
+    } catch (e) { setNote({ ok: false, t: e instanceof Error ? e.message : "Could not read that file" }); }
+  }
+  const exampleHref = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(QUIZ_JSON_EXAMPLE, null, 2))}`;
+
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -350,31 +367,57 @@ function QuizEditor({ questions, setQuestions, passPct, setPassPct }: {
         <label className="flex items-center gap-2 text-sm">Pass mark
           <input type="number" min={0} max={100} value={passPct} onChange={(e) => setPassPct(Number(e.target.value))} className="fc-input w-20 !py-1" />%</label>
       </div>
+
+      <div className="grid gap-2 rounded-md border border-dashed border-line bg-bg p-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="fc-btn fc-btn-outline cursor-pointer !px-4 !py-2 text-sm">
+            Import questions from a .json file
+            <input type="file" accept=".json,application/json" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) importJson(f); e.target.value = ""; }} />
+          </label>
+          <a href={exampleHref} download="fincoursa-quiz-example.json" className="underline">Download an example file</a>
+        </div>
+        <p className="text-xs text-muted">Each question needs the question text, its answers and which one is correct (as a letter like &quot;B&quot;, a number like 2, or the answer text). A chart can be added with an &quot;image&quot; link, or uploaded below after importing.</p>
+        {note && <p className={`text-sm ${note.ok ? "text-success" : "text-danger"}`}>{note.t}</p>}
+      </div>
+
       {questions.map((q, i) => (
         <div key={q.id} className="grid gap-2 rounded-md border border-line bg-bg p-3">
           <div className="flex gap-2">
             <span className="pt-2 text-sm font-semibold">{i + 1}.</span>
-            <input value={q.prompt} onChange={(e) => update(i, { ...q, prompt: e.target.value })} placeholder="Question" className="fc-input flex-1" />
-            <button type="button" onClick={() => setQuestions(questions.filter((_, k) => k !== i))} className="text-xs text-danger underline">Remove</button>
+            <textarea rows={2} value={q.prompt} onChange={(e) => update(i, { ...q, prompt: e.target.value })} placeholder="Question" className="fc-input min-w-0 flex-1" />
+            <button type="button" onClick={() => setQuestions(questions.filter((_, k) => k !== i))} className="self-start pt-2 text-xs text-danger underline">Remove</button>
+          </div>
+          <div className="grid gap-2 pl-6">
+            {q.image ? (
+              <div className="flex flex-wrap items-start gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={q.image} alt="" className="max-h-48 max-w-full rounded-md border border-line bg-white object-contain" />
+                <button type="button" onClick={() => update(i, { ...q, image: null })} className="text-xs text-danger underline">Remove image</button>
+              </div>
+            ) : (
+              <FileUpload bucket="course-images" courseId={courseId} accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" label="Add a chart or image"
+                onUploaded={(f) => { if (f.publicUrl) update(i, { ...q, image: f.publicUrl }); }} />
+            )}
           </div>
           {q.options.map((o, oi) => (
             <div key={o.id} className="flex items-center gap-2 pl-6">
               <input type="radio" name={`correct-${q.id}`} checked={q.correct === o.id} onChange={() => update(i, { ...q, correct: o.id })} aria-label="Correct answer" />
-              <input value={o.text} placeholder={`Answer ${oi + 1}`} className="fc-input flex-1 !py-1.5"
+              <input value={o.text} placeholder={`Answer ${oi + 1}`} className="fc-input min-w-0 flex-1 !py-1.5"
                 onChange={(e) => update(i, { ...q, options: q.options.map((x) => (x.id === o.id ? { ...x, text: e.target.value } : x)) })} />
               {q.options.length > 2 && (
                 <button type="button" aria-label="Remove answer" onClick={() => update(i, { ...q, options: q.options.filter((x) => x.id !== o.id), correct: q.correct === o.id ? "" : q.correct })} className="px-1 text-muted">×</button>
               )}
             </div>
           ))}
-          <div className="flex gap-4 pl-6 text-xs">
+          <div className="flex flex-wrap gap-4 pl-6 text-xs">
             <button type="button" onClick={() => update(i, { ...q, options: [...q.options, { id: uid(), text: "" }] })} className="underline">+ Add answer</button>
             <span className="text-muted">Select the circle next to the correct answer.</span>
           </div>
         </div>
       ))}
       <button type="button" className="fc-btn fc-btn-outline justify-self-start !py-2 text-sm"
-        onClick={() => setQuestions([...questions, { id: uid(), prompt: "", options: [{ id: uid(), text: "" }, { id: uid(), text: "" }], correct: "" }])}>
+        onClick={() => setQuestions([...questions, { id: uid(), prompt: "", image: null, options: [{ id: uid(), text: "" }, { id: uid(), text: "" }], correct: "" }])}>
         + Add question
       </button>
     </div>

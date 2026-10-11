@@ -17,7 +17,9 @@ export function Announcements({ courseId, enrolled, items }: { courseId: string;
         <label className="grid gap-1 text-sm font-medium">Update
           <textarea name="body" required rows={4} className="fc-input" placeholder={"What changed and what students should do.\nLinks become clickable; {first_name} is replaced in the email."} />
         </label>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="email" defaultChecked /> Also email all {enrolled} enrolled {enrolled === 1 ? "student" : "students"}</label>
+        {enrolled > 0
+          ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="email" /> Also email it to the {enrolled} enrolled {enrolled === 1 ? "student" : "students"}</label>
+          : <p className="text-sm text-muted">No one is enrolled yet, so there&apos;s no one to email. The update will still show in the course.</p>}
         <div><button disabled={saving} className="fc-btn fc-btn-primary !min-w-0 !px-5 !py-2.5 text-sm">{saving ? "Posting…" : "Post update"}</button></div>
         {state && !state.campaignId && <p className={`text-sm ${state.ok ? "text-success" : "text-danger"}`}>{state.message}</p>}
         {state?.campaignId && <SendProgress id={state.campaignId} total={state.total ?? 0} onDone={() => router.refresh()} />}

@@ -132,14 +132,23 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
         <CourseBuilder courseId={id} chapters={chapters} />
       </Card>
 
-      <Card title="5 · Updates to enrolled students">
-        <p className="-mt-2 mb-4 text-sm text-muted">Shown at the top of the course and on each student&apos;s dashboard, and optionally emailed. Use it for new lessons, changed session times, new resources.</p>
+      {/* optional: closed unless there are updates already */}
+      <details className="fc-card group min-w-0 p-5" open={(news ?? []).length > 0}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+          <span>
+            <span className="font-semibold text-primary">Updates to enrolled students</span>
+            <span className="ml-2 text-sm text-muted">optional{(news ?? []).length ? ` · ${(news ?? []).length} posted` : ""}</span>
+          </span>
+          <span className="text-sm underline group-open:hidden">Post an update</span>
+          <span className="hidden text-sm underline group-open:inline">Hide</span>
+        </summary>
+        <p className="mb-4 mt-3 text-sm text-muted">Only if you need it: a short note shown at the top of the course and on each student&apos;s dashboard, and emailed if you tick the box. Use it for new lessons, changed session times or new resources.</p>
         <Announcements courseId={id} enrolled={students} items={(news ?? []).map((a) => {
           /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
           const c = (Array.isArray(a.campaign) ? a.campaign[0] : a.campaign) as any;
           return { id: a.id, title: a.title, body: a.body, created_at: formatDate(a.created_at, "long"), emailed: c ? `emailed to ${c.sent} of ${c.total}` : null };
         })} />
-      </Card>
+      </details>
 
       {course.status === "draft" && (
         <form action={deleteCourse.bind(null, id)} className="text-right">

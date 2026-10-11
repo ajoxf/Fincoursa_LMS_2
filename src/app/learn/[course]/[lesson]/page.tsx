@@ -172,7 +172,7 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
               <div className="mx-auto max-w-[680px] px-4 py-10">
                 <QuizLesson lessonId={lessonId} courseId={course.id} passPct={b.pass_pct ?? 70}
                   // never send correct answers to the browser
-                  questions={(b.questions ?? []).map((q) => ({ id: q.id, prompt: q.prompt, options: q.options }))} canSubmit={tracking} />
+                  questions={(b.questions ?? []).map((q) => ({ id: q.id, prompt: q.prompt, image: q.image ?? null, options: q.options }))} canSubmit={tracking} />
               </div>
             ) : full?.type === "audio" && files[0] ? (
               <div className="mx-auto max-w-[680px] px-4 pt-12">
