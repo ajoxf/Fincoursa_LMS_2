@@ -1,7 +1,6 @@
 import { assetUrl } from "@/lib/assets";
 import Link from "next/link";
 import type { CourseCard as Course } from "@/lib/catalog";
-import { sessionDay, sessionNotOver } from "@/lib/format";
 
 export function minsLabel(m: number) {
   if (!m) return null;
@@ -10,13 +9,12 @@ export function minsLabel(m: number) {
   return `${h} ${h === 1 ? "hour" : "hours"}`;
 }
 
-/** Instructor-photo panel with category, duration and instructor name laid over it. */
+/** Course picture with the admin-selected tags and the instructor name laid over it. */
 export function CourseImage({ course, className = "", maxTags = 3 }: { course: Course; className?: string; maxTags?: number }) {
   const ins = course.instructors[0];
   const img = course.thumbnail_url ?? ins?.photo_url ?? null;
-  const mins = minsLabel(course.duration_minutes);
-  const next = (course.liveSessions ?? []).find((t) => sessionNotOver(t, 180));
-  const live = next ? `● Live · ${sessionDay(next).replace(/ \d{4}$/, "")}` : null;
+  // only the tags the admin picked for the course (no category, length or live date on the picture)
+  const tags = (course.tags ?? []).slice(0, maxTags);
   return (
     <div className={`relative overflow-hidden rounded-xl bg-[#1a1410] ${className}`}>
       {img && (
@@ -26,9 +24,7 @@ export function CourseImage({ course, className = "", maxTags = 3 }: { course: C
       <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent" />
       <div className="relative flex h-full flex-col justify-between p-6 md:p-7">
         <div className="flex flex-wrap gap-3">
-          {course.category && <span className="fc-chip fc-chip-lime !py-0.5 text-xs">{course.category}</span>}
-          {live ? <span className="fc-chip !py-0.5 text-xs text-white">{live}</span> : mins && <span className="fc-chip !py-0.5 text-xs text-white">{mins}</span>}
-          {(course.tags ?? []).slice(0, maxTags).map((t) => <span key={t} className="fc-chip !py-0.5 text-xs text-white">{t}</span>)}
+          {tags.map((t, i) => <span key={t} className={`fc-chip !py-0.5 text-xs ${i === 0 ? "fc-chip-lime" : "text-white"}`}>{t}</span>)}
         </div>
         {ins && (
           <div className="mt-10 max-w-[80%] text-white">
