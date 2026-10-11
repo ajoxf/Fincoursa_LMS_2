@@ -49,3 +49,14 @@ export const getIntroVideo = cache(async (): Promise<IntroVideo | null> => {
     return v;
   }
 });
+
+/** Logos and the "Industry experts" strip, uploaded by an admin on /admin/site. */
+export type Branding = {
+  /** dark logo for white backgrounds */
+  logo_dark?: string | null;
+  /** white logo for black backgrounds */
+  logo_white?: string | null;
+  partners?: { name: string; logo_url: string | null }[];
+};
+
+export const getBranding = cache(async (): Promise<Branding> => (await getSetting<Branding>("branding")) ?? {});

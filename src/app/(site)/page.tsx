@@ -10,10 +10,15 @@ import { OrgTabs } from "@/components/site/OrgTabs";
 import { Faq } from "@/components/site/Faq";
 import { IntroVideo } from "@/components/site/IntroVideoButton";
 import { BundleTile } from "@/components/site/BundleTile";
-import { getIntroVideo } from "@/lib/site-settings";
+import { getBranding, getIntroVideo } from "@/lib/site-settings";
 
 export default async function HomePage() {
   const [courses, bundles, faculty, all, intro] = await Promise.all([getCourses({ featured: true }), getBundles(), getInstructors(), getCourses(), getIntroVideo()]);
+  const branding = await getBranding();
+  // "Industry experts" strip: the admin's list (Admin → Home page), or the defaults as text
+  const partners = branding.partners?.length
+    ? branding.partners.map((p) => ({ name: p.name, src: p.logo_url, style: "font-semibold" }))
+    : brand.partners;
   // Courses with upcoming live sessions get a compact "Upcoming live workshops" section
   const liveSlugs = all.filter((c) => c.liveSessions.some((t) => sessionNotOver(t, 180))).map((c) => c.slug);
   const live = (await Promise.all(liveSlugs.map((slug) => getCourse(slug)))).filter((c) => c !== null);
@@ -43,7 +48,7 @@ export default async function HomePage() {
           <p className="text-center text-base font-medium tracking-wide text-ink">INDUSTRY EXPERTS</p>
           <div className="fc-marquee mx-auto mt-10 max-w-[1040px] overflow-hidden">
             <div className="fc-marquee-track items-center gap-20">
-              {[0, 1, 2, 3].flatMap((k) => brand.partners.map((p) => p.src ? (
+              {[0, 1, 2, 3].flatMap((k) => partners.map((p) => p.src ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img key={`${k}-${p.name}`} src={p.src} alt={k === 0 ? p.name : ""} aria-hidden={k > 0} className="h-6 w-auto shrink-0 md:h-7" />
               ) : (
