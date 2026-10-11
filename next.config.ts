@@ -22,7 +22,9 @@ const nextConfig: NextConfig = {
       { source: "/account/orders", destination: "/dashboard/purchases", permanent: true },
       { source: "/account/:path*", destination: "/dashboard/settings", permanent: true },
       { source: "/users/edit", destination: "/dashboard/settings", permanent: true },
-      { source: "/users/password/:path*", destination: "/users/password", permanent: true },
+      // old Thinkific reset links (and our earlier URL) go to the reset page
+      { source: "/users/password", destination: "/users/reset-password", permanent: false },
+      { source: "/users/password/:path+", destination: "/users/reset-password", permanent: false },
       { source: "/users/sign_out", destination: "/", permanent: false },
       // old checkout links (/order?ct=…) go to the catalogue; prices and gateways changed
       { source: "/order", destination: "/pages/paid-courses", permanent: false },

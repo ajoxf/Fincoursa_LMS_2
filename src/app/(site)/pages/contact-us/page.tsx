@@ -9,8 +9,8 @@ const bookingUrl = process.env.NEXT_PUBLIC_BOOKING_URL;
 export default function ContactPage() {
   return (
     <section className="bg-surface">
-      <div className="fc-container grid gap-10 py-24 lg:grid-cols-2">
-        <div className="flex min-h-[634px] flex-col rounded-3xl bg-black p-8 text-white">
+      <div className="fc-container grid gap-6 py-10 lg:grid-cols-2 lg:gap-10 lg:py-24">
+        <div className={`flex flex-col rounded-3xl bg-black p-8 text-white ${bookingUrl ? "min-h-[634px]" : "lg:min-h-[634px]"}`}>
           <span className="fc-pill fc-pill-dark self-start">Contact us</span>
           <h1 className="fc-h2 mt-4">Book a call with a <span className="text-accent">Program Advisor.</span></h1>
           {bookingUrl && <iframe src={bookingUrl} title="Book a call" className="mt-6 w-full flex-1 rounded-xl bg-white" />}

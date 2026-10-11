@@ -5,12 +5,12 @@ export function BarList({ rows, format = (n) => String(n), empty = "No data yet"
   if (!rows.length) return <p className="py-6 text-center text-sm text-muted">{empty}</p>;
   const max = Math.max(1, ...rows.map((r) => r.value));
   return (
-    <ul className="grid gap-3">
+    <ul className="grid grid-cols-[minmax(0,1fr)] gap-3">
       {rows.map((r) => (
         <li key={r.label}>
           <div className="flex justify-between gap-3 text-sm">
             <span className="min-w-0 truncate">{r.label}</span>
-            <span className="shrink-0 tabular-nums font-medium">{format(r.value)}{r.sub && <span className="ml-2 font-normal text-muted">{r.sub}</span>}</span>
+            <span className="shrink-0 text-right tabular-nums font-medium">{format(r.value)}{r.sub && <span className="block font-normal text-muted sm:ml-2 sm:inline">{r.sub}</span>}</span>
           </div>
           <div className="mt-1 h-2 rounded-full bg-surface">
             <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.max(1, (r.value / max) * 100)}%` }} />

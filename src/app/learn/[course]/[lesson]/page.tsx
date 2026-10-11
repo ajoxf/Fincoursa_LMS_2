@@ -117,7 +117,7 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
         </Link>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 p-4 lg:flex-row">
+      <div className="flex flex-1 flex-col gap-3 p-2 sm:gap-4 sm:p-4 lg:flex-row">
         {!focus && (
           <aside className="w-full shrink-0 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-[368px] lg:overflow-y-auto">
             <div className="rounded bg-white p-4 shadow-[0_1px_4px_rgba(0,0,0,.12)]">
@@ -129,7 +129,8 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
           </aside>
         )}
 
-        <main className="flex min-w-0 flex-1 flex-col rounded bg-white shadow-[0_1px_4px_rgba(0,0,0,.12)]">
+        {/* on phones the lesson comes first, the course contents below it */}
+        <main className="order-first flex min-w-0 flex-1 flex-col rounded bg-white shadow-[0_1px_4px_rgba(0,0,0,.12)] lg:order-none">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <h2 className="text-[15px] font-semibold text-ink/90">{lesson.title}</h2>
             <Link href={`/learn/${slug}/${lessonId}${focus ? "" : "?focus=1"}`} aria-label={focus ? "Show course contents" : "Hide course contents"} className="p-1 text-ink hover:opacity-70">

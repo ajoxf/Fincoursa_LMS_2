@@ -81,7 +81,7 @@ function Step({ kind, title, hint }: { kind: Kind; title: string; hint: string }
         <span className="text-xs text-muted">{hint}</span>
       </div>
       <label className="flex flex-wrap items-center gap-3 text-sm">
-        <input type="file" accept=".csv,text/csv" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
+        <input type="file" accept=".csv,text/csv" className="block w-full max-w-full text-sm" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
         {data && <span className="text-muted">{data.file}: {data.rows.length.toLocaleString()} rows</span>}
       </label>
 

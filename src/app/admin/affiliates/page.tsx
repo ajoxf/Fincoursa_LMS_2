@@ -91,7 +91,7 @@ export default async function AdminAffiliates() {
                   </div>
                   <label className="grid gap-1 text-xs font-medium">Override % the master IB earns on this partner&apos;s sales
                     <input name="override_pct" type="number" min={0} max={100} step="0.5" defaultValue={a.override_pct} className="fc-input w-28 !py-1.5" /></label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button formAction={setAffiliateStatus.bind(null, a.id, "approved")} className="fc-btn fc-btn-primary !px-4 !py-2 text-sm">{a.status === "approved" ? "Save" : "Approve"}</button>
                     {a.status !== "suspended" && <button formAction={setAffiliateStatus.bind(null, a.id, "suspended")} className="fc-btn fc-btn-outline !px-4 !py-2 text-sm text-danger">Suspend</button>}
                   </div>

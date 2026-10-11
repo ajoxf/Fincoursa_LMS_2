@@ -27,6 +27,11 @@
   html { -webkit-text-size-adjust: 100%; }
   body { background: var(--fc-bg); color: var(--fc-text); font-family: var(--fc-font-body); }
   h1, h2, h3, h4 { font-family: var(--fc-font-heading); }
+  /* Single-column grids never grow wider than the screen because of long unbreakable content
+     (truncated names, URLs). grid-cols-* utilities still override this. */
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  /* long words, emails and links wrap instead of pushing the page sideways */
+  h1, h2, h3, p, dd { overflow-wrap: anywhere; }
 }
 
 @layer components {
@@ -50,7 +55,7 @@
   .fc-chip-lime { background: var(--fc-accent); border-color: var(--fc-accent); color: var(--fc-accent-contrast); }
 
   .fc-btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border-radius: var(--fc-radius-button);
-            padding: .85rem 1.75rem; min-width: 10rem; font-weight: 500; font-size: .95rem; line-height: 1.2;
+            padding: .85rem 1.75rem; min-width: 10rem; max-width: 100%; font-weight: 500; font-size: .95rem; line-height: 1.2;
             border: 1.5px solid transparent; transition: opacity .15s, background .15s, color .15s; }
   .fc-btn-lg { min-width: 210px; padding: 1.05rem 1.75rem; font-size: 1rem; font-weight: 600; }
   .fc-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -66,6 +71,10 @@
   .fc-card { background: var(--fc-bg); border: 1px solid var(--fc-border); border-radius: var(--fc-radius); }
   .fc-input { width: 100%; border: 1px solid var(--fc-border); border-radius: 8px; padding: .65rem .8rem; background: var(--fc-bg); color: var(--fc-text); }
   .fc-input:focus { outline: 2px solid var(--fc-accent); outline-offset: 1px; }
+  /* Phones zoom into form fields smaller than 16px; keep them at 16px on small screens */
+  @media (max-width: 767px) {
+    input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea { font-size: 16px !important; }
+  }
 
   /* Logo strip: slow continuous scroll, faded at both edges */
   .fc-marquee { mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }

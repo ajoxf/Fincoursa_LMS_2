@@ -23,7 +23,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/users/sig
         ]} />
       </div>
       <div className="mt-6 flex justify-between text-sm">
-        <Link href="/users/password" className="text-muted hover:underline">Forgot password?</Link>
+        <Link href="/users/reset-password" className="text-muted hover:underline">Forgot password?</Link>
         <Link href={`/users/sign_up${nextStr ? `?next=${encodeURIComponent(nextStr)}` : ""}`} className="font-semibold text-primary hover:underline">Create an account</Link>
       </div>
     </section>

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { DashNav } from "./DashNav";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { SiteHeader } from "@/components/site/SiteHeader";
 
@@ -37,20 +37,9 @@ export async function DashShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <SiteHeader />
-      <div className="fc-container grid flex-1 gap-8 py-8 lg:grid-cols-[220px_1fr]">
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <p className="truncate text-sm font-semibold">{user.fullName || user.email}</p>
-          <nav className="mt-4 flex gap-6 overflow-x-auto text-sm lg:flex-col lg:gap-5 lg:overflow-visible">
-            {navFor(user).map((g) => (
-              <div key={g.title} className="shrink-0">
-                <p className="mb-1 text-xs uppercase tracking-wide text-muted">{g.title}</p>
-                <div className="flex gap-3 lg:flex-col lg:gap-1">
-                  {g.items.map((i) => <Link key={i.href} href={i.href} className="whitespace-nowrap rounded-md py-1 text-ink/85 hover:text-ink hover:underline lg:px-2 lg:hover:bg-surface lg:hover:no-underline">{i.label}</Link>)}
-                </div>
-              </div>
-            ))}
-            <form action="/auth/sign-out" method="post"><button className="text-muted hover:underline lg:px-2">Sign out</button></form>
-          </nav>
+      <div className="fc-container grid flex-1 content-start gap-6 py-6 lg:grid-cols-[220px_1fr] lg:gap-8 lg:py-8">
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+          <DashNav name={user.fullName || user.email || "My account"} groups={navFor(user)} />
         </aside>
         <div className="min-w-0">{children}</div>
       </div>
