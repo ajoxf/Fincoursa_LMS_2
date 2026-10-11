@@ -45,7 +45,7 @@ export function VideoLesson({ lessonId, courseId, playbackId, tokens, startAt, t
   }, [flush]);
 
   return (
-    <div className="relative overflow-hidden rounded-card bg-black">
+    <div className="relative overflow-hidden bg-black">
       <MuxPlayer
         playbackId={playbackId}
         tokens={{ playback: tokens["playback-token"], thumbnail: tokens["thumbnail-token"], storyboard: tokens["storyboard-token"] }}

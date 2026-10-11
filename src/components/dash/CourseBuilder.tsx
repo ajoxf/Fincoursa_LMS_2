@@ -18,8 +18,20 @@ export type BuilderChapter = { id: string; title: string; position: number; less
 
 const TYPES = [
   { id: "video", label: "Video" }, { id: "text", label: "Text" }, { id: "pdf", label: "PDF" },
-  { id: "download", label: "Download" }, { id: "quiz", label: "Quiz" },
+  { id: "quiz", label: "Quiz" }, { id: "audio", label: "Audio" }, { id: "download", label: "Download" },
 ];
+
+function TypeIcon({ type }: { type: string }) {
+  const p = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
+  switch (type) {
+    case "video": return <svg {...p}><rect x="2.5" y="6" width="13" height="12" rx="1.5" /><path d="m15.5 10.5 6-3v9l-6-3" /></svg>;
+    case "text": return <svg {...p}><path d="M6 2.5h8l4 4v15H6z" /><path d="M14 2.5v4h4M9 12h6M9 15.5h6" /></svg>;
+    case "pdf": return <svg {...p}><path d="M6 2.5h8l4 4v8M6 2.5v8" /><text x="5" y="21" fontSize="7" fontWeight="700" fill="currentColor" stroke="none">PDF</text></svg>;
+    case "quiz": return <svg {...p}><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17M10 6h11M10 12h11M10 18h11" /></svg>;
+    case "audio": return <svg {...p}><rect x="9" y="2.5" width="6" height="12" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v4" /></svg>;
+    default: return <svg {...p}><path d="M12 3v12M7 10l5 5 5-5M4 20h16" /></svg>;
+  }
+}
 const byPos = <T extends { position: number }>(a: T[]) => [...a].sort((x, y) => x.position - y.position);
 
 export function CourseBuilder({ courseId, chapters }: { courseId: string; chapters: BuilderChapter[] }) {
@@ -81,14 +93,43 @@ function IconBtn({ children, label, disabled, onClick }: { children: React.React
 }
 
 function AddLesson({ onAdd }: { onAdd: (title: string, type: string) => void }) {
+  // Thinkific-style: "+ Add lesson" opens a grid of lesson types; pick one, name it, add.
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState<string | null>(null);
   const [title, setTitle] = useState("");
-  const [type, setType] = useState("video");
+  const close = () => { setOpen(false); setType(null); setTitle(""); };
+  if (!open) {
+    return (
+      <div className="border-t border-line p-2">
+        <button type="button" onClick={() => setOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-md py-2 text-sm font-medium hover:bg-surface">
+          <span aria-hidden className="text-lg leading-none">+</span> Add lesson
+        </button>
+      </div>
+    );
+  }
   return (
-    <form className="flex flex-wrap gap-2 border-t border-line p-3" onSubmit={(e) => { e.preventDefault(); onAdd(title, type); setTitle(""); }}>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New lesson title" className="fc-input min-w-48 flex-1" />
-      <select value={type} onChange={(e) => setType(e.target.value)} className="fc-input w-auto">{TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
-      <button className="fc-btn fc-btn-outline">Add lesson</button>
-    </form>
+    <div className="border-t border-line p-4">
+      <div className="flex items-center justify-between">
+        <p className="font-semibold">{type ? `New ${TYPES.find((t) => t.id === type)?.label.toLowerCase()} lesson` : "Lessons"}</p>
+        <button type="button" aria-label="Close" onClick={close} className="h-8 w-8 rounded-md border border-line text-lg leading-none">×</button>
+      </div>
+      {!type ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          {TYPES.map((t) => (
+            <button key={t.id} type="button" onClick={() => setType(t.id)}
+              className="flex items-center gap-4 rounded-lg border border-line px-5 py-5 text-left font-medium hover:border-ink">
+              <TypeIcon type={t.id} />{t.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <form className="mt-3 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (!title.trim()) return; onAdd(title, type); close(); }}>
+          <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Lesson title" className="fc-input min-w-48 flex-1" />
+          <button type="button" onClick={() => setType(null)} className="fc-btn fc-btn-outline !min-w-0">Back</button>
+          <button className="fc-btn fc-btn-dark !min-w-0">Add lesson</button>
+        </form>
+      )}
+    </div>
   );
 }
 
@@ -99,7 +140,7 @@ function statusOf(l: BuilderLesson) {
     return s === "ready" ? { t: "Video ready", ok: true } : s ? { t: s === "errored" ? "Video failed" : "Processing…", ok: false } : { t: "No video", ok: false };
   }
   if (l.type === "quiz") return (b.questions?.length ?? 0) > 0 ? { t: `${b.questions!.length} questions`, ok: true } : { t: "No questions", ok: false };
-  if (l.type === "pdf" || l.type === "download") return (b.files?.length ?? 0) > 0 ? { t: `${b.files!.length} file(s)`, ok: true } : { t: "No file", ok: false };
+  if (l.type === "pdf" || l.type === "download" || l.type === "audio") return (b.files?.length ?? 0) > 0 ? { t: `${b.files!.length} file(s)`, ok: true } : { t: "No file", ok: false };
   return b.text ? { t: "Has content", ok: true } : { t: "Empty", ok: false };
 }
 
@@ -188,7 +229,7 @@ function LessonEditor({ courseId, lesson, onClose }: { courseId: string; lesson:
         </div>
       )}
 
-      {(type === "pdf" || type === "download") && (
+      {(type === "pdf" || type === "download" || type === "audio") && (
         <div className="grid gap-2">
           <p className="text-sm font-medium">Files students can download</p>
           {files.length > 0 && (
@@ -201,7 +242,7 @@ function LessonEditor({ courseId, lesson, onClose }: { courseId: string; lesson:
               ))}
             </ul>
           )}
-          <FileUpload bucket="course-files" courseId={courseId} label="Upload a file" accept={type === "pdf" ? "application/pdf" : undefined}
+          <FileUpload bucket="course-files" courseId={courseId} label="Upload a file" accept={type === "pdf" ? "application/pdf" : type === "audio" ? "audio/*" : undefined}
             onUploaded={(f) => setFiles((cur) => [...cur, { name: f.name, path: f.path }])} />
           <p className="text-xs text-muted">Files are private: enrolled students get a link that expires after an hour. Remember to save the lesson.</p>
         </div>

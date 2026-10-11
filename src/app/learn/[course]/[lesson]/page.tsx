@@ -8,8 +8,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { signPlayback } from "@/lib/mux";
+import { brand } from "@/components/site/brand";
 import { VideoLesson } from "@/components/player/VideoLesson";
 import { CompleteButton } from "@/components/player/CompleteButton";
+import { CurriculumNav, type NavChapter } from "@/components/player/CurriculumNav";
 import { QuizLesson, type QuizQuestion } from "@/components/player/QuizLesson";
 
 export const metadata: Metadata = { robots: { index: false } };
@@ -21,8 +23,9 @@ type Body = {
   questions?: (QuizQuestion & { correct?: string })[];
 };
 
-export default async function LessonPage({ params }: PageProps<"/learn/[course]/[lesson]">) {
+export default async function LessonPage({ params, searchParams }: PageProps<"/learn/[course]/[lesson]">) {
   const { course: slug, lesson: lessonId } = await params;
+  const focus = (await searchParams).focus === "1";
   if (!isSupabaseConfigured) redirect(`/courses/${slug}`);
   const course = await getCourse(slug);
   if (!course) notFound();
@@ -39,6 +42,7 @@ export default async function LessonPage({ params }: PageProps<"/learn/[course]/
     if (!user) redirect(`/users/sign_in?next=/learn/${slug}/${lessonId}`);
     if (!enrollment) redirect(`/courses/${slug}`);
   }
+  const previewing = !enrollment && Boolean(user && (user.roles.includes("admin") || user.roles.includes("instructor")));
 
   const [{ data: full }, { data: body }, { data: progressRows }] = await Promise.all([
     supabase.from("lessons").select("id, type, video_asset_id, drip_days").eq("id", lessonId).single(),
@@ -68,49 +72,61 @@ export default async function LessonPage({ params }: PageProps<"/learn/[course]/
       }))
     : [];
 
-  const prev = lessons[idx - 1];
   const next = lessons[idx + 1];
+  const nextHref = next ? `/learn/${slug}/${next.id}${focus ? "?focus=1" : ""}` : null;
   const tracking = Boolean(enrollment);
+  const done = Boolean(progress.get(lessonId)?.completed_at);
+  const autoCompletes = full?.type === "video" || full?.type === "quiz";
+  const pct = enrollment ? Math.round(Number(enrollment.progress_pct)) : 0;
+
+  const chapters: NavChapter[] = course.chapters.map((ch) => ({
+    id: ch.id, title: ch.title,
+    lessons: ch.lessons.map((l) => ({ id: l.id, title: l.title, type: l.type, duration_seconds: l.duration_seconds, done: Boolean(progress.get(l.id)?.completed_at), locked: false })),
+  }));
+
+  const expandIcon = focus
+    ? <path d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4" />
+    : <path d="M10 2h4v4M14 2 9 7M6 14H2v-4M2 14l5-5" />;
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface lg:flex-row">
-      <aside className="border-b border-line bg-bg lg:sticky lg:top-0 lg:h-screen lg:w-80 lg:overflow-y-auto lg:border-b-0 lg:border-r">
-        <div className="border-b border-line p-5">
-          <Link href={enrollment ? "/dashboard" : `/courses/${slug}`} className="text-sm text-muted hover:underline">← {enrollment ? "My courses" : "Course page"}</Link>
-          <h1 className="mt-2 font-semibold text-primary">{course.title}</h1>
-          {enrollment && (
-            <div className="mt-3">
-              <div className="h-2 rounded-full bg-surface"><div className="h-2 rounded-full bg-accent" style={{ width: `${enrollment.progress_pct}%` }} /></div>
-              <p className="mt-1 text-xs text-muted">{Math.round(Number(enrollment.progress_pct))}% complete</p>
-            </div>
-          )}
-        </div>
-        <nav className="p-3">
-          {course.chapters.map((ch) => (
-            <div key={ch.id} className="mb-3">
-              <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted">{ch.title}</p>
-              {ch.lessons.map((l) => {
-                const done = progress.get(l.id)?.completed_at;
-                return (
-                  <Link key={l.id} href={`/learn/${slug}/${l.id}`}
-                    className={`flex items-center gap-2 rounded-md px-2 py-2 text-sm ${l.id === lessonId ? "bg-surface font-semibold" : "hover:bg-surface"}`}>
-                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] ${done ? "border-success bg-success text-white" : "border-line"}`}>{done ? "✓" : ""}</span>
-                    <span className="line-clamp-2">{l.title}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-      </aside>
+    <div className="flex min-h-screen flex-col bg-surface">
+      {previewing && (
+        <div className="bg-[#04192f] px-4 py-3 text-[15px] text-white">You are previewing <b>all course lessons</b></div>
+      )}
+      <header className="relative flex h-16 items-center justify-center bg-[#141414] px-4 text-white">
+        <Link href={enrollment ? "/dashboard" : "/"} className="absolute left-4 flex items-center gap-3 text-sm md:left-8">
+          <svg width="10" height="14" viewBox="0 0 10 14" aria-hidden><path d="M7.5 2 2.5 7l5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <span className="hidden sm:inline">Go to Home</span>
+        </Link>
+        <Link href="/" aria-label={brand.name}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={brand.logoFooter} alt={brand.name} className="h-7 w-auto md:h-8" />
+        </Link>
+      </header>
 
-      <main className="flex-1 p-4 md:p-8">
-        <div className="mx-auto max-w-4xl">
-          <h2 className="text-2xl font-bold text-primary">{lesson.title}</h2>
+      <div className="flex flex-1 flex-col gap-4 p-4 lg:flex-row">
+        {!focus && (
+          <aside className="w-full shrink-0 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-[368px] lg:overflow-y-auto">
+            <div className="rounded bg-white p-4 shadow-[0_1px_4px_rgba(0,0,0,.12)]">
+              <h1 className="text-[28px] font-medium leading-snug text-ink/90">{course.title}</h1>
+              <div className="mt-5 h-1 rounded-full bg-[#d4d6db]"><div className="h-1 rounded-full bg-ink" style={{ width: `${pct}%` }} /></div>
+              <p className="mt-3 text-[15px] text-ink/90"><b>{pct}%</b> complete</p>
+            </div>
+            <div className="mt-4"><CurriculumNav slug={slug} chapters={chapters} currentId={lessonId} /></div>
+          </aside>
+        )}
 
-          <div className="mt-6">
+        <main className="flex min-w-0 flex-1 flex-col rounded bg-white shadow-[0_1px_4px_rgba(0,0,0,.12)]">
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <h2 className="text-[15px] font-semibold text-ink/90">{lesson.title}</h2>
+            <Link href={`/learn/${slug}/${lessonId}${focus ? "" : "?focus=1"}`} aria-label={focus ? "Show course contents" : "Hide course contents"} className="p-1 text-ink hover:opacity-70">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>{expandIcon}</svg>
+            </Link>
+          </div>
+
+          <div className="flex-1">
             {!unlocked ? (
-              <div className="fc-card p-8 text-center">
+              <div className="p-16 text-center">
                 <p className="font-semibold">This lesson unlocks {full?.drip_days ? `${full.drip_days} days after you enrolled` : "soon"}.</p>
               </div>
             ) : full?.type === "video" ? (
@@ -119,32 +135,46 @@ export default async function LessonPage({ params }: PageProps<"/learn/[course]/
                   startAt={progress.get(lessonId)?.last_position_seconds ?? 0} track={tracking}
                   watermark={user?.email ?? undefined} title={lesson.title} viewerId={user?.id} />
               ) : (
-                <div className="fc-card flex aspect-video items-center justify-center text-muted">{full.video_asset_id ? "Video is processing — check back shortly." : "The video for this lesson is coming soon."}</div>
+                <div className="flex aspect-video items-center justify-center bg-surface text-muted">{full.video_asset_id ? "Video is processing. Check back shortly." : "The video for this lesson is coming soon."}</div>
               )
             ) : full?.type === "quiz" ? (
-              <QuizLesson lessonId={lessonId} courseId={course.id} passPct={b.pass_pct ?? 70}
-                // never send correct answers to the browser
-                questions={(b.questions ?? []).map((q) => ({ id: q.id, prompt: q.prompt, options: q.options }))} canSubmit={tracking} />
+              <div className="mx-auto max-w-[680px] px-4 py-10">
+                <QuizLesson lessonId={lessonId} courseId={course.id} passPct={b.pass_pct ?? 70}
+                  // never send correct answers to the browser
+                  questions={(b.questions ?? []).map((q) => ({ id: q.id, prompt: q.prompt, options: q.options }))} canSubmit={tracking} />
+              </div>
+            ) : full?.type === "audio" && files[0] ? (
+              <div className="mx-auto max-w-[680px] px-4 pt-12">
+                <audio controls preload="metadata" src={files[0].url} className="w-full" controlsList="nodownload" />
+              </div>
             ) : null}
 
-            {unlocked && b.text && <div className="fc-card mt-6 whitespace-pre-line p-6 leading-relaxed">{b.text}</div>}
-            {files.length > 0 && (
-              <ul className="fc-card mt-6 divide-y divide-line">
-                {files.map((f) => <li key={f.name}><a href={f.url} className="block p-4 font-medium text-primary hover:underline">⬇ {f.name}</a></li>)}
-              </ul>
+            {unlocked && b.text && (
+              <div className="mx-auto max-w-[680px] whitespace-pre-line px-4 py-12 text-[15px] leading-relaxed text-ink/90">{b.text}</div>
             )}
-            {unlocked && tracking && full && !["video", "quiz"].includes(full.type) && (
-              <div className="mt-6"><CompleteButton lessonId={lessonId} courseId={course.id} done={Boolean(progress.get(lessonId)?.completed_at)} /></div>
+            {files.length > 0 && full?.type !== "audio" && (
+              <ul className="mx-auto mb-12 max-w-[680px] divide-y divide-line rounded border border-line">
+                {files.map((f) => (
+                  <li key={f.name}>
+                    <a href={f.url} className="flex items-center gap-3 p-4 text-[15px] font-medium text-ink hover:bg-surface">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 13.5h11" /></svg>
+                      {f.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
-          <div className="mt-10 flex justify-between gap-4">
-            {prev ? <Link href={`/learn/${slug}/${prev.id}`} className="fc-btn fc-btn-outline">← Previous</Link> : <span />}
-            {next ? <Link href={`/learn/${slug}/${next.id}`} className="fc-btn fc-btn-dark">Next lesson →</Link>
-              : enrollment && <Link href="/dashboard" className="fc-btn fc-btn-primary">Finish</Link>}
+          <div className="flex flex-col items-center gap-2 border-t border-line px-4 py-4">
+            {autoCompletes && tracking && !done && full?.type === "video" && (
+              <p className="text-xs text-muted">Watch the video to complete this lesson.</p>
+            )}
+            <CompleteButton lessonId={lessonId} courseId={course.id} nextHref={nextHref}
+              mode={tracking && unlocked && !done && !autoCompletes ? "complete" : "continue"} />
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

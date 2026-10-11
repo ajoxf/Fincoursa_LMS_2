@@ -22,16 +22,19 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
   const { id } = await params;
   await requireRole(["admin"], `/admin/courses/${id}`);
   const db = createAdminClient();
-  const [{ data: course }, { data: categories }, { data: instructors }, chapters, { count: students }] = await Promise.all([
+  const [{ data: course }, { data: categories }, { data: instructors }, chapters, { data: enrolled }] = await Promise.all([
     db.from("courses").select("*, prices(*), course_instructors(instructor_id, is_primary, revenue_share_pct, instructor:instructors(name, default_revenue_share_pct))").eq("id", id).maybeSingle(),
     db.from("categories").select("id, name").order("sort_order"),
     db.from("instructors").select("id, name").order("sort_order"),
     getCurriculum(id),
-    db.from("enrollments").select("id", { count: "exact", head: true }).eq("course_id", id).is("revoked_at", null),
+    db.from("enrollments").select("progress_pct, completed_at").eq("course_id", id).is("revoked_at", null),
   ]);
   if (!course) notFound();
   const prices = (course.prices ?? []).filter((p: { is_active: boolean }) => p.is_active);
   const lessons = chapters.reduce((n, c) => n + c.lessons.length, 0);
+  const students = enrolled?.length ?? 0;
+  const completionRate = students ? Math.round((enrolled!.filter((e) => e.completed_at).length / students) * 100) : 0;
+  const avgProgress = students ? Math.round(enrolled!.reduce((n, e) => n + Number(e.progress_pct), 0) / students) : 0;
   const statusStyle: Record<string, string> = { draft: "bg-warning/15 text-warning", published: "bg-success/15 text-success", archived: "bg-line text-muted" };
 
   return (
@@ -48,10 +51,17 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
           </p>
         </div>
         <form className="flex flex-wrap gap-2">
+          <Link href={`/learn/${course.slug}`} className="fc-btn fc-btn-outline !min-w-0">Preview</Link>
           {course.status !== "published" && <button formAction={setCourseStatus.bind(null, id, "published")} className="fc-btn fc-btn-primary">Publish</button>}
           {course.status === "published" && <button formAction={setCourseStatus.bind(null, id, "draft")} className="fc-btn fc-btn-outline">Unpublish</button>}
           {course.status !== "archived" && <button formAction={setCourseStatus.bind(null, id, "archived")} className="fc-btn fc-btn-outline">Archive</button>}
         </form>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[[String(students), "Enrollments"], [`${completionRate}%`, "Completion rate"], [`${avgProgress}%`, "Average progress"]].map(([v, l]) => (
+          <div key={l} className="fc-card p-6"><p className="text-3xl tabular-nums text-ink">{v}</p><p className="mt-2 text-lg font-medium text-ink">{l}</p></div>
+        ))}
       </div>
 
       <Card title="1 · Course details">
