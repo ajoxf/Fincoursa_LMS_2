@@ -65,3 +65,53 @@ export async function sendInviteBatch(size = 25): Promise<{ sent: number; remain
   return { sent, remaining: Math.max(0, (await pendingInviteIds(100000)).length) };
 }
 
+
+export type ImageCopyResult = { copied: number; failed: { url: string; reason: string }[]; remaining: number };
+
+/**
+ * Copies images still hosted on Thinkific's CDN (instructor photos and logos, course and bundle images)
+ * into our own public storage and points the records at the copies. Safe to run repeatedly.
+ */
+export async function copyThinkificImages(): Promise<ImageCopyResult> {
+  await requireRole(["admin"]);
+  const db = createAdminClient();
+  const isTk = (u: string | null) => Boolean(u && /^https:\/\/([a-z0-9-]+\.)*thinkific\.com\//i.test(u));
+  const [{ data: ins }, { data: courses }, { data: bundles }] = await Promise.all([
+    db.from("instructors").select("id, photo_url, org_logo_url"),
+    db.from("courses").select("id, thumbnail_url"),
+    db.from("bundles").select("id, thumbnail_url"),
+  ]);
+  type Job = { table: "instructors" | "courses" | "bundles"; id: string; col: string; url: string };
+  const jobs: Job[] = [
+    ...(ins ?? []).flatMap((r) => [
+      ...(isTk(r.photo_url) ? [{ table: "instructors" as const, id: r.id, col: "photo_url", url: r.photo_url! }] : []),
+      ...(isTk(r.org_logo_url) ? [{ table: "instructors" as const, id: r.id, col: "org_logo_url", url: r.org_logo_url! }] : []),
+    ]),
+    ...(courses ?? []).filter((r) => isTk(r.thumbnail_url)).map((r) => ({ table: "courses" as const, id: r.id, col: "thumbnail_url", url: r.thumbnail_url! })),
+    ...(bundles ?? []).filter((r) => isTk(r.thumbnail_url)).map((r) => ({ table: "bundles" as const, id: r.id, col: "thumbnail_url", url: r.thumbnail_url! })),
+  ];
+  const done = new Map<string, string>(); // same image used twice -> one copy
+  const failed: ImageCopyResult["failed"] = [];
+  let copied = 0;
+  for (const j of jobs.slice(0, 40)) {
+    try {
+      let publicUrl = done.get(j.url);
+      if (!publicUrl) {
+        const res = await fetch(j.url, { headers: { Referer: "https://fincoursa.com/", "User-Agent": "Mozilla/5.0 (FinCoursa image migration)" } });
+        const type = (res.headers.get("content-type") ?? "").split(";")[0];
+        if (!res.ok || !type.startsWith("image/")) throw new Error(`Thinkific returned ${res.status}${type ? ` (${type})` : ""}`);
+        const name = (j.url.split("/").pop() ?? "image").toLowerCase().replace(/[^a-z0-9._-]+/g, "-").slice(-80);
+        const path = `migrated/${name}`;
+        const { error } = await db.storage.from("course-images").upload(path, await res.arrayBuffer(), { contentType: type, upsert: true });
+        if (error) throw new Error(error.message);
+        publicUrl = db.storage.from("course-images").getPublicUrl(path).data.publicUrl;
+        done.set(j.url, publicUrl);
+      }
+      await db.from(j.table).update({ [j.col]: publicUrl }).eq("id", j.id);
+      copied++;
+    } catch (e) {
+      failed.push({ url: j.url, reason: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return { copied, failed, remaining: Math.max(0, jobs.length - 40) };
+}

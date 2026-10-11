@@ -1,4 +1,5 @@
 "use client";
+import { assetUrl } from "@/lib/assets";
 import { useState } from "react";
 import MuxPlayer from "@mux/mux-player-react";
 import { brand } from "./brand";
@@ -21,7 +22,7 @@ export function IntroVideo() {
   return (
     <div className="relative aspect-[1080/608] overflow-hidden rounded-xl bg-[#1a1410]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <img src={assetUrl(poster)} alt="" className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-black/35" />
       {playbackId && (
         <button onClick={() => setPlaying(true)} aria-label="Watch intro video"

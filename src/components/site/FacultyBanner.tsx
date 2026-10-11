@@ -1,3 +1,4 @@
+import { assetUrl } from "@/lib/assets";
 import Link from "next/link";
 import type { Instructor } from "@/lib/catalog";
 
@@ -7,7 +8,7 @@ export function FacultyBanner({ person }: { person: Instructor }) {
     <div className="relative overflow-hidden rounded-2xl bg-[#14100c]">
       {person.photo_url && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={person.photo_url} alt="" className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" />
+        <img src={assetUrl(person.photo_url)} alt="" className="absolute inset-0 h-full w-full object-cover object-[50%_20%]" />
       )}
       <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
       <div className="relative px-8 pb-24 pt-24 text-white md:pt-[100px]">

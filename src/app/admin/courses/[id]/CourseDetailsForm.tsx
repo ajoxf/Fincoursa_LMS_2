@@ -1,4 +1,5 @@
 "use client";
+import { assetUrl } from "@/lib/assets";
 import { useActionState, useState } from "react";
 import { saveCourseDetails, type FormState } from "../actions";
 import { FileUpload } from "@/components/dash/FileUpload";
@@ -25,7 +26,7 @@ export function CourseDetailsForm({ course, categories }: { course: any; categor
           <p className="text-sm font-medium">Thumbnail</p>
           <div className="aspect-video overflow-hidden rounded-card border border-line bg-surface">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {thumb ? <img src={thumb} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-muted">16:9 image, at least 1280×720</div>}
+            {thumb ? <img src={assetUrl(thumb)} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-muted">16:9 image, at least 1280×720</div>}
           </div>
           <input type="hidden" name="thumbnail_url" value={thumb} />
           <FileUpload bucket="course-images" courseId={course.id} accept="image/*" label={thumb ? "Replace image" : "Upload image"}

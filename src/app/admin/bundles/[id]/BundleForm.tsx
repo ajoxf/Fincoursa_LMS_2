@@ -1,4 +1,5 @@
 "use client";
+import { assetUrl } from "@/lib/assets";
 import { useActionState, useState } from "react";
 import { saveBundle, type FormState } from "../actions";
 import { FileUpload } from "@/components/dash/FileUpload";
@@ -22,7 +23,7 @@ export function BundleForm({ bundle, price }: { bundle: any; price: { amount_min
           <p className="text-sm font-medium">Image</p>
           <div className="aspect-video overflow-hidden rounded-card border border-line bg-surface">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {thumb && <img src={thumb} alt="" className="h-full w-full object-cover" />}
+            {thumb && <img src={assetUrl(thumb)} alt="" className="h-full w-full object-cover" />}
           </div>
           <input type="hidden" name="thumbnail_url" value={thumb} />
           <FileUpload bucket="course-images" accept="image/*" label={thumb ? "Replace image" : "Upload image"} onUploaded={(f) => setThumb(f.publicUrl ?? "")} />

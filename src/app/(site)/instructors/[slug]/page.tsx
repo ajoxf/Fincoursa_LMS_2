@@ -1,3 +1,4 @@
+import { assetUrl } from "@/lib/assets";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getInstructor } from "@/lib/catalog";
@@ -22,7 +23,7 @@ export default async function InstructorPage({ params }: PageProps<"/instructors
         <div className="relative h-[640px] md:h-[880px]">
           {person.photo_url && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={person.photo_url} alt="" className="absolute inset-0 h-full w-full object-cover object-[50%_15%]" />
+            <img src={assetUrl(person.photo_url)} alt="" className="absolute inset-0 h-full w-full object-cover object-[50%_15%]" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 via-30% to-transparent to-60%" />
           <div className="fc-container absolute inset-x-0 bottom-16">

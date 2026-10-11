@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth";
 import { ImportWizard } from "./ImportWizard";
+import { CopyImages } from "./CopyImages";
 
 export const metadata: Metadata = { title: "Import from Thinkific" };
 
@@ -17,6 +18,7 @@ export default async function ImportPage() {
         </p>
       </div>
       <ImportWizard />
+      <CopyImages />
     </div>
   );
 }

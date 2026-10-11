@@ -1,4 +1,5 @@
 "use client";
+import { assetUrl } from "@/lib/assets";
 import { useActionState, useState } from "react";
 import { saveInstructor, type FormState } from "../actions";
 import { FileUpload } from "@/components/dash/FileUpload";
@@ -14,14 +15,14 @@ export function InstructorForm({ ins, loginEmail }: { ins: any; loginEmail: stri
         <div className="grid content-start gap-2">
           <div className="aspect-[4/5] overflow-hidden rounded-card bg-surface">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {photo && <img src={photo} alt="" className="h-full w-full object-cover" />}
+            {photo && <img src={assetUrl(photo)} alt="" className="h-full w-full object-cover" />}
           </div>
           <input type="hidden" name="photo_url" value={photo} />
           <FileUpload bucket="course-images" accept="image/*" label={photo ? "Replace photo" : "Upload photo"} onUploaded={(f) => setPhoto(f.publicUrl ?? "")} />
           <p className="mt-2 text-sm font-medium">Company logo (white, for dark cards)</p>
           <div className="flex h-12 items-center justify-center rounded-md bg-surface-dark px-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {logo && <img src={logo} alt="" className="max-h-8" />}
+            {logo && <img src={assetUrl(logo)} alt="" className="max-h-8" />}
           </div>
           <input type="hidden" name="org_logo_url" value={logo} />
           <FileUpload bucket="course-images" accept="image/*" label={logo ? "Replace logo" : "Upload logo"} onUploaded={(f) => setLogo(f.publicUrl ?? "")} />

@@ -13,6 +13,8 @@ export const EMAIL_THEME = {
   logo: "https://import.cdn.thinkific.com/1229196/custom_site_themes/id/K7xJCUqTUCsenKNBD5zw_header-logo.png",
 };
 
+import { absoluteAssetUrl } from "@/lib/assets";
+
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const T = EMAIL_THEME;
 
@@ -26,7 +28,7 @@ function layout(opts: { preheader: string; heading: string; body: Block; cta?: {
 <span style="display:none;max-height:0;overflow:hidden">${esc(opts.preheader)}</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${T.surface};padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden">
-<tr><td style="background:${T.primary};padding:24px 28px"><img src="${T.logo}" alt="FinCoursa Academy" height="28" style="display:block;height:28px;color:#ffffff;font-size:18px;font-weight:700"></td></tr>
+<tr><td style="background:${T.primary};padding:24px 28px"><img src="${absoluteAssetUrl(T.logo, site)}" alt="FinCoursa Academy" height="28" style="display:block;height:28px;color:#ffffff;font-size:18px;font-weight:700"></td></tr>
 <tr><td style="padding:28px">
 <h1 style="margin:0 0 16px;font-size:28px;line-height:1.15;font-weight:400;letter-spacing:-0.5px;color:${T.text}">${esc(opts.heading)}</h1>
 <div style="font-size:15px;line-height:1.6">${opts.body.html}</div>

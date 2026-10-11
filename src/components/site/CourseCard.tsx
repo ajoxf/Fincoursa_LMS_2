@@ -1,3 +1,4 @@
+import { assetUrl } from "@/lib/assets";
 import Link from "next/link";
 import type { CourseCard as Course } from "@/lib/catalog";
 
@@ -17,7 +18,7 @@ export function CourseImage({ course, className = "" }: { course: Course; classN
     <div className={`relative overflow-hidden rounded-xl bg-[#1a1410] ${className}`}>
       {img && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={img} alt="" className="absolute inset-0 h-full w-full object-cover object-[70%_20%]" />
+        <img src={assetUrl(img)} alt="" className="absolute inset-0 h-full w-full object-cover object-[70%_20%]" />
       )}
       <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent" />
       <div className="relative flex h-full flex-col justify-between p-6 md:p-7">

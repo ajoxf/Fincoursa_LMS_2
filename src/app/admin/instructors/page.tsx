@@ -1,3 +1,4 @@
+import { assetUrl } from "@/lib/assets";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
@@ -26,7 +27,7 @@ export default async function AdminInstructors() {
           <Link key={i.id} href={`/admin/instructors/${i.id}`} className="fc-card flex gap-4 p-4 hover:shadow-md">
             <span className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-surface">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {i.photo_url && <img src={i.photo_url} alt="" className="h-full w-full object-cover" />}
+              {i.photo_url && <img src={assetUrl(i.photo_url)} alt="" className="h-full w-full object-cover" />}
             </span>
             <span className="min-w-0 text-sm">
               <span className="block font-semibold">{i.name}</span>
