@@ -16,6 +16,8 @@ import { CurriculumNav, type NavChapter } from "@/components/player/CurriculumNa
 import { QuizLesson, type QuizQuestion } from "@/components/player/QuizLesson";
 import { LiveSession } from "@/components/player/LiveSession";
 import { joinWindow } from "@/lib/format";
+import { announcementsFor } from "@/lib/announcements";
+import { CourseUpdatesBanner } from "@/components/player/CourseUpdates";
 import { env } from "@/lib/env";
 
 export const metadata: Metadata = { robots: { index: false } };
@@ -57,6 +59,8 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
       : Promise.resolve({ data: [] as { lesson_id: string; completed_at: string | null; last_position_seconds: number }[] }),
   ]);
   const progress = new Map((progressRows ?? []).map((p) => [p.lesson_id, p]));
+  // course updates: enrolled students and staff previewing only
+  const updates = enrollment || previewing ? await announcementsFor([course.id], 3) : [];
   const b = (body?.body ?? {}) as Body;
 
   // Video: sign playback only after the access check above
@@ -138,6 +142,7 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
             </Link>
           </div>
 
+          <CourseUpdatesBanner items={updates} name={user?.fullName} />
           <div className="flex-1">
             {!unlocked ? (
               <div className="p-16 text-center">

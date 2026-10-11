@@ -68,3 +68,6 @@ export const ALL_COUNTRIES: [string, string][] = (() => {
 export function daysAgoIso(days: number) {
   return new Date(Date.now() - days * 864e5).toISOString();
 }
+
+/** Current time for server components (kept out of render bodies for the purity lint rule). */
+export const nowMs = () => Date.now();

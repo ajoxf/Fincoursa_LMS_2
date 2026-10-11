@@ -4,6 +4,8 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Stat, Progress } from "@/components/dash/Stat";
 import { formatDate } from "@/lib/format";
+import { announcementsFor } from "@/lib/announcements";
+import { CourseUpdatesList } from "@/components/player/CourseUpdates";
 
 export const metadata: Metadata = { title: "My courses" };
 
@@ -13,7 +15,7 @@ export default async function StudentDashboard({ searchParams }: PageProps<"/das
   const supabase = await createClient();
   const { data: rows } = await supabase
     .from("enrollments")
-    .select("id, progress_pct, completed_at, last_activity_at, expires_at, revoked_at, course:courses(slug, title, thumbnail_url, duration_minutes)")
+    .select("id, course_id, progress_pct, completed_at, last_activity_at, expires_at, revoked_at, course:courses(slug, title, thumbnail_url, duration_minutes)")
     .eq("user_id", user.id)
     .is("revoked_at", null)
     .order("last_activity_at", { ascending: false, nullsFirst: false });
@@ -24,6 +26,7 @@ export default async function StudentDashboard({ searchParams }: PageProps<"/das
   const inProgress = enrollments.filter((e) => !e.completed_at);
   const done = enrollments.filter((e) => e.completed_at);
   const resume = inProgress.find((e) => Number(e.progress_pct) > 0) ?? inProgress[0];
+  const updates = await announcementsFor(enrollments.map((e) => e.course_id), 5);
 
   return (
     <div className="grid gap-8">
@@ -48,6 +51,8 @@ export default async function StudentDashboard({ searchParams }: PageProps<"/das
         <Stat label="Completed" value={done.length} />
         <Stat label="Certificates" value={certs ?? 0} />
       </div>
+
+      <CourseUpdatesList items={updates} name={user.fullName} />
 
       <section>
         <h2 className="text-xl font-semibold text-primary">My courses</h2>

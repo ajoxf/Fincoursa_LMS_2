@@ -20,7 +20,7 @@ const T = EMAIL_THEME;
 type Block = { html: string; text: string };
 type Rendered = { subject: string; html: string; text: string };
 
-function layout(opts: { preheader: string; heading: string; body: Block; cta?: { label: string; url: string }; footer?: string }): Omit<Rendered, "subject"> {
+function layout(opts: { preheader: string; heading: string; body: Block; cta?: { label: string; url: string }; footer?: string; unsubscribeUrl?: string }): Omit<Rendered, "subject"> {
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.fincoursa.com";
   const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(opts.heading)}</title></head>
 <body style="margin:0;background:${T.surface};font-family:${T.font};color:${T.text}">
@@ -34,9 +34,9 @@ function layout(opts: { preheader: string; heading: string; body: Block; cta?: {
 ${opts.cta ? `<p style="margin:28px 0 8px"><a href="${esc(opts.cta.url)}" style="display:inline-block;background:${T.accent};color:${T.accentText};text-decoration:none;font-weight:600;padding:14px 28px;border-radius:8px">${esc(opts.cta.label)}</a></p>
 <p style="margin:0;font-size:12px;color:${T.muted}">Or paste this link into your browser:<br><span style="word-break:break-all">${esc(opts.cta.url)}</span></p>` : ""}
 </td></tr>
-<tr><td style="background:${T.primary};padding:16px 28px;font-size:12px;color:#d1d5db">${opts.footer ? esc(opts.footer) + "<br>" : ""}FinCoursa Academy · <a href="${site}" style="color:#d1d5db">${site.replace(/^https?:\/\//, "")}</a></td></tr>
+<tr><td style="background:${T.primary};padding:16px 28px;font-size:12px;color:#d1d5db">${opts.footer ? esc(opts.footer) + "<br>" : ""}FinCoursa Academy · <a href="${site}" style="color:#d1d5db">${site.replace(/^https?:\/\//, "")}</a>${opts.unsubscribeUrl ? `<br><a href="${esc(opts.unsubscribeUrl)}" style="color:#d1d5db">Unsubscribe from marketing emails</a>` : ""}</td></tr>
 </table></td></tr></table></body></html>`;
-  const text = `${opts.heading}\n\n${opts.body.text}${opts.cta ? `\n\n${opts.cta.label}: ${opts.cta.url}` : ""}\n\n—\nFinCoursa Academy · ${site}${opts.footer ? `\n${opts.footer}` : ""}`;
+  const text = `${opts.heading}\n\n${opts.body.text}${opts.cta ? `\n\n${opts.cta.label}: ${opts.cta.url}` : ""}\n\n—\nFinCoursa Academy · ${site}${opts.footer ? `\n${opts.footer}` : ""}${opts.unsubscribeUrl ? `\nUnsubscribe from marketing emails: ${opts.unsubscribeUrl}` : ""}`;
   return { html, text };
 }
 
@@ -195,6 +195,50 @@ export function migrationInviteEmail(o: { name?: string | null; url: string; cou
       ),
       cta: { label: "Sign in to my courses", url: o.url },
       footer: "You're receiving this because you have a FinCoursa account.",
+    }),
+  };
+}
+
+/** Plain text written by an admin → safe HTML paragraphs; blank lines split paragraphs, links become clickable. */
+function richText(body: string): Block {
+  const paras = body.replace(/\r/g, "").split(/\n{2,}/).map((x) => x.trim()).filter(Boolean);
+  const link = (escaped: string) => escaped.replace(/https?:\/\/[^\s<]+[^\s<.,;:!?)]/g, (u) => `<a href="${u}" style="color:${T.text}">${u}</a>`);
+  return {
+    html: paras.map((x) => `<p style="margin:0 0 12px">${link(esc(x)).replace(/\n/g, "<br>")}</p>`).join(""),
+    text: paras.join("\n\n"),
+  };
+}
+
+/** Announcements, weekly updates and promotions written in the admin. {first_name} is replaced per student. */
+export function messageEmail(o: {
+  subject: string; heading: string; body: string; name?: string | null;
+  cta?: { label: string; url: string } | null; footer?: string; unsubscribeUrl?: string;
+}): Rendered {
+  const personal = (x: string) => x.replace(/\{first_name\}/g, first(o.name));
+  return {
+    subject: personal(o.subject),
+    ...layout({
+      preheader: personal(o.body).replace(/\s+/g, " ").slice(0, 120),
+      heading: personal(o.heading),
+      body: richText(personal(o.body)),
+      cta: o.cta ?? undefined,
+      footer: o.footer,
+      unsubscribeUrl: o.unsubscribeUrl,
+    }),
+  };
+}
+
+export function courseAccessEmail(o: { name?: string | null; course: string; url: string; until?: string | null }): Rendered {
+  return {
+    subject: `You now have access to ${o.course}`,
+    ...layout({
+      preheader: `${o.course} is ready in your FinCoursa account.`,
+      heading: `Hi ${first(o.name)}, your course is ready`,
+      body: join(
+        p(`We've added ${o.course} to your FinCoursa account${o.until ? `. Your access runs until ${o.until}.` : " with lifetime access."}`),
+        p("Sign in and start whenever you like. Your progress is saved as you go."),
+      ),
+      cta: { label: "Start the course", url: o.url },
     }),
   };
 }

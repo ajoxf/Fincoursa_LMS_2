@@ -16,6 +16,7 @@ function navFor(u: SessionUser): { title: string; items: NavItem[] }[] {
   if (u.roles.some((r) => ["admin", "finance", "support"].includes(r))) {
     groups.push({ title: "Admin", items: [
       { href: "/admin", label: "Overview" },
+      { href: "/admin/students", label: "Students" },
       { href: "/admin/orders", label: "Orders & refunds" },
       { href: "/admin/courses", label: "Courses" },
       { href: "/admin/bundles", label: "Bundles" },
@@ -25,6 +26,7 @@ function navFor(u: SessionUser): { title: string; items: NavItem[] }[] {
       { href: "/admin/taxes", label: "Taxes" },
       { href: "/admin/payments", label: "Payment gateways" },
       { href: "/admin/site", label: "Home page & logos" },
+      { href: "/admin/emails", label: "Emails & updates" },
       { href: "/admin/leads", label: "Leads" },
       { href: "/admin/import", label: "Import from Thinkific" },
     ] });

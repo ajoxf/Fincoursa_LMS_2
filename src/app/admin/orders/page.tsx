@@ -12,7 +12,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
   const q = (await searchParams).q;
   const db = createAdminClient();
   let query = db.from("orders")
-    .select("id, number, status, currency, total_minor, refunded_minor, gateway, billing_country, created_at, paid_at, user:profiles(email, full_name), order_items(title), affiliate:affiliates(code)")
+    .select("id, number, status, currency, total_minor, refunded_minor, gateway, billing_country, created_at, paid_at, user_id, user:profiles(email, full_name), order_items(title), affiliate:affiliates(code)")
     .order("created_at", { ascending: false }).limit(100);
   if (typeof q === "string" && /^\d+$/.test(q)) query = query.eq("number", Number(q));
   const { data: orders, error } = await query;
@@ -38,7 +38,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
                 <tr key={o.id} className="border-t border-line align-top">
                   <td className="p-3"><a href={`/api/invoices/${o.id}`} className="underline">{o.number}</a></td>
                   <td className="p-3">{formatDate(o.created_at)}</td>
-                  <td className="p-3">{o.user?.full_name || o.user?.email}</td>
+                  <td className="p-3"><a href={`/admin/students/${o.user_id}`} className="hover:underline">{o.user?.full_name || o.user?.email}</a></td>
                   <td className="p-3">{o.order_items?.map((i: { title: string }) => i.title).join(", ")}</td>
                   <td className="p-3">{o.gateway}{o.billing_country && ` · ${o.billing_country}`}</td>
                   <td className="p-3">{o.affiliate?.code ?? "—"}</td>

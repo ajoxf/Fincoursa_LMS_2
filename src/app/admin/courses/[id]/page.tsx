@@ -10,6 +10,8 @@ import { formatMoney, minorUnitsFactor } from "@/lib/money";
 import { Card } from "@/components/dash/Stat";
 import { CourseBuilder } from "@/components/dash/CourseBuilder";
 import { CourseDetailsForm } from "./CourseDetailsForm";
+import { Announcements } from "./Announcements";
+import { formatDate } from "@/lib/format";
 import { addCourseInstructor, archivePrice, deleteCourse, removeCourseInstructor, savePrice, setCourseStatus } from "../actions";
 
 export const metadata: Metadata = { title: "Edit course" };
@@ -33,6 +35,8 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
     db.from("enrollments").select("progress_pct, completed_at").eq("course_id", id).is("revoked_at", null),
     db.from("courses").select("tags"),
   ]);
+  const { data: news } = await db.from("course_announcements")
+    .select("id, title, body, created_at, campaign:email_campaigns(sent, total, status)").eq("course_id", id).order("created_at", { ascending: false }).limit(20);
   const allTags = Array.from(new Set((tagRows ?? []).flatMap((r: { tags: string[] | null }) => r.tags ?? []))).sort();
   if (!course) notFound();
   const prices = (course.prices ?? []).filter((p: { is_active: boolean }) => p.is_active);
@@ -126,6 +130,15 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
 
       <Card title="4 · Curriculum">
         <CourseBuilder courseId={id} chapters={chapters} />
+      </Card>
+
+      <Card title="5 · Updates to enrolled students">
+        <p className="-mt-2 mb-4 text-sm text-muted">Shown at the top of the course and on each student&apos;s dashboard, and optionally emailed. Use it for new lessons, changed session times, new resources.</p>
+        <Announcements courseId={id} enrolled={students} items={(news ?? []).map((a) => {
+          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+          const c = (Array.isArray(a.campaign) ? a.campaign[0] : a.campaign) as any;
+          return { id: a.id, title: a.title, body: a.body, created_at: formatDate(a.created_at, "long"), emailed: c ? `emailed to ${c.sent} of ${c.total}` : null };
+        })} />
       </Card>
 
       {course.status === "draft" && (

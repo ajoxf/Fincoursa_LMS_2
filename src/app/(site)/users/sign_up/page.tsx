@@ -15,7 +15,7 @@ export default async function SignUpPage({ searchParams }: PageProps<"/users/sig
           { name: "full_name", label: "Full name", required: true, autoComplete: "name" },
           { name: "email", label: "Email", type: "email", required: true, autoComplete: "email" },
           { name: "password", label: "Password", type: "password", required: true, autoComplete: "new-password" },
-        ]} />
+        ]} checks={[{ name: "marketing", label: "Email me about new courses, live workshops and offers. Unsubscribe any time." }]} />
       </div>
       <p className="mt-6 text-sm">Already have an account? <Link href="/users/sign_in" className="font-semibold text-primary hover:underline">Sign In</Link></p>
     </section>

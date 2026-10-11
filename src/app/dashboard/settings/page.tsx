@@ -28,7 +28,7 @@ export default async function SettingsPage() {
         <label className="grid gap-1 text-sm font-medium">Email<input value={user.email ?? ""} disabled className="fc-input opacity-60" /></label>
         <label className="grid gap-1 text-sm font-medium">Country (2-letter code)<input name="country_code" maxLength={2} defaultValue={p?.country_code ?? ""} className="fc-input uppercase" /></label>
         <label className="grid gap-1 text-sm font-medium">New password<input name="password" type="password" minLength={8} autoComplete="new-password" className="fc-input" placeholder="Leave blank to keep current" /></label>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="marketing" defaultChecked={p?.marketing_opt_in} />Email me about new courses</label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="marketing" defaultChecked={p?.marketing_opt_in} />Email me about new courses, live workshops and offers</label>
         <button className="fc-btn fc-btn-primary justify-self-start">Save</button>
       </form>
     </div>

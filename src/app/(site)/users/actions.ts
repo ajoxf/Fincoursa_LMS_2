@@ -76,6 +76,8 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     // First-touch client attribution for affiliates / IBs
     const ref = (await cookies()).get("fc_ref")?.value;
     if (ref) await createAdminClient().rpc("record_referral_signup", { p_user: userId, p_code: ref });
+    // marketing emails only with an explicit tick (never pre-ticked)
+    if (form.get("marketing") === "on") await createAdminClient().from("profiles").update({ marketing_opt_in: true }).eq("id", userId);
     after(() => sendWelcome(userId)); // after the response, so sign-up stays fast
   }
   if (!data.session) return { message: "Check your email to confirm your account." };
