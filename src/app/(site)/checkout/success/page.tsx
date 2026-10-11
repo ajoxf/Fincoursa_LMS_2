@@ -56,7 +56,12 @@ export default async function SuccessPage({ searchParams }: PageProps<"/checkout
             <>
               <span className="fc-pill">Payment</span>
               <h1 className="fc-h2 mt-4 text-ink">Confirming your payment…</h1>
-              <p className="mt-4 text-[15px] text-ink/85">This usually takes a few seconds. Refresh this page, or find the course in your dashboard once it&apos;s confirmed.</p>
+              {order.gateway?.startsWith("custom-") ? (
+                <p className="mt-4 text-[15px] text-ink/85">Thanks! We&apos;ll confirm payment for order FC-{order.number} shortly. You&apos;ll get an email and the course appears in your dashboard as soon as it&apos;s confirmed.{" "}
+                  <Link href={`/checkout/pay/${order.id}`} className="underline">Payment details</Link></p>
+              ) : (
+                <p className="mt-4 text-[15px] text-ink/85">This usually takes a few seconds. Refresh this page, or find the course in your dashboard once it&apos;s confirmed.</p>
+              )}
               {order.gateway === "manual" && process.env.ALLOW_TEST_PAYMENTS === "true" && (
                 <form action={simulatePayment.bind(null, order.id)} className="mt-8">
                   <button className="fc-btn fc-btn-dark fc-btn-lg">Simulate successful payment (test mode)</button>

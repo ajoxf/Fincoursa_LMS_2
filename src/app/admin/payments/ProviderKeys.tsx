@@ -21,6 +21,8 @@ export type ProviderView = {
   savedHere: boolean;
   unreadable: boolean;
   canEdit: boolean;
+  /** set for providers added without code */
+  isCustom?: boolean;
 };
 
 function Status({ p }: { p: ProviderView }) {
@@ -36,7 +38,7 @@ function Msg({ s }: { s: KeysState }) {
 }
 
 /** One provider: status, keys form (secrets write-only), test, pause, remove. */
-export function ProviderKeys({ p }: { p: ProviderView }) {
+export function ProviderKeys({ p, extra }: { p: ProviderView; extra?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [state, save, saving] = useActionState(saveGatewayKeys.bind(null, p.id), null);
   const [testState, setTestState] = useState<KeysState>(null);
@@ -62,10 +64,10 @@ export function ProviderKeys({ p }: { p: ProviderView }) {
       <div className="mt-3 flex flex-wrap gap-2">
         {p.canEdit && (
           <button type="button" onClick={() => setOpen((o) => !o)} className="fc-btn fc-btn-primary !min-w-0 !px-4 !py-2 text-sm">
-            {open ? "Close" : p.hasKeys ? "Edit keys" : "Add API keys"}
+            {open ? "Close" : p.isCustom ? "Edit" : p.hasKeys ? "Edit keys" : "Add API keys"}
           </button>
         )}
-        {p.hasKeys && (
+        {p.hasKeys && !p.isCustom && (
           <button type="button" disabled={pending} onClick={() => start(async () => setTestState(await testGatewayKeys(p.id)))}
             className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2 text-sm text-ink">{pending ? "Testing…" : "Test connection"}</button>
         )}
@@ -76,6 +78,7 @@ export function ProviderKeys({ p }: { p: ProviderView }) {
       </div>
       {testState && <div className="mt-3"><Msg s={testState} /></div>}
 
+      {open && p.canEdit && extra}
       {open && p.canEdit && (
         <form action={save} className="mt-4 grid gap-3 border-t border-line pt-4" autoComplete="off">
           <p className="text-xs text-muted">{p.keysHelp}</p>
@@ -106,7 +109,12 @@ export function ProviderKeys({ p }: { p: ProviderView }) {
               <code className="min-w-0 flex-1 break-all">{p.webhookUrl}</code>
               <button type="button" className="shrink-0 underline" onClick={() => { navigator.clipboard?.writeText(p.webhookUrl); setCopied(true); }}>{copied ? "Copied" : "Copy"}</button>
             </span>
-            {p.webhookEvents.length > 0
+            {p.isCustom ? (
+              <span className="text-muted">
+                Optional automation: POST JSON <code>{`{"order_number": 1234, "status": "paid", "reference": "…"}`}</code> with header{" "}
+                <code>X-Signature</code> = HMAC-SHA256 of the body using the webhook secret (hex). Zapier, Make or the provider can send it.
+              </span>
+            ) : p.webhookEvents.length > 0
               ? <span className="text-muted">Events to send: {p.webhookEvents.join(", ")}</span>
               : <span className="text-muted">Nothing to set up: we send this URL with each payment.</span>}
           </div>

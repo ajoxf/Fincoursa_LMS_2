@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { gatewayConfig, getGateway, hasKeys } from "@/lib/payments/registry";
+import { gatewayConfig, hasKeys, resolveGateway } from "@/lib/payments/registry";
 import { decryptSecrets, encryptSecrets, hint } from "@/lib/payments/secrets";
 
 export type KeysState = { ok: boolean; message: string } | null;
@@ -12,7 +12,7 @@ async function audit(actor: string, action: string, gateway: string, data?: obje
 }
 
 async function runTest(id: string): Promise<KeysState> {
-  const g = getGateway(id)!;
+  const g = (await resolveGateway(id))!;
   const cfg = await gatewayConfig(id);
   if (!hasKeys(g, cfg)) return { ok: false, message: "Saved. Some required keys are still missing." };
   if (!g.testConnection) return { ok: true, message: "Saved." };
@@ -29,7 +29,7 @@ async function runTest(id: string): Promise<KeysState> {
  */
 export async function saveGatewayKeys(id: string, _prev: KeysState, form: FormData): Promise<KeysState> {
   const admin = await requireRole(["admin"]);
-  const g = getGateway(id);
+  const g = await resolveGateway(id);
   if (!g || !g.fields.length) return { ok: false, message: "Unknown provider" };
   const db = createAdminClient();
   const { data: row, error: readErr } = await db.from("gateway_settings").select("public_values, secrets_enc, secret_hints").eq("gateway", id).maybeSingle();
@@ -63,14 +63,14 @@ export async function saveGatewayKeys(id: string, _prev: KeysState, form: FormDa
 
 export async function testGatewayKeys(id: string): Promise<KeysState> {
   await requireRole(["admin", "finance"]);
-  if (!getGateway(id)) return { ok: false, message: "Unknown provider" };
+  if (!(await resolveGateway(id))) return { ok: false, message: "Unknown provider" };
   const r = await runTest(id);
   return r && { ...r, message: r.message.replace(/^Saved[.,]\s*/, "").replace(/^but /, "") || "Keys present." };
 }
 
 export async function setGatewayEnabled(id: string, enabled: boolean) {
   const admin = await requireRole(["admin"]);
-  if (!getGateway(id)) throw new Error("Unknown provider");
+  if (!(await resolveGateway(id))) throw new Error("Unknown provider");
   await createAdminClient().from("gateway_settings").upsert({ gateway: id, enabled, updated_at: new Date().toISOString(), updated_by: admin.id }, { onConflict: "gateway" });
   await audit(admin.id, enabled ? "gateway.enabled" : "gateway.paused", id);
   revalidatePath("/admin/payments");

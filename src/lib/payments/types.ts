@@ -47,6 +47,16 @@ export type GatewayConfig = {
   enabled: boolean;
 };
 
+/** A provider an admin added without code (see gateways/custom.ts). */
+export type CustomGatewayRow = {
+  id: string;
+  name: string;
+  label: string;
+  instructions: string | null;
+  pay_url: string | null;
+  currencies: string[] | null;
+};
+
 export interface PaymentGateway {
   /** Matches `payment_routes.gateway` and the webhook URL: /api/webhooks/payments/{id} */
   id: string;
@@ -72,6 +82,8 @@ export interface PaymentGateway {
   verify?(args: { orderId: string; sessionId: string }, cfg: GatewayConfig): Promise<GatewayEvent[]>;
   /** Optional: issue a refund from the admin panel. The provider's refund webhook then records it. */
   refund?(args: { orderId: string; sessionId: string; amountMinor: number; currency: string }, cfg: GatewayConfig): Promise<{ refundId: string }>;
+  /** Set for providers added on /admin/payments without code */
+  custom?: CustomGatewayRow;
   /** Optional: a harmless API call proving the keys work. Returns a short description, throws on failure. */
   testConnection?(cfg: GatewayConfig): Promise<string>;
 }

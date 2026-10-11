@@ -6,19 +6,39 @@ import { stripeGateway } from "./gateways/stripe";
 import { razorpayGateway } from "./gateways/razorpay";
 import { tapGateway } from "./gateways/tap";
 import { paypalGateway } from "./gateways/paypal";
+import { makeCustomGateway } from "./gateways/custom";
+import type { CustomGatewayRow } from "./types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptSecrets } from "./secrets";
 
 /** Register new adapters here. */
 const gateways: PaymentGateway[] = [stripeGateway, razorpayGateway, tapGateway, paypalGateway, manualGateway];
 
-/** All adapters in the code, connected or not (for the admin Payments page). */
+/** All adapters in the code, connected or not. */
 export function allGateways(): PaymentGateway[] {
   return gateways;
 }
 
+/** Built-in adapters only (synchronous). Use resolveGateway to include providers added by admins. */
 export function getGateway(id: string): PaymentGateway | undefined {
   return gateways.find((g) => g.id === id);
+}
+
+/** Providers added on /admin/payments without code (empty if the table doesn't exist yet). */
+export const customGateways = cache(async (): Promise<PaymentGateway[]> => {
+  const { data, error } = await createAdminClient()
+    .from("custom_gateways").select("id, name, label, instructions, pay_url, currencies").order("created_at");
+  if (error) return [];
+  return (data ?? []).map((r) => makeCustomGateway(r as CustomGatewayRow));
+});
+
+/** Built-in and admin-added providers. */
+export async function everyGateway(): Promise<PaymentGateway[]> {
+  return [...gateways, ...(await customGateways())];
+}
+
+export async function resolveGateway(id: string): Promise<PaymentGateway | undefined> {
+  return getGateway(id) ?? (id.startsWith("custom-") ? (await customGateways()).find((g) => g.id === id) : undefined);
 }
 
 export type StoredSettings = {
@@ -52,7 +72,7 @@ export async function storedSettings(id: string): Promise<StoredSettings | null>
 
 /** Keys for one provider: values saved on /admin/payments first, then Vercel env vars. */
 export async function gatewayConfig(id: string): Promise<GatewayConfig> {
-  const g = getGateway(id);
+  const g = await resolveGateway(id);
   const row = (await loadRows()).get(id);
   const values: Record<string, string> = {};
   for (const f of g?.fields ?? []) {
@@ -64,7 +84,7 @@ export async function gatewayConfig(id: string): Promise<GatewayConfig> {
 
 /** Which fields are filled from where, for the admin screen. */
 export async function fieldSources(id: string): Promise<Record<string, "saved" | "env" | null>> {
-  const g = getGateway(id);
+  const g = await resolveGateway(id);
   const row = (await loadRows()).get(id);
   const out: Record<string, "saved" | "env" | null> = {};
   for (const f of g?.fields ?? []) {
@@ -85,7 +105,7 @@ export function isReady(g: PaymentGateway, cfg: GatewayConfig): boolean {
 
 /** A provider plus its keys, or null if it isn't ready. */
 export async function connect(id: string): Promise<{ gateway: PaymentGateway; cfg: GatewayConfig } | null> {
-  const gateway = getGateway(id);
+  const gateway = await resolveGateway(id);
   if (!gateway) return null;
   const cfg = await gatewayConfig(id);
   return isReady(gateway, cfg) ? { gateway, cfg } : null;
@@ -110,7 +130,7 @@ export async function gatewaysFor(country: string | null, currency: string): Pro
   const seen = new Set<string>();
   const out: PaymentGateway[] = [];
   for (const r of scored) {
-    const g = getGateway(r.gateway);
+    const g = await resolveGateway(r.gateway);
     if (!g || seen.has(g.id)) continue;
     if (g.currencies && !g.currencies.includes(currency)) continue;
     if (!isReady(g, await gatewayConfig(g.id))) continue;

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatMoney, minorUnitsFactor } from "@/lib/money";
-import { refundOrder } from "../actions";
+import { markOrderPaid, refundOrder } from "../actions";
 import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Orders" };
@@ -27,7 +27,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
       <div className="fc-card overflow-x-auto">
         <table className="w-full min-w-[900px] text-sm">
           <thead className="text-left text-muted"><tr>
-            {["#", "Date", "Buyer", "Item", "Gateway", "Affiliate", "Status", "Total", "Refund"].map((h) => <th key={h} className="p-3 font-medium">{h}</th>)}
+            {["#", "Date", "Buyer", "Item", "Gateway", "Affiliate", "Status", "Total", "Action"].map((h) => <th key={h} className="p-3 font-medium">{h}</th>)}
           </tr></thead>
           <tbody>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -45,6 +45,16 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
                   <td className="p-3">{o.status}</td>
                   <td className="p-3 text-right tabular-nums">{formatMoney(o.total_minor, o.currency)}{o.refunded_minor > 0 && <div className="text-xs text-danger">−{formatMoney(o.refunded_minor, o.currency)}</div>}</td>
                   <td className="p-3">
+                    {(o.status === "pending" || o.status === "failed") && o.total_minor > 0 && (
+                      <details className="relative">
+                        <summary className="cursor-pointer list-none text-xs font-medium text-success underline">Mark as paid…</summary>
+                        <form action={markOrderPaid.bind(null, o.id)} className="absolute right-0 z-10 mt-2 grid w-64 gap-2 rounded-card border border-line bg-bg p-3 shadow-lg">
+                          <p className="text-xs">Only after the money has arrived. FC-{o.number} · {formatMoney(o.total_minor, o.currency)}. The buyer is enrolled and emailed a receipt.</p>
+                          <input name="reference" placeholder="Provider / bank reference (optional)" className="fc-input !py-1 text-xs" />
+                          <button className="rounded-md border border-success px-2 py-1 text-xs text-success">Confirm payment received</button>
+                        </form>
+                      </details>
+                    )}
                     {refundable && (
                       <details className="relative">
                         <summary className="cursor-pointer list-none text-xs font-medium text-danger underline">Refund…</summary>

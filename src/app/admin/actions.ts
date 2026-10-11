@@ -126,3 +126,23 @@ export async function cancelPayout(payoutId: string) {
   await db.from("payouts").update({ status: "cancelled" }).eq("id", payoutId).eq("status", "draft");
   revalidatePath("/admin/payouts");
 }
+
+/**
+ * Confirm a pending order by hand, e.g. a payment through a provider added without code, or a bank
+ * transfer. Enrols the buyer, credits instructors/partners and emails the receipt, exactly like a webhook.
+ */
+export async function markOrderPaid(orderId: string, form: FormData) {
+  const admin = await requireRole(["admin", "finance"]);
+  const ref = String(form.get("reference") ?? "").trim().slice(0, 120);
+  const db = createAdminClient();
+  const { data: o } = await db.from("orders").select("status, gateway").eq("id", orderId).single();
+  if (!o || (o.status !== "pending" && o.status !== "failed")) throw new Error("Only unpaid orders can be marked as paid");
+  const { data: first, error } = await db.rpc("fulfill_order", { p_order: orderId, p_gateway_ref: ref ? `${o.gateway}:${ref}` : null });
+  if (error) throw new Error(error.message);
+  await audit(admin.id, "order.marked_paid", "orders", orderId, { reference: ref || null });
+  if (first) {
+    const { sendReceipt } = await import("@/lib/email/events");
+    await sendReceipt(orderId).catch((e) => console.error("[email] receipt", e));
+  }
+  revalidatePath("/admin/orders");
+}

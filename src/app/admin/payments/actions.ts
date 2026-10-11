@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getGateway } from "@/lib/payments/registry";
+import { resolveGateway } from "@/lib/payments/registry";
 
 const code = (v: FormDataEntryValue | null, n: number) => {
   const s = String(v ?? "").trim().toUpperCase();
@@ -13,7 +13,7 @@ const code = (v: FormDataEntryValue | null, n: number) => {
 export async function addRoute(form: FormData) {
   await requireRole(["admin", "finance"]);
   const gateway = String(form.get("gateway") ?? "");
-  if (!getGateway(gateway)) throw new Error("Unknown gateway");
+  if (!(await resolveGateway(gateway))) throw new Error("Unknown gateway");
   const country = code(form.get("country_code"), 2);
   if (country && !/^[A-Z]{2}$/.test(country)) throw new Error("Use a 2-letter country code or leave blank for any country");
   const currency = code(form.get("currency"), 3);

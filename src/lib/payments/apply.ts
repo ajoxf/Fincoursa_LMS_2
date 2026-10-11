@@ -10,7 +10,13 @@ import { sendReceipt } from "@/lib/email/events";
  */
 export async function applyGatewayEvents(gatewayId: string, events: GatewayEvent[]): Promise<boolean> {
   const db = createAdminClient();
-  for (const ev of events) {
+  for (let ev of events) {
+    // "#1234" means order number 1234 (custom providers); turn it into the order id
+    if ("orderId" in ev && ev.orderId.startsWith("#")) {
+      const { data: o } = await db.from("orders").select("id").eq("number", Number(ev.orderId.slice(1)) || -1).maybeSingle();
+      if (!o) { console.error(`[payments:${gatewayId}] unknown order ${ev.orderId}`); continue; }
+      ev = { ...ev, orderId: o.id };
+    }
     const orderId = "orderId" in ev ? ev.orderId : null;
     const { error: dup } = await db.from("payment_events").insert({
       gateway: gatewayId, event_id: ev.eventId, order_id: orderId, type: ev.type, payload: ev.raw as object,
