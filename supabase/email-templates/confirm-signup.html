@@ -7,8 +7,8 @@
 <tr><td style="padding:28px">
 <h1 style="margin:0 0 16px;font-size:28px;line-height:1.15;font-weight:400;letter-spacing:-0.5px;color:#101827">Confirm your email</h1>
 <div style="font-size:15px;line-height:1.6"><p style="margin:0 0 12px">Thanks for signing up to FinCoursa Academy. Please confirm this is your email address, and your account is ready to use.</p><p style="margin:0 0 12px">The link works once and expires in 24 hours.</p></div>
-<p style="margin:28px 0 8px"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#d6fd3b;color:#101827;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:8px">Confirm my email</a></p>
-<p style="margin:0;font-size:12px;color:#4b5563">Or paste this link into your browser:<br><span style="word-break:break-all">{{ .ConfirmationURL }}</span></p>
+<p style="margin:28px 0 8px"><a href="{{ .RedirectTo }}&#38;token_hash={{ .TokenHash }}&#38;type=email" style="display:inline-block;background:#d6fd3b;color:#101827;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:8px">Confirm my email</a></p>
+<p style="margin:0;font-size:12px;color:#4b5563">Or paste this link into your browser:<br><span style="word-break:break-all">{{ .RedirectTo }}&#38;token_hash={{ .TokenHash }}&#38;type=email</span></p>
 </td></tr>
 <tr><td style="background:#000000;padding:16px 28px;font-size:12px;color:#d1d5db">If you didn&#39;t create a FinCoursa account, you can ignore this email.<br>FinCoursa Academy · <a href="https://www.fincoursa.com" style="color:#d1d5db">www.fincoursa.com</a></td></tr>
 </table></td></tr></table></body></html>

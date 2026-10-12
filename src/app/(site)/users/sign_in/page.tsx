@@ -11,6 +11,8 @@ export default async function SignInPage({ searchParams }: PageProps<"/users/sig
   const email = typeof sp.email === "string" ? sp.email : undefined;
   const welcome = sp.welcome === "1";
   const invite = sp.invite === "1";
+  const confirmed = sp.confirmed === "1";
+  const linkError = sp.error === "link" || typeof sp.error_code === "string";
   return (
     <section className="fc-container max-w-md py-20">
       <h1 className="text-3xl font-bold text-primary">{invite ? "Set up your FinCoursa account" : welcome ? "Welcome to the new FinCoursa" : "Sign In"}</h1>
@@ -19,6 +21,12 @@ export default async function SignInPage({ searchParams }: PageProps<"/users/sig
         : welcome
         ? "Your account and courses have moved here. Click Sign In and we'll email you a one-click sign-in link. No password needed."
         : "Leave the password empty to get a one-time sign-in link by email."}</p>
+      {confirmed && (
+        <p className="mt-6 rounded-card bg-success/10 p-4 text-sm text-success">Your email is confirmed. Sign in below to continue{nextStr?.startsWith("/checkout") ? " to checkout" : ""}.</p>
+      )}
+      {linkError && !confirmed && (
+        <p className="mt-6 rounded-card bg-warning/10 p-4 text-sm text-warning">That link has expired or was already used. Sign in below, or leave the password empty and we&apos;ll email you a new one-click link.</p>
+      )}
       <div className="mt-8">
         <AuthForm action={signIn} next={nextStr} submit="Sign In" fields={[
           { name: "email", label: "Email", type: "email", required: true, autoComplete: "email", defaultValue: email },
