@@ -52,7 +52,7 @@ export function welcomeEmail(o: { name?: string | null; dashboardUrl: string; co
       heading: `Welcome, ${first(o.name)}`,
       body: join(
         p("Your FinCoursa account is ready. Learn from industry practitioners and build skills that work in the real world."),
-        p("Browse the catalogue, start a free preview, or pick up a structured learning path. Everything you enrol in appears in your dashboard, with your progress saved as you go."),
+        p("Browse the catalogue, start a free preview, or pick up a structured programme. Everything you enrol in appears in your dashboard, with your progress saved as you go."),
       ),
       cta: { label: "Browse courses", url: o.coursesUrl },
       footer: "You're receiving this because you created a FinCoursa account.",

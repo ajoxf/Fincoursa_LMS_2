@@ -20,7 +20,7 @@ export default async function BundlePage({ params }: PageProps<"/bundles/[slug]"
   const hours = Math.round((bundle.totalMinutes / 60) * 10) / 10;
   return (
     <>
-      <PageHero label="Learning path" title={bundle.title}
+      <PageHero label="Programme" title={bundle.title}
         aside={
           <div className="w-full md:min-w-[230px] md:text-right">
             <p className={`whitespace-nowrap font-bold tracking-tight ${bundle.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>

@@ -11,7 +11,7 @@ import { grantCourse, removeAccess, restoreAccess, setAccessUntil, updateStudent
 export const metadata: Metadata = { title: "Customer" };
 
 const statusLabel: Record<string, string> = { paid: "Paid", pending: "Pending", failed: "Failed", cancelled: "Cancelled", refunded: "Refunded", partially_refunded: "Partly refunded" };
-const sourceLabel: Record<string, string> = { purchase: "Bought", bundle: "Bundle", free: "Free", admin: "Given by staff", organization: "Organisation", migration: "From Thinkific" };
+const sourceLabel: Record<string, string> = { purchase: "Bought", bundle: "Programme", free: "Free", admin: "Given by staff", organization: "Organisation", migration: "From Thinkific" };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export default async function CustomerPage({ params }: PageProps<"/admin/customers/[id]">) {

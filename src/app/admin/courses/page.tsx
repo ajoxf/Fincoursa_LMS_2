@@ -25,7 +25,7 @@ export default async function AdminCourses() {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-primary">Courses</h1>
-        <Link href="/admin/bundles" className="text-sm underline">Bundles</Link>
+        <Link href="/admin/bundles" className="text-sm underline">Programmes</Link>
       </div>
 
       <Card title="Create a course">

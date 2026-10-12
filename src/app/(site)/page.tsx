@@ -71,7 +71,7 @@ export default async function HomePage() {
       {/* 3b. Upcoming live workshops (only when scheduled) */}
       <UpcomingLive courses={live} text={{ label: t.live_label, title: t.live_title, sub: t.live_sub }} />
 
-      {/* 4. Learning paths */}
+      {/* 4. Programmes (bundles) */}
       <section className="bg-surface-dark">
         <div className="fc-container py-24">
           <SectionHeading dark label={t.paths_label} title={t.paths_title} />
@@ -79,7 +79,7 @@ export default async function HomePage() {
             {bundles.slice(0, 3).map((b) => <BundleTile key={b.id} bundle={b} />)}
           </div>
           <div className="mt-10 text-center">
-            <Link href="/pages/bundles" className="fc-btn fc-btn-outline-lime fc-btn-lg">{t.paths_button}</Link>
+            <Link href="/pages/programmes" className="fc-btn fc-btn-outline-lime fc-btn-lg">{t.paths_button}</Link>
           </div>
         </div>
       </section>

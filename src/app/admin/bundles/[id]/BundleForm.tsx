@@ -15,8 +15,8 @@ export function BundleForm({ bundle, price }: { bundle: any; price: { amount_min
       <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
         <div className="grid gap-4">
           <label className="grid gap-1 text-sm font-medium">Title<input name="title" defaultValue={bundle.title} required className="fc-input" /></label>
-          <label className="grid gap-1 text-sm font-medium">Bundle page URL
-            <div className="flex items-center gap-1 text-sm text-muted">/bundles/<input name="slug" defaultValue={bundle.slug} className="fc-input flex-1" /></div></label>
+          <label className="grid gap-1 text-sm font-medium">Programme page URL
+            <div className="flex items-center gap-1 text-sm text-muted">/programmes/<input name="slug" defaultValue={bundle.slug} className="fc-input flex-1" /></div></label>
           <label className="grid gap-1 text-sm font-medium">Description<textarea name="description" rows={4} defaultValue={bundle.description ?? ""} className="fc-input" /></label>
         </div>
         <div className="grid content-start gap-2">
@@ -24,12 +24,12 @@ export function BundleForm({ bundle, price }: { bundle: any; price: { amount_min
           <div className="aspect-video overflow-hidden rounded-card border border-line bg-surface">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {thumb ? <img src={assetUrl(thumb)} alt="" className="h-full w-full object-cover" />
-              : <div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted">16:9 image, at least 1280×720. Shown on the bundle tile and the bundle page.</div>}
+              : <div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted">16:9 image, at least 1280×720. Shown on the programme tile and the programme page.</div>}
           </div>
           <input type="hidden" name="thumbnail_url" value={thumb} />
           <FileUpload bucket="course-images" accept="image/*" label={thumb ? "Replace image" : "Upload image"} onUploaded={(f) => setThumb(f.publicUrl ?? "")} />
           {thumb && <button type="button" onClick={() => setThumb("")} className="justify-self-start text-xs text-danger underline">Remove image</button>}
-          <p className="text-xs text-muted">Press “Save bundle” after uploading.</p>
+          <p className="text-xs text-muted">Press “Save programme” after uploading.</p>
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-4">
@@ -41,7 +41,7 @@ export function BundleForm({ bundle, price }: { bundle: any; price: { amount_min
         <label className="flex items-center gap-2 self-end pb-3 text-sm"><input type="checkbox" name="is_featured" defaultChecked={bundle.is_featured} />Show on home page</label>
       </div>
       <div className="flex items-center gap-3">
-        <button disabled={pending} className="fc-btn fc-btn-primary">{pending ? "Saving…" : "Save bundle"}</button>
+        <button disabled={pending} className="fc-btn fc-btn-primary">{pending ? "Saving…" : "Save programme"}</button>
         {state?.ok && <span className="text-sm text-success">Saved</span>}
         {state?.error && <span className="text-sm text-danger">{state.error}</span>}
       </div>

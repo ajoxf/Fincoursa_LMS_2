@@ -16,9 +16,9 @@ export const HOME_DEFAULTS = {
   live_label: "Live on Zoom",
   live_title: "Upcoming live workshops",
   live_sub: "Learn live with the faculty, ask your questions, and keep the recordings in your account.",
-  paths_label: "Learning paths",
+  paths_label: "Programmes",
   paths_title: "Structured tracks, not scattered videos.",
-  paths_button: "View All Bundle",
+  paths_button: "View all programmes",
   catalog_label: "Catalog",
   catalog_title: "Featured Courses",
   catalog_sub: "A hand-picked place to start — pay per course, own it for life.",
@@ -42,7 +42,7 @@ export const HOME_DEFAULTS = {
       bullets: ["Custom learning paths", "Branded programs", "Custom reporting", "Dedicated program support"] },
   ] as OrgTab[],
   faq: [
-    { q: "Can I buy just one course?", a: "Yes — that's how FinCoursa works by default. Tick any courses you want, build a custom bundle, and check out. Or open a single course and enroll directly. No subscription required." },
+    { q: "Can I buy just one course?", a: "Yes — that's how FinCoursa works by default. Open any course and enroll directly, or choose a programme to get a set of courses at one price. No subscription required." },
     { q: "Do I need a specific background?", a: "No specific background is required. Our courses are designed for learners with different levels of experience." },
     { q: "Do you offer team or university pricing?", a: "Yes. We offer flexible pricing options for teams, universities, and other organizations." },
     { q: "What if a course isn’t right for me?", a: "If a course doesn't meet your expectations, please contact our support team and we'll help you find the right option." },
@@ -71,7 +71,7 @@ export const HOME_SECTIONS: { title: string; fields: { key: HomeTextKey; label: 
     { key: "live_title", label: "Heading" },
     { key: "live_sub", label: "Text", long: true },
   ] },
-  { title: "Learning paths", fields: [
+  { title: "Programmes", fields: [
     { key: "paths_label", label: "Small label" },
     { key: "paths_title", label: "Heading" },
     { key: "paths_button", label: "Button" },

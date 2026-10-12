@@ -6,7 +6,7 @@ import { formatMoney } from "@/lib/money";
 import { Card } from "@/components/dash/Stat";
 import { createBundle } from "./actions";
 
-export const metadata: Metadata = { title: "Bundles" };
+export const metadata: Metadata = { title: "Programmes" };
 
 export default async function AdminBundles() {
   await requireRole(["admin"], "/admin/bundles");
@@ -14,11 +14,11 @@ export default async function AdminBundles() {
     .from("bundles").select("id, title, status, prices(amount_minor, currency, is_active), bundle_courses(course_id)").order("sort_order").order("created_at");
   return (
     <div className="grid gap-6">
-      <h1 className="text-3xl font-bold text-primary">Bundles &amp; learning paths</h1>
+      <h1 className="text-3xl font-bold text-primary">Programmes</h1>
       <Card title="Create a bundle">
         <form action={createBundle} className="flex flex-wrap items-end gap-3">
-          <label className="grid min-w-64 flex-1 gap-1 text-sm font-medium">Bundle title<input name="title" required placeholder="e.g. Technical Analysis Track" className="fc-input" /></label>
-          <button className="fc-btn fc-btn-primary">Create bundle</button>
+          <label className="grid min-w-64 flex-1 gap-1 text-sm font-medium">Programme title<input name="title" required placeholder="e.g. Technical Analysis Track" className="fc-input" /></label>
+          <button className="fc-btn fc-btn-primary">Create programme</button>
         </form>
       </Card>
       <div className="fc-card divide-y divide-line">
@@ -36,7 +36,7 @@ export default async function AdminBundles() {
             </Link>
           );
         })}
-        {!bundles?.length && <p className="p-6 text-center text-sm text-muted">No bundles yet.</p>}
+        {!bundles?.length && <p className="p-6 text-center text-sm text-muted">No programmes yet.</p>}
       </div>
     </div>
   );

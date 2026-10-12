@@ -21,7 +21,7 @@ function navFor(u: SessionUser, hasCertificates: boolean): { title: string; item
       { href: "/admin/customers", label: "Customers" },
       { href: "/admin/orders", label: "Orders & refunds" },
       { href: "/admin/courses", label: "Courses" },
-      { href: "/admin/bundles", label: "Bundles" },
+      { href: "/admin/bundles", label: "Programmes" },
       { href: "/admin/instructors", label: "Instructors" },
       { href: "/admin/affiliates", label: "Affiliates" },
       { href: "/admin/payouts", label: "Payouts" },

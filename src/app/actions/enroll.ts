@@ -18,7 +18,7 @@ export async function enrollFree(courseId: string, slug: string) {
 
 /** Free bundle: verify it's free server-side, then enrol in each course. */
 export async function enrollFreeBundle(bundleId: string) {
-  const user = await requireUser("/pages/bundles");
+  const user = await requireUser("/pages/programmes");
   const admin = createAdminClient();
   const { data: bundle } = await admin
     .from("bundles")
@@ -26,7 +26,7 @@ export async function enrollFreeBundle(bundleId: string) {
     .eq("id", bundleId)
     .single();
   const paid = (bundle?.prices ?? []).some((p) => p.is_active && p.amount_minor > 0);
-  if (!bundle || bundle.status !== "published" || paid) throw new Error("This bundle is not free.");
+  if (!bundle || bundle.status !== "published" || paid) throw new Error("This programme is not free.");
   const rows = (bundle.bundle_courses ?? []).map((bc) => ({
     user_id: user.id, course_id: bc.course_id, source: "bundle", bundle_id: bundleId, revoked_at: null,
   }));

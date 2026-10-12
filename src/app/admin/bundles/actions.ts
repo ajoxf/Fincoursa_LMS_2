@@ -18,7 +18,7 @@ export async function createBundle(form: FormData) {
   let slug = slugify(title);
   if ((await db.from("bundles").select("id").eq("slug", slug).maybeSingle()).data) slug = `${slug}-${Date.now().toString(36)}`;
   const { data: b, error } = await db.from("bundles").insert({ title, slug, status: "draft" }).select("id").single();
-  if (error || !b) throw new Error(error?.message ?? "Could not create bundle");
+  if (error || !b) throw new Error(error?.message ?? "Could not create programme");
   await db.from("prices").insert({ bundle_id: b.id, type: "free", currency: env.defaultCurrency, amount_minor: 0 });
   redirect(`/admin/bundles/${b.id}`);
 }

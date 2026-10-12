@@ -7,7 +7,7 @@ import { Card } from "@/components/dash/Stat";
 import { BundleForm } from "./BundleForm";
 import { addBundleCourse, moveBundleCourse, removeBundleCourse } from "../actions";
 
-export const metadata: Metadata = { title: "Edit bundle" };
+export const metadata: Metadata = { title: "Edit programme" };
 
 export default async function EditBundle({ params }: PageProps<"/admin/bundles/[id]">) {
   const { id } = await params;
@@ -26,12 +26,12 @@ export default async function EditBundle({ params }: PageProps<"/admin/bundles/[
   return (
     <div className="grid gap-6">
       <div>
-        <Link href="/admin/bundles" className="text-sm text-muted hover:underline">← All bundles</Link>
+        <Link href="/admin/bundles" className="text-sm text-muted hover:underline">← All programmes</Link>
         <h1 className="mt-2 text-3xl font-bold text-primary">{bundle.title}</h1>
-        <Link href={`/bundles/${bundle.slug}`} className="text-sm underline">View bundle page</Link>
+        <Link href={`/programmes/${bundle.slug}`} className="text-sm underline">View programme page</Link>
       </div>
       <Card title="Details & price"><BundleForm bundle={bundle} price={price} /></Card>
-      <Card title={`Courses in this bundle (${included.length})`}>
+      <Card title={`Courses in this programme (${included.length})`}>
         <ul className="divide-y divide-line text-sm">
           {included.map((c, i) => (
             <li key={c.course_id} className="flex items-center gap-2 py-2">
@@ -52,7 +52,7 @@ export default async function EditBundle({ params }: PageProps<"/admin/bundles/[
           </select>
           <button className="fc-btn fc-btn-dark">Add</button>
         </form>
-        <p className="mt-2 text-xs text-muted">Buying the bundle enrols the student in every course listed here. Revenue is split equally across these courses for instructor earnings.</p>
+        <p className="mt-2 text-xs text-muted">Buying the programme enrols the student in every course listed here. Revenue is split equally across these courses for instructor earnings.</p>
       </Card>
     </div>
   );

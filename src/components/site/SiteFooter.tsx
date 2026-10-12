@@ -3,7 +3,7 @@ import Link from "next/link";
 import { brand } from "./brand";
 
 const links = [
-  { href: "/pages/bundles", label: "Bundles" },
+  { href: "/pages/programmes", label: "Programmes" },
   { href: "/pages/paid-courses", label: "Courses" },
   { href: "/pages/live-courses", label: "Live Courses" },
   { href: "/pages/free-courses", label: "Free Courses" },

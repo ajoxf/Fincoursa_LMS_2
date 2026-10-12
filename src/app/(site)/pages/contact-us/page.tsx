@@ -18,7 +18,7 @@ export default function ContactPage() {
         <div className="rounded-3xl bg-white p-8">
           <span className="fc-pill">General</span>
           <h2 className="fc-h2 mt-4 text-ink">Not sure where to start?</h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-ink/90">Send us a note and a program advisor will point you to the right track or bundle.</p>
+          <p className="mt-4 text-[15px] leading-relaxed text-ink/90">Send us a note and a program advisor will point you to the right course or programme.</p>
           <ContactForm />
         </div>
       </div>

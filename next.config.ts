@@ -37,6 +37,13 @@ const nextConfig: NextConfig = {
       { source: "/manage/:path*", destination: "/admin", permanent: false },
     ];
   },
+  // "Bundles" are called "Programmes" on the site: friendly URLs, while the old /bundles links keep working
+  async rewrites() {
+    return [
+      { source: "/pages/programmes", destination: "/pages/bundles" },
+      { source: "/programmes/:slug", destination: "/bundles/:slug" },
+    ];
+  },
   async headers() {
     return [{
       source: "/:path*",
