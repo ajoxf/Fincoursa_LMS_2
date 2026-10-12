@@ -119,7 +119,7 @@ export async function sendMissedCompletionEmails(sinceHours = 72) {
   const { data: certs } = await db.from("certificates").select("id, user_id, course_id").in("user_id", [...new Set(done.map((d) => d.user_id))]);
   const certOf = new Map((certs ?? []).map((c) => [`${c.user_id}:${c.course_id}`, c.id]));
   const refs = done.map((d) => certOf.get(`${d.user_id}:${d.course_id}`) ?? d.id);
-  const { data: sent } = await db.from("email_log").select("ref").eq("template", "course_completed").in("ref", refs);
+  const { data: sent } = await db.from("email_log").select("ref").eq("template", "course_completed").neq("status", "failed").in("ref", refs);
   const already = new Set((sent ?? []).map((s) => s.ref));
   let n = 0;
   for (let i = 0; i < done.length; i++) if (!already.has(refs[i])) { await sendCourseCompleted(done[i].user_id, done[i].course_id); n++; }

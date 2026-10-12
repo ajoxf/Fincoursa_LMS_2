@@ -22,7 +22,12 @@ const FROM = () => process.env.EMAIL_FROM ?? "FinCoursa Academy <no-reply@fincou
 export async function sendEmail(e: Email): Promise<boolean> {
   const db = createAdminClient();
   const { error: dup } = await db.from("email_log").insert({ template: e.template, ref: e.ref, to_email: e.to, status: "sent" });
-  if (dup) return false; // unique (template, ref): already handled
+  if (dup) {
+    // unique (template, ref): already handled, unless the earlier attempt failed (then try again)
+    const { data: retry } = await db.from("email_log").update({ status: "sent", error: null, to_email: e.to })
+      .eq("template", e.template).eq("ref", e.ref).eq("status", "failed").select("id");
+    if (!retry?.length) return false;
+  }
 
   const key = process.env.RESEND_API_KEY;
   // Development only: with no provider key, EMAIL_CAPTURE_DIR saves each email as an .html file to inspect
@@ -49,8 +54,9 @@ export async function sendEmail(e: Email): Promise<boolean> {
     return true;
   } catch (err) {
     console.error(`[email:failed] ${e.template} → ${e.to}`, err);
-    // remove the marker so a later retry can send it
-    await db.from("email_log").delete().eq("template", e.template).eq("ref", e.ref);
+    // keep the reason for the email log; a later attempt for the same (template, ref) retries it
+    await db.from("email_log").update({ status: "failed", error: String(err instanceof Error ? err.message : err).slice(0, 500) })
+      .eq("template", e.template).eq("ref", e.ref);
     return false;
   }
 }

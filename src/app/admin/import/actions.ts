@@ -51,7 +51,7 @@ async function pendingInviteIds(limit: number) {
   const all = [...ids];
   const sent = new Set<string>();
   for (let i = 0; i < all.length; i += 500) {
-    const { data } = await db.from("email_log").select("ref").eq("template", "migration_invite").in("ref", all.slice(i, i + 500));
+    const { data } = await db.from("email_log").select("ref").eq("template", "migration_invite").neq("status", "failed").in("ref", all.slice(i, i + 500));
     (data ?? []).forEach((r) => sent.add(r.ref));
   }
   return all.filter((id) => !sent.has(id)).slice(0, limit);
