@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/dash/Stat";
 import { InstructorForm } from "./InstructorForm";
+import { DeleteInstructor } from "./DeleteInstructor";
 import { AgreementsPanel } from "@/components/dash/AgreementsPanel";
 import { agreementsFor } from "@/lib/agreements";
 
@@ -17,7 +18,11 @@ export default async function EditInstructor({ params }: PageProps<"/admin/instr
   const { data: ins } = await db.from("instructors").select("*, course_instructors(course:courses(id, title))").eq("id", id).maybeSingle();
   if (!ins) notFound();
   const { data: login } = ins.user_id ? await db.from("profiles").select("email").eq("id", ins.user_id).maybeSingle() : { data: null };
-  const agreements = await agreementsFor({ type: "instructor", id });
+  const [agreements, { count: earnings }, { count: payouts }] = await Promise.all([
+    agreementsFor({ type: "instructor", id }),
+    db.from("instructor_earnings").select("id", { count: "exact", head: true }).eq("instructor_id", id),
+    db.from("payouts").select("id", { count: "exact", head: true }).eq("instructor_id", id),
+  ]);
   return (
     <div className="grid gap-6">
       <div>
@@ -34,6 +39,9 @@ export default async function EditInstructor({ params }: PageProps<"/admin/instr
           {(ins.course_instructors ?? []).map((ci: any) => <li key={ci.course.id} className="py-1"><Link href={`/admin/courses/${ci.course.id}`} className="underline">{ci.course.title}</Link></li>)}
           {!ins.course_instructors?.length && <li className="text-muted">Not assigned to a course yet — assign from the course editor.</li>}
         </ul>
+      </Card>
+      <Card title="Delete instructor">
+        <DeleteInstructor id={id} name={ins.name} courses={ins.course_instructors?.length ?? 0} blocked={(earnings ?? 0) + (payouts ?? 0) > 0} />
       </Card>
     </div>
   );

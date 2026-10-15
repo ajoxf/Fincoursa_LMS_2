@@ -66,3 +66,35 @@ export async function saveInstructor(id: string, _: FormState, form: FormData): 
   revalidatePath("/admin/instructors");
   return invited ? { ok: true, message: invited } : { ok: true };
 }
+
+/**
+ * Delete an instructor. Not allowed once they have earnings or payouts (financial records must stay):
+ * then they can be hidden instead. Removes them from their courses, their agreements (and files) and,
+ * when no other instructor profile uses the login, the instructor role on that account.
+ */
+export async function deleteInstructor(id: string): Promise<{ ok: boolean; error?: string }> {
+  const admin = await requireRole(["admin"]);
+  const db = createAdminClient();
+  const { data: ins } = await db.from("instructors").select("id, name, user_id").eq("id", id).maybeSingle();
+  if (!ins) return { ok: false, error: "Instructor not found" };
+  const [{ count: earnings }, { count: payouts }] = await Promise.all([
+    db.from("instructor_earnings").select("id", { count: "exact", head: true }).eq("instructor_id", id),
+    db.from("payouts").select("id", { count: "exact", head: true }).eq("instructor_id", id),
+  ]);
+  if ((earnings ?? 0) > 0 || (payouts ?? 0) > 0) {
+    return { ok: false, error: `${ins.name} has earnings or payouts on record, so they can't be deleted (the finance history must stay). Untick "Show on the Instructors page" to hide them instead, and remove them from their courses.` };
+  }
+  const { data: files } = await db.from("agreements").select("file_path").eq("instructor_id", id).not("file_path", "is", null);
+  const { error } = await db.from("instructors").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  if (files?.length) await db.storage.from("agreements").remove(files.map((f) => f.file_path as string));
+  if (ins.user_id) {
+    const { count: other } = await db.from("instructors").select("id", { count: "exact", head: true }).eq("user_id", ins.user_id);
+    if (!other) await db.from("user_roles").delete().eq("user_id", ins.user_id).eq("role", "instructor");
+  }
+  await db.from("audit_log").insert({ actor_id: admin.id, action: "instructor.deleted", entity: "instructor", entity_id: id, data: { name: ins.name } });
+  revalidatePath("/admin/instructors");
+  revalidatePath("/pages/instructors");
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
