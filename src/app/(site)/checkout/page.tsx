@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { headers, cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
@@ -116,6 +117,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
                 <p className="text-xs text-muted">Card details are entered on the payment provider&apos;s secure page. We never see or store them.</p>
               </>
             )}
+            <p className="text-xs text-muted">By continuing you agree to our <Link href="/pages/terms-conditions" target="_blank" className="underline">Terms &amp; Conditions</Link> and <Link href="/pages/privacy-policy" target="_blank" className="underline">Privacy Policy</Link>.</p>
             {ref && <p className="text-xs text-muted">Referred by partner {ref}.</p>}
           </form>
         </div>

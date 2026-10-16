@@ -28,6 +28,7 @@ function navFor(u: SessionUser, hasCertificates: boolean): { title: string; item
       { href: "/admin/taxes", label: "Taxes" },
       { href: "/admin/payments", label: "Payment gateways" },
       { href: "/admin/site", label: "Home page & logos" },
+      { href: "/admin/legal", label: "Terms & privacy" },
       { href: "/admin/emails", label: "Emails & updates" },
       { href: "/admin/leads", label: "Leads" },
       { href: "/admin/import", label: "Import from Thinkific" },

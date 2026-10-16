@@ -3,6 +3,7 @@ import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mux } from "@/lib/mux";
 import { mergeHome, type HomeContent } from "@/lib/home-content";
+import { EMPTY_LEGAL, LEGAL, type LegalDoc, type LegalKind } from "@/lib/legal";
 
 /** Home page intro video, uploaded by an admin on /admin/site. */
 export type IntroVideo = {
@@ -64,3 +65,7 @@ export const getBranding = cache(async (): Promise<Branding> => (await getSettin
 
 /** Home page wording (Admin → Home page & logos → Home page text), over the original defaults. */
 export const getHomeContent = cache(async (): Promise<HomeContent> => mergeHome(await getSetting<Record<string, unknown>>("home_text")));
+
+/** Terms & Conditions / Privacy Policy as last saved in the admin. */
+export const getLegal = cache(async (kind: LegalKind): Promise<LegalDoc> =>
+  ({ ...EMPTY_LEGAL, ...((await getSetting<LegalDoc>(LEGAL[kind].key)) ?? {}) }));

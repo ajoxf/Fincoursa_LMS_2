@@ -6,7 +6,7 @@ type Uploaded = { path: string; publicUrl: string | null; name: string };
 
 /** Uploads one file to Supabase Storage through a server-signed URL. */
 export function FileUpload({ bucket, courseId, accept, label = "Upload file", onUploaded }: {
-  bucket: "course-images" | "course-files" | "agreements"; courseId?: string; accept?: string; label?: string;
+  bucket: "course-images" | "course-files" | "agreements" | "site-files"; courseId?: string; accept?: string; label?: string;
   onUploaded: (f: Uploaded) => void | Promise<void>;
 }) {
   const input = useRef<HTMLInputElement>(null);
