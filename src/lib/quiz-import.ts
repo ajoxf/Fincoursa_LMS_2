@@ -1,8 +1,14 @@
-// Turns a quiz .json file into quiz questions. Forgiving on purpose: admins may export quizzes from
+// Turns a quiz .json (or .js) file into quiz questions. Forgiving on purpose: admins may export quizzes from
 // other tools, so several common shapes and key names are accepted. Safe to use in the browser.
 
 export type ImportedQuestion = { id: string; prompt: string; image: string | null; options: { id: string; text: string }[]; correct: string };
-export type QuizImport = { questions: ImportedQuestion[]; passPct: number | null; skipped: string[] };
+export type QuizImport = {
+  questions: ImportedQuestion[]; passPct: number | null; skipped: string[];
+  /** set when the correct answers were given as numbers: how they were read */
+  numbering: "from 0" | "from 1" | null;
+  /** questions the file marks as having a chart (e.g. hasImage: true) but gives no image link for */
+  needImage: number[];
+};
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : typeof v === "number" ? String(v) : "");
@@ -30,9 +36,130 @@ export const QUIZ_JSON_EXAMPLE = {
   ],
 };
 
+// ---- .js files -------------------------------------------------------------------------------
+// Quizzes are often shared as JavaScript (`const questions = [{ question: 'x', ... }];`, `export default {...}`,
+// `module.exports = [...]`). That isn't JSON: keys lack quotes, strings use single quotes, there are trailing
+// commas and comments. The file is NEVER run; this reads only plain data (objects, arrays, strings, numbers,
+// true/false/null) and rejects anything else (function calls, variables, `${}` in template strings).
+
+class LiteralError extends Error {}
+
+function parseJsLiteralAt(src: string, start: number): unknown {
+  let i = start;
+  const fail = (m: string): never => { throw new LiteralError(m); };
+  const ws = () => {
+    for (;;) {
+      const c = src[i];
+      if (c === " " || c === "\t" || c === "\n" || c === "\r" || c === "\ufeff" || c === "\u00a0") i++;
+      else if (c === "/" && src[i + 1] === "/") { while (i < src.length && src[i] !== "\n") i++; }
+      else if (c === "/" && src[i + 1] === "*") { const e = src.indexOf("*/", i + 2); if (e < 0) fail("unclosed comment"); i = e + 2; }
+      else return;
+    }
+  };
+  const ident = () => { const m = /^[A-Za-z_$][\w$]*/.exec(src.slice(i, i + 200)); return m ? m[0] : ""; };
+  const string = (): string => {
+    const q = src[i++];
+    let out = "";
+    while (i < src.length) {
+      const c = src[i++];
+      if (c === q) return out;
+      if (q === "`" && c === "$" && src[i] === "{") fail("template strings with ${...} aren't supported");
+      if (c !== "\\") { if (q !== "`" && c === "\n") fail("line break inside a string"); out += c; continue; }
+      const e = src[i++];
+      const hex = (n: number) => { const h = src.slice(i, i + n); if (!/^[0-9a-fA-F]+$/.test(h) || h.length !== n) fail("bad escape"); i += n; return parseInt(h, 16); };
+      if (e === "n") out += "\n"; else if (e === "t") out += "\t"; else if (e === "r") out += "\r";
+      else if (e === "b") out += "\b"; else if (e === "f") out += "\f"; else if (e === "v") out += "\v"; else if (e === "0") out += "\0";
+      else if (e === "x") out += String.fromCharCode(hex(2));
+      else if (e === "u" && src[i] === "{") { const end = src.indexOf("}", i); const cp = parseInt(src.slice(i + 1, end), 16); if (end < 0 || !Number.isFinite(cp) || cp > 0x10ffff) fail("bad escape"); out += String.fromCodePoint(cp); i = end + 1; }
+      else if (e === "u") out += String.fromCharCode(hex(4));
+      else if (e === "\r") { if (src[i] === "\n") i++; }
+      else if (e !== "\n" && e !== "\u2028" && e !== "\u2029") out += e;
+    }
+    return fail("unclosed string");
+  };
+  const value = (depth: number): unknown => {
+    if (depth > 50) fail("nested too deeply");
+    ws();
+    const c = src[i];
+    if (c === "{") {
+      i++;
+      const o: Record<string, unknown> = {};
+      for (;;) {
+        ws();
+        if (src[i] === "}") { i++; return o; }
+        let key: string;
+        if (src[i] === '"' || src[i] === "'" || src[i] === "`") key = string();
+        else if ((key = ident())) i += key.length;
+        else { const m = /^\d+(\.\d+)?/.exec(src.slice(i, i + 50)); if (!m) fail("expected a property name"); key = String(Number(m![0])); i += m![0].length; }
+        ws();
+        if (src[i] !== ":") fail(`expected ":" after ${key}`);
+        i++;
+        o[key] = value(depth + 1);
+        ws();
+        if (src[i] === ",") { i++; continue; }
+        if (src[i] === "}") { i++; return o; }
+        fail('expected "," or "}"');
+      }
+    }
+    if (c === "[") {
+      i++;
+      const a: unknown[] = [];
+      for (;;) {
+        ws();
+        if (src[i] === "]") { i++; return a; }
+        a.push(value(depth + 1));
+        ws();
+        if (src[i] === ",") { i++; continue; }
+        if (src[i] === "]") { i++; return a; }
+        fail('expected "," or "]"');
+      }
+    }
+    if (c === '"' || c === "'" || c === "`") return string();
+    const num = /^[+-]?(0[xX][0-9a-fA-F]+|(\d[\d_]*\.?[\d_]*|\.\d[\d_]*)([eE][+-]?\d+)?)/.exec(src.slice(i, i + 60));
+    if (num) { i += num[0].length; return Number(num[0].replace(/_/g, "")); }
+    const id = ident();
+    const lit: Record<string, unknown> = { true: true, false: false, null: null, undefined: null };
+    if (id in lit && Object.prototype.hasOwnProperty.call(lit, id)) { i += id.length; return lit[id]; }
+    return fail(id ? `"${id}" isn't plain data` : "unexpected character");
+  };
+  return value(0);
+}
+
+// Where a data literal could start in a .js file: the very start, after `=`, after `export default`, after `return`.
+function literalCandidates(src: string): number[] {
+  const lead = src.length - src.trimStart().length;
+  const out: number[] = src[lead] === "{" || src[lead] === "[" ? [lead] : [];
+  const re = /(?:[^=!<>]=(?![=>])|\bexport\s+default\b|\breturn\b)\s*/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src)) && out.length < 100) {
+    const p = m.index + m[0].length;
+    if (src[p] === "{" || src[p] === "[") out.push(p);
+  }
+  return out;
+}
+
+function parseQuizText(raw: string): unknown[] {
+  const text = raw.replace(/^\ufeff/, "");
+  try { return [JSON.parse(text)]; } catch { /* not JSON; try it as a .js file */ }
+  const found: unknown[] = [];
+  let why = "";
+  for (const p of literalCandidates(text)) {
+    try { found.push(parseJsLiteralAt(text, p)); } catch (e) { if (!(e instanceof LiteralError)) throw e; why ||= e.message; }
+  }
+  if (!found.length) throw new Error(`Couldn't read the questions in this file${why ? ` (${why})` : ""}. It should be JSON, or a .js file that sets the questions as plain data, e.g. const questions = [ ... ]. See the example file.`);
+  return found;
+}
+
 export function parseQuizJson(raw: string): QuizImport {
-  let data: unknown;
-  try { data = JSON.parse(raw.replace(/^﻿/, "")); } catch { throw new Error("This file isn't valid JSON. Check it in a JSON validator and try again."); }
+  const candidates = parseQuizText(raw);
+  let firstError: Error | null = null;
+  for (const data of candidates) {
+    try { return parseQuizData(data); } catch (e) { firstError ??= e as Error; }
+  }
+  throw firstError!;
+}
+
+function parseQuizData(data: unknown): QuizImport {
   const root = (Array.isArray(data) ? { questions: data } : data) as Record<string, unknown>;
   const list = pick(root ?? {}, ["questions", "quiz", "items", "data"]);
   if (!Array.isArray(list) || !list.length) throw new Error('No questions found. The file needs a "questions" list (see the example file).');
@@ -40,8 +167,28 @@ export function parseQuizJson(raw: string): QuizImport {
   const passRaw = Number(pick(root, ["pass_pct", "passPct", "pass_mark", "passing_score", "pass"]));
   const passPct = Number.isFinite(passRaw) && passRaw > 0 ? Math.min(100, passRaw <= 1 ? Math.round(passRaw * 100) : Math.round(passRaw)) : null;
 
+  // Numeric answers: "answer: 2" in our example file means the 2nd option, but files exported from code
+  // usually store an array index ("correct: 1" = the 2nd option). Decide once for the whole file:
+  // a 0 means counting from 0, a value equal to the number of options means counting from 1; otherwise go
+  // by the key name (correct / ...Index → from 0, answer / correct_answer → from 1).
+  const ANS_KEYS = ["answer", "correct", "correct_answer", "correctAnswer", "correctIndex", "correct_index", "answerIndex", "answer_index", "solution", "right"];
+  const ZERO_KEYS = new Set(["correct", "correctIndex", "correct_index", "answerIndex", "answer_index"]);
+  const isNum = (v: unknown) => (typeof v === "number" && Number.isInteger(v)) || (typeof v === "string" && /^\d+$/.test(v.trim()));
+  const numeric = list.slice(0, 200).flatMap((item) => {
+    const q = (item ?? {}) as Record<string, unknown>;
+    const key = ANS_KEYS.find((k) => q[k] !== undefined && q[k] !== null && q[k] !== "");
+    const o = pick(q, ["options", "answers", "choices", "alternatives"]);
+    const n = Array.isArray(o) ? o.length : o && typeof o === "object" ? Object.keys(o).length : 0;
+    return key && typeof q[key] !== "boolean" && isNum(q[key]) ? [{ key, v: Number(q[key]), n }] : [];
+  });
+  const zeroBased = numeric.some((x) => x.v === 0) ? true
+    : numeric.some((x) => x.v === x.n) ? false
+    : numeric.length > 0 && numeric.filter((x) => ZERO_KEYS.has(x.key)).length * 2 > numeric.length;
+  const numbering: QuizImport["numbering"] = numeric.length ? (zeroBased ? "from 0" : "from 1") : null;
+
   const questions: ImportedQuestion[] = [];
   const skipped: string[] = [];
+  const needImage: number[] = [];
   list.slice(0, 200).forEach((item, i) => {
     const q = (item ?? {}) as Record<string, unknown>;
     const prompt = str(pick(q, ["question", "prompt", "text", "title", "q"]));
@@ -55,15 +202,16 @@ export function parseQuizJson(raw: string): QuizImport {
       return { id: uid(), text: str(o), flagged: false };
     }).filter((o) => o.text);
 
-    // the correct answer: flagged option, letter (A, B…), number (1 = first) or the option's text
+    // the correct answer: flagged option, letter (A, B…), number (see numbering above) or the option's text
     let correct = options.find((o) => o.flagged)?.id ?? "";
-    const ans = pick(q, ["answer", "correct", "correct_answer", "correctAnswer", "solution", "right"]);
-    if (!correct && ans !== undefined) {
+    const ans = pick(q, ANS_KEYS);
+    if (!correct && ans !== undefined && typeof ans !== "boolean") {
       const a = str(ans);
+      const byNumber = /^\d+$/.test(a) ? options[Number(a) - (zeroBased ? 0 : 1)] : undefined;
       const byText = options.find((o) => o.text.toLowerCase() === a.toLowerCase());
       const byLetter = /^[A-J]$/i.test(a) ? options[LETTERS.indexOf(a.toUpperCase())] : undefined;
-      const byNumber = /^\d+$/.test(a) ? options[Number(a) - 1] : undefined;
-      correct = (byText ?? byLetter ?? byNumber)?.id ?? "";
+      // a real number is an index; a string is matched against the answer text first
+      correct = (typeof ans === "number" ? byNumber : byText ?? byLetter ?? byNumber)?.id ?? "";
     }
     const imageRaw = str(pick(q, ["image", "image_url", "imageUrl", "chart", "picture", "img"]));
     const image = /^https?:\/\/\S+$/i.test(imageRaw) ? imageRaw : null;
@@ -73,7 +221,8 @@ export function parseQuizJson(raw: string): QuizImport {
     if (options.length < 2) return void skipped.push(`${label}: needs at least two answers`);
     if (!correct) return void skipped.push(`${label}: couldn't tell which answer is correct`);
     questions.push({ id: uid(), prompt, image, options: options.map(({ id, text }) => ({ id, text })), correct });
+    if (!image && (q.hasImage === true || q.has_image === true || q.needsImage === true)) needImage.push(questions.length);
   });
   if (!questions.length) throw new Error(`No questions could be imported. ${skipped.slice(0, 3).join("; ")}`);
-  return { questions, passPct, skipped };
+  return { questions, passPct, skipped, numbering, needImage };
 }
