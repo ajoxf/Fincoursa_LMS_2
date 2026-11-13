@@ -355,7 +355,15 @@ function QuizEditor({ courseId, questions, setQuestions, passPct, setPassPct }: 
         `Found ${r.questions.length} questions.\n\nOK: replace the ${questions.length} questions already here.\nCancel: add them after the existing ones.`);
       setQuestions(replace || !questions.length ? r.questions : [...questions, ...r.questions]);
       if (r.passPct !== null) setPassPct(r.passPct);
-      setNote({ ok: true, t: `Imported ${r.questions.length} ${r.questions.length === 1 ? "question" : "questions"}${r.skipped.length ? `. Skipped ${r.skipped.length}: ${r.skipped.slice(0, 3).join("; ")}${r.skipped.length > 3 ? "…" : ""}` : ""}. Check them, then click Save lesson.` });
+      const offset = replace || !questions.length ? 0 : questions.length;
+      setNote({ ok: true, t: [
+        `Imported ${r.questions.length} ${r.questions.length === 1 ? "question" : "questions"}.`,
+        r.skipped.length ? `Skipped ${r.skipped.length}: ${r.skipped.slice(0, 3).join("; ")}${r.skipped.length > 3 ? "…" : ""}.` : "",
+        r.numbering === "from 0" ? "Answer numbers were read as counting from 0 (0 = first answer, 1 = second)." : "",
+        r.numbering === "from 1" ? "Answer numbers were read as counting from 1 (1 = first answer)." : "",
+        r.needImage.length ? `${r.needImage.length === 1 ? "Question" : "Questions"} ${r.needImage.map((n) => n + offset).join(", ")} need a chart: upload ${r.needImage.length === 1 ? "it" : "them"} below.` : "",
+        "Check the correct answers, then click Save lesson.",
+      ].filter(Boolean).join(" ") });
     } catch (e) { setNote({ ok: false, t: e instanceof Error ? e.message : "Could not read that file" }); }
   }
   const exampleHref = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(QUIZ_JSON_EXAMPLE, null, 2))}`;
@@ -377,7 +385,7 @@ function QuizEditor({ courseId, questions, setQuestions, passPct, setPassPct }: 
           </label>
           <a href={exampleHref} download="fincoursa-quiz-example.json" className="underline">Download an example file</a>
         </div>
-        <p className="text-xs text-muted">Each question needs the question text, its answers and which one is correct (as a letter like &quot;B&quot;, a number like 2, or the answer text). A chart can be added with an &quot;image&quot; link, or uploaded below after importing.</p>
+        <p className="text-xs text-muted">Each question needs the question text, its answers and which one is correct (as a letter like &quot;B&quot;, a number, or the answer text; numbers can count from 1 or, as in most .js quiz files, from 0). A chart can be added with an &quot;image&quot; link, or uploaded below after importing.</p>
         {note && <p className={`text-sm ${note.ok ? "text-success" : "text-danger"}`}>{note.t}</p>}
       </div>
 

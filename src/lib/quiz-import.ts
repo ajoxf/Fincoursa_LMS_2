@@ -2,7 +2,13 @@
 // other tools, so several common shapes and key names are accepted. Safe to use in the browser.
 
 export type ImportedQuestion = { id: string; prompt: string; image: string | null; options: { id: string; text: string }[]; correct: string };
-export type QuizImport = { questions: ImportedQuestion[]; passPct: number | null; skipped: string[] };
+export type QuizImport = {
+  questions: ImportedQuestion[]; passPct: number | null; skipped: string[];
+  /** set when the correct answers were given as numbers: how they were read */
+  numbering: "from 0" | "from 1" | null;
+  /** questions the file marks as having a chart (e.g. hasImage: true) but gives no image link for */
+  needImage: number[];
+};
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : typeof v === "number" ? String(v) : "");
@@ -161,8 +167,28 @@ function parseQuizData(data: unknown): QuizImport {
   const passRaw = Number(pick(root, ["pass_pct", "passPct", "pass_mark", "passing_score", "pass"]));
   const passPct = Number.isFinite(passRaw) && passRaw > 0 ? Math.min(100, passRaw <= 1 ? Math.round(passRaw * 100) : Math.round(passRaw)) : null;
 
+  // Numeric answers: "answer: 2" in our example file means the 2nd option, but files exported from code
+  // usually store an array index ("correct: 1" = the 2nd option). Decide once for the whole file:
+  // a 0 means counting from 0, a value equal to the number of options means counting from 1; otherwise go
+  // by the key name (correct / ...Index → from 0, answer / correct_answer → from 1).
+  const ANS_KEYS = ["answer", "correct", "correct_answer", "correctAnswer", "correctIndex", "correct_index", "answerIndex", "answer_index", "solution", "right"];
+  const ZERO_KEYS = new Set(["correct", "correctIndex", "correct_index", "answerIndex", "answer_index"]);
+  const isNum = (v: unknown) => (typeof v === "number" && Number.isInteger(v)) || (typeof v === "string" && /^\d+$/.test(v.trim()));
+  const numeric = list.slice(0, 200).flatMap((item) => {
+    const q = (item ?? {}) as Record<string, unknown>;
+    const key = ANS_KEYS.find((k) => q[k] !== undefined && q[k] !== null && q[k] !== "");
+    const o = pick(q, ["options", "answers", "choices", "alternatives"]);
+    const n = Array.isArray(o) ? o.length : o && typeof o === "object" ? Object.keys(o).length : 0;
+    return key && typeof q[key] !== "boolean" && isNum(q[key]) ? [{ key, v: Number(q[key]), n }] : [];
+  });
+  const zeroBased = numeric.some((x) => x.v === 0) ? true
+    : numeric.some((x) => x.v === x.n) ? false
+    : numeric.length > 0 && numeric.filter((x) => ZERO_KEYS.has(x.key)).length * 2 > numeric.length;
+  const numbering: QuizImport["numbering"] = numeric.length ? (zeroBased ? "from 0" : "from 1") : null;
+
   const questions: ImportedQuestion[] = [];
   const skipped: string[] = [];
+  const needImage: number[] = [];
   list.slice(0, 200).forEach((item, i) => {
     const q = (item ?? {}) as Record<string, unknown>;
     const prompt = str(pick(q, ["question", "prompt", "text", "title", "q"]));
@@ -176,15 +202,16 @@ function parseQuizData(data: unknown): QuizImport {
       return { id: uid(), text: str(o), flagged: false };
     }).filter((o) => o.text);
 
-    // the correct answer: flagged option, letter (A, B…), number (1 = first) or the option's text
+    // the correct answer: flagged option, letter (A, B…), number (see numbering above) or the option's text
     let correct = options.find((o) => o.flagged)?.id ?? "";
-    const ans = pick(q, ["answer", "correct", "correct_answer", "correctAnswer", "solution", "right"]);
-    if (!correct && ans !== undefined) {
+    const ans = pick(q, ANS_KEYS);
+    if (!correct && ans !== undefined && typeof ans !== "boolean") {
       const a = str(ans);
+      const byNumber = /^\d+$/.test(a) ? options[Number(a) - (zeroBased ? 0 : 1)] : undefined;
       const byText = options.find((o) => o.text.toLowerCase() === a.toLowerCase());
       const byLetter = /^[A-J]$/i.test(a) ? options[LETTERS.indexOf(a.toUpperCase())] : undefined;
-      const byNumber = /^\d+$/.test(a) ? options[Number(a) - 1] : undefined;
-      correct = (byText ?? byLetter ?? byNumber)?.id ?? "";
+      // a real number is an index; a string is matched against the answer text first
+      correct = (typeof ans === "number" ? byNumber : byText ?? byLetter ?? byNumber)?.id ?? "";
     }
     const imageRaw = str(pick(q, ["image", "image_url", "imageUrl", "chart", "picture", "img"]));
     const image = /^https?:\/\/\S+$/i.test(imageRaw) ? imageRaw : null;
@@ -194,7 +221,8 @@ function parseQuizData(data: unknown): QuizImport {
     if (options.length < 2) return void skipped.push(`${label}: needs at least two answers`);
     if (!correct) return void skipped.push(`${label}: couldn't tell which answer is correct`);
     questions.push({ id: uid(), prompt, image, options: options.map(({ id, text }) => ({ id, text })), correct });
+    if (!image && (q.hasImage === true || q.has_image === true || q.needsImage === true)) needImage.push(questions.length);
   });
   if (!questions.length) throw new Error(`No questions could be imported. ${skipped.slice(0, 3).join("; ")}`);
-  return { questions, passPct, skipped };
+  return { questions, passPct, skipped, numbering, needImage };
 }
