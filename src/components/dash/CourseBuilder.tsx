@@ -371,8 +371,8 @@ function QuizEditor({ courseId, questions, setQuestions, passPct, setPassPct }: 
       <div className="grid gap-2 rounded-md border border-dashed border-line bg-bg p-3 text-sm">
         <div className="flex flex-wrap items-center gap-3">
           <label className="fc-btn fc-btn-outline cursor-pointer !px-4 !py-2 text-sm">
-            Import questions from a .json file
-            <input type="file" accept=".json,application/json" className="hidden"
+            Import questions from a .json or .js file
+            <input type="file" accept=".json,.js,.mjs,.cjs,.ts,.txt,application/json,text/javascript" className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) importJson(f); e.target.value = ""; }} />
           </label>
           <a href={exampleHref} download="fincoursa-quiz-example.json" className="underline">Download an example file</a>
