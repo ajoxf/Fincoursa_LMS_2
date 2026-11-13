@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getBundle } from "@/lib/catalog";
+import { accessLabel, getBundle } from "@/lib/catalog";
 import { CourseCard } from "@/components/site/CourseCard";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { PageHero, Chips } from "@/components/site/PageHero";
@@ -26,7 +26,7 @@ export default async function BundlePage({ params }: PageProps<"/bundles/[slug]"
             <p className={`whitespace-nowrap font-bold tracking-tight ${bundle.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
               {bundle.isFree ? "Free" : bundle.price && formatMoney(bundle.price.amount_minor, bundle.price.currency)}
             </p>
-            <p className="mt-3 text-[15px]">Full lifetime access</p>
+            <p className="mt-3 text-[15px]">{accessLabel(bundle.courses.map((c) => c.accessDays))}</p>
             <div className="mt-5 md:ml-auto md:w-[210px]">
               {bundle.isFree ? (
                 <form action={enrollFreeBundle.bind(null, bundle.id)}><button className="fc-btn fc-btn-primary w-full !py-4">Enroll for Free</button></form>

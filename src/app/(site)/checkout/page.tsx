@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ALL_COUNTRIES, countryName, nowIso } from "@/lib/format";
 import { PayButton } from "./PayButton";
 import { startCheckout } from "./actions";
-import { getCourse } from "@/lib/catalog";
+import { accessLabel, getBundle, getCourse } from "@/lib/catalog";
 
 export const metadata: Metadata = { title: "Checkout", robots: { index: false } };
 
@@ -38,8 +38,9 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   const quote = await buildQuote({ courseSlug, bundleSlug, couponCode: one("coupon"), country, businessTaxId: taxId || undefined });
   // what the buyer gets: live sessions, a fixed access period, or lifetime access
   const detail = courseSlug ? await getCourse(courseSlug) : null;
+  const bundle = !courseSlug && bundleSlug ? await getBundle(bundleSlug) : null;
   const accessText = detail?.liveSessions.length ? `${detail.liveSessions.length} live sessions + recordings`
-    : detail?.access_days ? `${detail.access_days} days access` : "Lifetime access";
+    : accessLabel(detail ? [detail.access_days] : bundle ? bundle.courses.map((c) => c.accessDays) : []);
   if (!quote) notFound();
 
   // Already own everything in this item? Go straight to learning.

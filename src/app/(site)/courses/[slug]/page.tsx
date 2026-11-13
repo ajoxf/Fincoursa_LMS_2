@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCourse } from "@/lib/catalog";
+import { accessLabel, getCourse } from "@/lib/catalog";
 import { getSessionUser } from "@/lib/auth";
 import { getEnrollment } from "@/lib/learning";
 import { formatMoney } from "@/lib/money";
@@ -62,7 +62,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
             <p className={`whitespace-nowrap font-bold tracking-tight ${course.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
               {course.isFree ? "Free" : course.price && formatMoney(course.price.amount_minor, course.price.currency)}
             </p>
-            <p className="mt-3 text-[15px]">{isLive ? "Live sessions + recordings" : course.access_days ? `${course.access_days} days access` : "Full lifetime access"}</p>
+            <p className="mt-3 text-[15px]">{isLive ? "Live sessions + recordings" : accessLabel([course.access_days])}</p>
             <div className="mt-5 md:ml-auto md:w-[210px]">{cta}</div>
           </div>
         }>

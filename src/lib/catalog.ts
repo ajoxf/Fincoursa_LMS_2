@@ -57,6 +57,8 @@ export type CourseCard = {
   tags: string[];
   /** Issues a certificate on completion (set per course in the admin) */
   certificate: boolean;
+  /** Days of access after enrolling (set per course in the admin); null = lifetime */
+  accessDays: number | null;
   /** Start times of live (Zoom) sessions, oldest first; empty for recorded-only courses */
   liveSessions: string[];
   instructors: Instructor[];
@@ -84,6 +86,14 @@ const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, du
   course_instructors(is_primary, instructor:instructors(id, slug, name, title, bio, photo_url, org_logo_url)),
   prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active)`;
 
+/** What buyers get, for one course or all the courses in a bundle: "90 days of access" or "Full lifetime access". */
+export function accessLabel(days: (number | null | undefined)[]): string {
+  const d = days.map((x) => (x && x > 0 ? x : null));
+  if (!d.length || d.every((x) => x === null)) return "Full lifetime access";
+  if (d.every((x) => x === d[0])) return `${d[0]} ${d[0] === 1 ? "day" : "days"} of access`;
+  return "Access period varies by course";
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function pickPrice(prices: any[] | null | undefined, currency = env.defaultCurrency): Price | null {
   const active = (prices ?? []).filter((p) => p.is_active !== false);
@@ -107,6 +117,7 @@ function toCourseCard(row: any): CourseCard {
     level: row.level ?? null,
     tags: row.tags ?? [],
     certificate: row.certificate_enabled === true,
+    accessDays: row.access_days > 0 ? row.access_days : null,
     liveSessions: (row.live_lessons ?? []).map((l: { starts_at: string | null }) => l.starts_at).filter(Boolean).sort(),
     instructors: (row.course_instructors ?? [])
       .sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary))
