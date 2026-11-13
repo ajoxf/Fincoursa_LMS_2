@@ -25,6 +25,8 @@ insert into public.video_assets (id, asset_id, playback_id, status, duration_sec
 values ('00000000-0000-0000-0000-0000000000f1', 'asset1', 'pb1', 'ready', 600);
 update public.lessons set video_asset_id = '00000000-0000-0000-0000-0000000000f1', is_preview = false
  where course_id = (select id from public.courses where slug = 'technical-analysis-theory-and-history');
+-- Certificates are opt-in per course; switch them on for this course so issuance is checked below.
+update public.courses set certificate_enabled = true where slug = 'technical-analysis-theory-and-history';
 
 -- Affiliate click
 select public.track_affiliate_click('ALI', 'visitor-1', '/courses/x', 'https://twitter.com/post', 'ae', 'Twitter Launch!');
