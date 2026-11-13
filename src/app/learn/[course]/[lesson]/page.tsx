@@ -13,7 +13,7 @@ import { brand } from "@/components/site/brand";
 import { VideoLesson } from "@/components/player/VideoLesson";
 import { CompleteButton } from "@/components/player/CompleteButton";
 import { CurriculumNav, type NavChapter } from "@/components/player/CurriculumNav";
-import { QuizLesson, type QuizQuestion } from "@/components/player/QuizLesson";
+import { QuizLesson, type QuizQuestion, type QuizReview } from "@/components/player/QuizLesson";
 import { LiveSession } from "@/components/player/LiveSession";
 import { joinWindow } from "@/lib/format";
 import { announcementsFor } from "@/lib/announcements";
@@ -62,6 +62,10 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
   // course updates: enrolled students and staff previewing only
   const updates = enrollment || previewing ? await announcementsFor([course.id], 3) : [];
   const b = (body?.body ?? {}) as Body;
+  // the student's latest quiz attempt, with the answer key, for the review screen
+  const quizReview = full?.type === "quiz" && user && unlocked
+    ? ((await supabase.rpc("quiz_review", { p_lesson: lessonId })).data as QuizReview | null)
+    : null;
 
   // Video: sign playback only after the access check above
   let video: { playbackId: string; tokens: Record<string, string | undefined> } | null = null;
@@ -170,9 +174,10 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
               )
             ) : full?.type === "quiz" ? (
               <div className="mx-auto max-w-[680px] px-4 py-10">
-                <QuizLesson lessonId={lessonId} courseId={course.id} passPct={b.pass_pct ?? 70}
+                <QuizLesson key={lessonId} lessonId={lessonId} courseId={course.id} passPct={b.pass_pct ?? 70}
                   // never send correct answers to the browser
-                  questions={(b.questions ?? []).map((q) => ({ id: q.id, prompt: q.prompt, image: q.image ?? null, options: q.options }))} canSubmit={tracking} />
+                  questions={(b.questions ?? []).map((q) => ({ id: q.id, prompt: q.prompt, image: q.image ?? null, options: q.options }))} canSubmit={tracking}
+                  lastAttempt={quizReview} />
               </div>
             ) : full?.type === "audio" && files[0] ? (
               <div className="mx-auto max-w-[680px] px-4 pt-12">
