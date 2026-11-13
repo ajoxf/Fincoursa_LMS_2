@@ -1,4 +1,4 @@
-import type { CourseCard as Course } from "@/lib/catalog";
+import { accessLabel, type CourseCard as Course } from "@/lib/catalog";
 import { CourseCard } from "./CourseCard";
 import { PageHero, Chips } from "./PageHero";
 import { SectionHeading } from "./SectionHeading";
@@ -8,7 +8,10 @@ export function CourseListPage({ title, courses, chips }: { title: string; cours
     <>
       <PageHero label="Courses" title={title}>
         <Chips firstLime items={[`${courses.length} ${courses.length === 1 ? "course" : "courses"}`,
-          ...(chips ?? ["Guided order", ...(courses.some((c) => c.certificate) ? ["Certificates available"] : []), "Lifetime access"])]} />
+          ...(chips ?? ["Guided order", ...(courses.some((c) => c.certificate) ? ["Certificates available"] : []),
+            // only when every course on the page has the same access period
+            ...(courses.length && accessLabel(courses.map((c) => c.accessDays)) !== "Access period varies by course"
+              ? [accessLabel(courses.map((c) => c.accessDays)).replace("Full lifetime", "Lifetime")] : [])])]} />
       </PageHero>
       <section className="bg-surface">
         <div className="fc-container py-24">

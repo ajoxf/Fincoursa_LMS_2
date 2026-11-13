@@ -22,18 +22,39 @@ export async function enrollFreeBundle(bundleId: string) {
   const admin = createAdminClient();
   const { data: bundle } = await admin
     .from("bundles")
-    .select("status, prices(amount_minor, is_active), bundle_courses(course_id)")
+    .select("status, prices(amount_minor, is_active), bundle_courses(course_id, course:courses(access_days))")
     .eq("id", bundleId)
     .single();
   const paid = (bundle?.prices ?? []).some((p) => p.is_active && p.amount_minor > 0);
   if (!bundle || bundle.status !== "published" || paid) throw new Error("This programme is not free.");
-  const rows = (bundle.bundle_courses ?? []).map((bc) => ({
-    user_id: user.id, course_id: bc.course_id, source: "bundle", bundle_id: bundleId, revoked_at: null,
-  }));
-  if (rows.length) {
-    const { error } = await admin.from("enrollments").upsert(rows, { onConflict: "user_id,course_id", ignoreDuplicates: true });
+
+  // each course's access period applies (null = lifetime)
+  const now = Date.now();
+  const expiry = (days: number | null | undefined) => (days && days > 0 ? new Date(now + days * 86_400_000).toISOString() : null);
+  const courses = (bundle.bundle_courses ?? []).map((bc) => {
+    const c = bc.course as { access_days: number | null } | { access_days: number | null }[] | null;
+    return { course_id: bc.course_id, expires_at: expiry(Array.isArray(c) ? c[0]?.access_days : c?.access_days) };
+  });
+  const { data: existing } = await admin.from("enrollments").select("course_id, expires_at, revoked_at")
+    .eq("user_id", user.id).in("course_id", courses.map((c) => c.course_id));
+  const have = new Map((existing ?? []).map((e) => [e.course_id, e]));
+
+  // new courses: enrol. Courses whose access ran out: renew. Anything else (active or removed by an admin) stays as it is.
+  const fresh = courses.filter((c) => !have.has(c.course_id));
+  const expired = courses.filter((c) => {
+    const e = have.get(c.course_id);
+    return e && !e.revoked_at && e.expires_at && new Date(e.expires_at).getTime() <= now;
+  });
+  if (fresh.length) {
+    const { error } = await admin.from("enrollments").upsert(
+      fresh.map((c) => ({ user_id: user.id, course_id: c.course_id, source: "bundle", bundle_id: bundleId, expires_at: c.expires_at, revoked_at: null })),
+      { onConflict: "user_id,course_id", ignoreDuplicates: true });
     if (error) throw new Error(error.message);
-    after(() => sendEnrolled(user.id, { bundleId }, `${user.id}:${bundleId}`));
   }
+  for (const c of expired) {
+    const { error } = await admin.from("enrollments").update({ expires_at: c.expires_at }).eq("user_id", user.id).eq("course_id", c.course_id);
+    if (error) throw new Error(error.message);
+  }
+  if (fresh.length || expired.length) after(() => sendEnrolled(user.id, { bundleId }, `${user.id}:${bundleId}`));
   redirect("/dashboard");
 }
