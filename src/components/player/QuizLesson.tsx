@@ -19,6 +19,8 @@ export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit, 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [i, setI] = useState(0);
   const [onlyWrong, setOnlyWrong] = useState(false);
+  // questions the student marked to come back to (only while taking the quiz)
+  const [flagged, setFlagged] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -42,7 +44,7 @@ export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit, 
     });
   }
 
-  function retake() { setAnswers({}); setI(0); setMode("take"); setError(null); }
+  function retake() { setAnswers({}); setFlagged({}); setI(0); setMode("take"); setError(null); }
 
   // ---------- Result summary ----------
   if (mode === "result" && review) {
@@ -94,7 +96,7 @@ export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit, 
             : <span>{answeredCount} of {questions.length} answered</span>}
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-surface">
-          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${((pos + 1) / visible.length) * 100}%` }} />
+          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(reviewing ? (pos + 1) / visible.length : answeredCount / questions.length) * 100}%` }} />
         </div>
       </div>
 
@@ -103,6 +105,12 @@ export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit, 
         <legend className="sr-only">Question {i + 1}</legend>
         <div className="flex items-start justify-between gap-3">
           <p className="font-semibold leading-snug"><span className="whitespace-pre-line">{i + 1}. {q.prompt}</span></p>
+          {!reviewing && (
+            <button type="button" aria-pressed={Boolean(flagged[q.id])} onClick={() => setFlagged({ ...flagged, [q.id]: !flagged[q.id] })}
+              className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${flagged[q.id] ? "border-warning bg-warning/15 text-warning" : "border-line"}`}>
+              {flagged[q.id] ? "⚑ Flagged" : "⚐ Flag for review"}
+            </button>
+          )}
           {reviewing && (
             isRight(reviewing, q.id)
               ? <span className="shrink-0 rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success">Correct</span>
@@ -149,26 +157,38 @@ export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit, 
             ? <button type="button" className="fc-btn fc-btn-primary" onClick={() => setMode("result")}>Finish review</button>
             : <button type="button" className="fc-btn fc-btn-primary" onClick={() => go(visible[pos + 1])}>Next →</button>
         ) : !last ? (
-          <button type="button" className="fc-btn fc-btn-primary" disabled={!chosen} onClick={() => go(visible[pos + 1])}>Next →</button>
-        ) : canSubmit ? (
-          <button type="button" className="fc-btn fc-btn-primary" disabled={pending || answeredCount < questions.length} onClick={submit}>
-            {pending ? "Checking…" : answeredCount < questions.length ? `Answer all questions (${questions.length - answeredCount} left)` : "Submit answers"}
+          <button type="button" className="fc-btn fc-btn-primary" onClick={() => go(visible[pos + 1])}>Next →</button>
+        ) : !canSubmit ? (
+          <p className="text-sm text-muted">Enroll to submit this quiz.</p>
+        ) : answeredCount < questions.length ? (
+          <button type="button" className="fc-btn fc-btn-primary" onClick={() => go(questions.findIndex((x) => !answers[x.id]))}>
+            Go to first unanswered ({questions.length - answeredCount} left)
           </button>
-        ) : <p className="text-sm text-muted">Enroll to submit this quiz.</p>}
+        ) : (
+          <button type="button" className="fc-btn fc-btn-primary" disabled={pending} onClick={submit}>{pending ? "Checking…" : "Submit answers"}</button>
+        )}
       </div>
 
       {/* jump to any question */}
+      {!reviewing && (
+        <p className="-mb-2 text-xs text-muted">
+          Jump to any question. <span className="font-semibold text-ink">Highlighted</span> = answered · <span className="text-warning">●</span> = flagged for review
+          {Object.values(flagged).some(Boolean) ? ` (${questions.filter((x) => flagged[x.id]).length} flagged)` : ""}
+        </p>
+      )}
       <div className="flex flex-wrap gap-1.5" aria-label="Questions">
         {visible.map((k) => {
           const qq = questions[k];
           const state = reviewing ? (isRight(reviewing, qq.id) ? "border-success bg-success/15 text-success" : "border-danger bg-danger/15 text-danger")
-            : answers[qq.id] ? "border-accent bg-accent/15" : "border-line text-muted";
-          // while taking the quiz, only questions already reached can be opened
-          const reachable = reviewing || answers[qq.id] || k <= i || questions.slice(0, k).every((x) => answers[x.id]);
+            : answers[qq.id] ? "border-accent bg-accent/15" : "border-line bg-white";
+          // every question can be opened at any time, in any order
+          const isFlagged = !reviewing && flagged[qq.id];
           return (
-            <button key={qq.id} type="button" disabled={!reachable} onClick={() => go(k)} aria-current={k === i ? "step" : undefined}
-              className={`h-8 min-w-8 rounded-md border px-1.5 text-xs font-medium disabled:opacity-40 ${state} ${k === i ? "ring-2 ring-ink/60" : ""}`}>
+            <button key={qq.id} type="button" onClick={() => go(k)} aria-current={k === i ? "step" : undefined}
+              aria-label={`Question ${k + 1}${!reviewing ? (answers[qq.id] ? ", answered" : ", not answered") : ""}${isFlagged ? ", flagged" : ""}`}
+              className={`relative h-8 min-w-8 rounded-md border px-1.5 text-xs font-medium ${state} ${k === i ? "ring-2 ring-ink/60" : ""}`}>
               {k + 1}
+              {isFlagged && <span aria-hidden className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-warning ring-2 ring-white" />}
             </button>
           );
         })}
