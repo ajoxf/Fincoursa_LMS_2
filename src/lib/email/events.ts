@@ -25,7 +25,7 @@ export async function sendWelcome(userId: string) {
 export async function sendReceipt(orderId: string) {
   const db = createAdminClient();
   const { data: o } = await db.from("orders")
-    .select("id, number, user_id, status, currency, discount_minor, tax_minor, total_minor, tax_rate, tax_name, reverse_charge, paid_at, billing_country, order_items(title, unit_amount_minor, quantity, course_id, bundle_id, course:courses(slug))")
+    .select("id, number, user_id, status, currency, discount_minor, credit_minor, founding_discount_minor, cashback_minor, tax_minor, total_minor, tax_rate, tax_name, reverse_charge, paid_at, billing_country, order_items(title, unit_amount_minor, quantity, course_id, bundle_id, course:courses(slug))")
     .eq("id", orderId).maybeSingle();
   if (!o || o.status !== "paid") return;
   // live sessions in what they bought (course, or every course in a bundle)
@@ -47,7 +47,9 @@ export async function sendReceipt(orderId: string) {
   const t = T.receiptEmail({
     name: p.full_name, orderNumber: o.number, date: formatDate(o.paid_at, "long"),
     lines: (o.order_items ?? []).map((i) => ({ title: i.title, amount: m(i.unit_amount_minor * i.quantity) })),
-    discount: o.discount_minor ? m(o.discount_minor) : null,
+    discount: o.discount_minor - (o.credit_minor ?? 0) - (o.founding_discount_minor ?? 0) > 0 ? m(o.discount_minor - (o.credit_minor ?? 0) - (o.founding_discount_minor ?? 0)) : null,
+    founding: o.founding_discount_minor ? m(o.founding_discount_minor) : null,
+    credit: o.credit_minor ? m(o.credit_minor) : null, cashback: o.cashback_minor ? m(o.cashback_minor) : null,
     vat: o.tax_minor ? m(o.tax_minor) : null, vatLabel: (o.tax_name ?? tax?.name) ? `${o.tax_name ?? tax?.name} ${+(Number(o.tax_rate) * 100).toFixed(1)}%` : null,
     vatAdded: tax?.prices_include_tax === false, reverseCharge: o.reverse_charge, sessions,
     total: m(o.total_minor), invoiceUrl: `${site()}/api/invoices/${o.id}`,

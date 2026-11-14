@@ -35,7 +35,8 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
 
   const company = one("company") ?? "";
   const taxId = one("tax_id") ?? "";
-  const quote = await buildQuote({ courseSlug, bundleSlug, couponCode: one("coupon"), country, businessTaxId: taxId || undefined });
+  const useCredit = one("use_credit") !== "0";
+  const quote = await buildQuote({ courseSlug, bundleSlug, couponCode: one("coupon"), country, businessTaxId: taxId || undefined, userId: user.id, useCredit });
   // what the buyer gets: live sessions, a fixed access period, or lifetime access
   const detail = courseSlug ? await getCourse(courseSlug) : null;
   const bundle = !courseSlug && bundleSlug ? await getBundle(bundleSlug) : null;
@@ -87,9 +88,22 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
               </div>
               <p className="mt-2 text-xs text-muted">Shown on your tax invoice. In countries with reverse charge (EU, UK and others), registered businesses pay the price without VAT.</p>
             </details>
+            {quote.creditAvailableMinor > 0 && (
+              <div className="grid gap-1 rounded-lg border border-line p-4 text-sm text-ink">
+                <span className="font-medium">You have {m(quote.creditAvailableMinor)} FinCoursa credit</span>
+                {quote.creditNote ? <span className="text-muted">{quote.creditNote}</span> : (
+                  <label className="flex items-center gap-2">
+                    <input type="hidden" name="use_credit" value="0" />
+                    <input type="checkbox" name="use_credit" value="1" defaultChecked={useCredit} className="accent-black" />
+                    Use my credit on this order
+                  </label>
+                )}
+              </div>
+            )}
             <button className="justify-self-start text-sm text-ink underline underline-offset-4">Update total</button>
             {quote.couponError && <p className="text-sm text-danger">{quote.couponError}</p>}
             {quote.coupon && <p className="text-sm text-success">Code {quote.coupon.code} applied.</p>}
+            {quote.foundingNote && <p className="text-sm text-muted">{quote.foundingNote}</p>}
           </form>
 
           <form action={startCheckout} className="grid gap-4 rounded-2xl bg-white p-6 md:p-8">
@@ -100,6 +114,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             <input type="hidden" name="country" value={country} />
             <input type="hidden" name="company" value={company} />
             <input type="hidden" name="tax_id" value={taxId} />
+            <input type="hidden" name="use_credit" value={useCredit ? "1" : "0"} />
             {quote.totalMinor === 0 ? (
               <PayButton>Complete enrollment</PayButton>
             ) : gateways.length === 0 ? (
@@ -130,6 +145,8 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
           <dl className="mt-6 grid gap-3 text-[15px] text-ink">
             <div className="flex justify-between"><dt>Price</dt><dd>{m(quote.subtotalMinor)}</dd></div>
             {quote.discountMinor > 0 && <div className="flex justify-between text-success"><dt>Discount ({quote.coupon?.code})</dt><dd>−{m(quote.discountMinor)}</dd></div>}
+            {quote.foundingMinor > 0 && <div className="flex justify-between text-success"><dt>Founding member discount</dt><dd>−{m(quote.foundingMinor)}</dd></div>}
+            {quote.creditMinor > 0 && <div className="flex justify-between text-success"><dt>FinCoursa credit</dt><dd>−{m(quote.creditMinor)}</dd></div>}
             {quote.taxMinor > 0 && (
               <div className="flex justify-between text-muted">
                 <dt>{quote.taxName ?? quote.taxLabel} ({+(quote.taxRate * 100).toFixed(1)}%){quote.pricesIncludeTax ? " included" : " added"}</dt><dd>{m(quote.taxMinor)}</dd>
@@ -140,6 +157,12 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             )}
             <div className="mt-2 flex items-baseline justify-between border-t border-ink pt-4"><dt className="font-medium">Total</dt><dd className="text-3xl font-bold tracking-tight">{m(quote.totalMinor)}</dd></div>
           </dl>
+          {quote.cashbackMinor > 0 && (
+            <p className="mt-4 rounded-lg bg-accent/30 px-4 py-3 text-sm text-ink">
+              You&apos;ll earn <strong>{m(quote.cashbackMinor)}</strong> credit{quote.cashbackLabel?.endsWith("%") ? ` (${quote.cashbackLabel} cashback)` : ""} to use on a future purchase
+              {quote.cashbackValidDays ? `, valid for ${quote.cashbackValidDays} days` : ""}.
+            </p>
+          )}
           <p className="mt-4 text-xs text-muted">A receipt and tax invoice are emailed after payment.</p>
         </aside>
       </div>

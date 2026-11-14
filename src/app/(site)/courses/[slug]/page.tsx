@@ -5,13 +5,15 @@ import { accessLabel, getCourse } from "@/lib/catalog";
 import { getSessionUser } from "@/lib/auth";
 import { getEnrollment } from "@/lib/learning";
 import { formatMoney } from "@/lib/money";
+import { cashbackLabel, cashbackRule, getCashbackSettings } from "@/lib/cashback";
+import { benefitLive, foundingLabel, getFoundingSettings, getMembership, joiningOpen } from "@/lib/founding";
 import { enrollFree } from "@/app/actions/enroll";
 import { NotifyMe } from "@/components/site/NotifyMe";
 import { PageHero, Chips } from "@/components/site/PageHero";
 import { FacultyBanner } from "@/components/site/FacultyBanner";
 import { LocalTime } from "@/components/site/LocalTime";
 import { LessonTypeIcon } from "@/components/site/LessonTypeIcon";
-import { SESSION_ZONES, sessionDay, sessionNotOver, sessionTimes } from "@/lib/format";
+import { SESSION_ZONES, formatDate, sessionDay, sessionNotOver, sessionTimes } from "@/lib/format";
 
 export async function generateMetadata({ params }: PageProps<"/courses/[slug]">): Promise<Metadata> {
   const course = await getCourse((await params).slug);
@@ -42,6 +44,16 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
 
   // Coming soon: no buying or enrolling yet; visitors can leave their email instead.
   const comingSoon = Boolean(course.comingSoon) && !enrollment;
+  // "Earn 10% / $10 back as credit" under the price, when cashback is on for this course
+  // Founding members: their saving on this course, or (on a qualifying course) the offer to become one
+  const fs = await getFoundingSettings();
+  const member = await getMembership(user?.id);
+  const paidCourse = !course.isFree && !enrollment && course.price;
+  const memberSave = paidCourse && member && benefitLive(fs) ? foundingLabel(fs, course.price!.currency) : null;
+  const joinOffer = paidCourse && !member && joiningOpen(fs) && fs.qualifying_course_ids.includes(course.id)
+    ? foundingLabel(fs, course.price!.currency) : null;
+  const cbLabel = !course.isFree && !enrollment && course.price
+    ? cashbackLabel(cashbackRule(await getCashbackSettings(), course.cashback), course.price.currency) : null;
   const cta = comingSoon ? (
     <NotifyMe courseId={course.id} />
   ) : enrollment ? (
@@ -77,6 +89,9 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                   {course.isFree ? "Free" : course.price && formatMoney(course.price.amount_minor, course.price.currency)}
                 </p>
                 <p className="mt-3 text-[15px]">{isLive ? "Live sessions + recordings" : accessLabel([course.access_days])}</p>
+                {memberSave && <p className="mt-1 text-[15px] font-semibold text-accent">★ Founding member: {memberSave} off at checkout</p>}
+                {joinOffer && <p className="mt-1 text-[15px] font-semibold text-accent">★ Buy{fs.join_ends_at ? ` by ${formatDate(fs.join_ends_at)}` : " now"} to become a founding member: {joinOffer} off future courses{fs.benefit_ends_at ? "" : " for life"}</p>}
+                {cbLabel && <p className="mt-1 text-[15px] font-semibold text-accent">Earn {cbLabel} back as credit</p>}
                 <div className="mt-5 md:ml-auto md:w-[210px]">{cta}</div>
               </>
             )}
