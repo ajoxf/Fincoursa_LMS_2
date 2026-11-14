@@ -59,6 +59,7 @@ export async function saveInstructor(id: string, _: FormState, form: FormData): 
     name, title: String(form.get("title") ?? "").trim() || null, bio: String(form.get("bio") ?? "").trim() || null,
     photo_url: String(form.get("photo_url") ?? "") || null, org_logo_url: String(form.get("org_logo_url") ?? "") || null,
     default_revenue_share_pct: Math.min(100, Math.max(0, share)), is_published: form.get("is_published") === "on",
+    coming_soon: form.get("coming_soon") === "on",
     ...(userId !== undefined ? { user_id: userId } : {}),
   }).eq("id", id);
   if (error) return { error: error.message };

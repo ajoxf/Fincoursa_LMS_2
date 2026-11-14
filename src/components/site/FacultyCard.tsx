@@ -18,6 +18,7 @@ export function FacultyCard({ person }: { person: Instructor }) {
         </div>
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 via-35% to-transparent to-60%" />
+      {person.coming_soon && <span className="fc-chip absolute left-4 top-4 !py-0.5 border-white bg-white text-xs font-semibold text-ink">Coming soon</span>}
       <div className="absolute inset-x-4 bottom-4 text-white">
         {person.org_logo_url && (
           // eslint-disable-next-line @next/next/no-img-element

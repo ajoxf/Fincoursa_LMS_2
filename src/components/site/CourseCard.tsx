@@ -24,6 +24,7 @@ export function CourseImage({ course, className = "", maxTags = 3 }: { course: C
       <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent" />
       <div className="relative flex h-full flex-col justify-between p-6 md:p-7">
         <div className="flex flex-wrap gap-3">
+          {course.comingSoon && <span className="fc-chip !py-0.5 border-white bg-white text-xs font-semibold text-ink">Coming soon</span>}
           {tags.map((t, i) => <span key={t} className={`fc-chip !py-0.5 text-xs ${i === 0 ? "fc-chip-lime" : "text-white"}`}>{t}</span>)}
         </div>
         {ins && (

@@ -12,7 +12,7 @@ export function InstructorForm({ ins, loginEmail }: { ins: any; loginEmail: stri
   const [photo, setPhoto] = useState<string>(live(ins.photo_url));
   const [logo, setLogo] = useState<string>(live(ins.org_logo_url));
   return (
-    <form key={JSON.stringify([ins.name, ins.title, ins.bio, ins.photo_url, ins.org_logo_url, ins.user_id, ins.is_published, ins.default_revenue_share_pct])} action={action} className="grid gap-4">
+    <form key={JSON.stringify([ins.name, ins.title, ins.bio, ins.photo_url, ins.org_logo_url, ins.user_id, ins.is_published, ins.coming_soon, ins.default_revenue_share_pct])} action={action} className="grid gap-4">
       <div className="grid gap-6 md:grid-cols-[200px_1fr]">
         <div className="grid content-start gap-2">
           <div className="aspect-[4/5] overflow-hidden rounded-card bg-surface">
@@ -39,6 +39,7 @@ export function InstructorForm({ ins, loginEmail }: { ins: any; loginEmail: stri
               <input name="default_revenue_share_pct" type="number" min={0} max={100} step="0.5" defaultValue={ins.default_revenue_share_pct} className="fc-input" /></label>
             <label className="flex items-center gap-2 self-end pb-3 text-sm"><input type="checkbox" name="is_published" defaultChecked={ins.is_published} />Show on the Instructors page</label>
           </div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="coming_soon" defaultChecked={ins.coming_soon} />Coming soon <span className="text-muted">(shows a &ldquo;Coming soon&rdquo; badge on their card and profile)</span></label>
           <div className="rounded-md border border-line p-3">
             <p className="text-sm font-medium">Instructor login</p>
             <p className="text-xs text-muted">{loginEmail ? `Linked to ${loginEmail}. They can see their courses, students and earnings. Only admins can change course content.` : "Not linked yet. Enter their email: if they don't have an account, one is created and they're emailed an invitation to their instructor dashboard."}</p>

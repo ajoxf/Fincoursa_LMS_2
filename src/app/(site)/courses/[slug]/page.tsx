@@ -6,6 +6,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getEnrollment } from "@/lib/learning";
 import { formatMoney } from "@/lib/money";
 import { enrollFree } from "@/app/actions/enroll";
+import { NotifyMe } from "@/components/site/NotifyMe";
 import { PageHero, Chips } from "@/components/site/PageHero";
 import { FacultyBanner } from "@/components/site/FacultyBanner";
 import { LocalTime } from "@/components/site/LocalTime";
@@ -38,7 +39,11 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
   const isLive = sessions.length > 0;
   const upcoming = sessions.filter((l) => sessionNotOver(l.starts_at!, l.live_minutes));
 
-  const cta = enrollment ? (
+  // Coming soon: no buying or enrolling yet; visitors can leave their email instead.
+  const comingSoon = Boolean(course.comingSoon) && !enrollment;
+  const cta = comingSoon ? (
+    <NotifyMe courseId={course.id} />
+  ) : enrollment ? (
     <Link href={`/learn/${course.slug}`} className="fc-btn fc-btn-primary w-full !py-4">
       {isLive && upcoming.length ? "View session details" : progress >= 100 ? "Review Course" : progress > 0 ? "Resume Course" : "Start Course"}
     </Link>
@@ -52,18 +57,28 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
 
   return (
     <>
-      <PageHero label={isLive ? "● Live Masterclass" : "Courses"} title={course.title}
+      <PageHero label={comingSoon ? "Coming soon" : isLive ? "● Live Masterclass" : "Courses"} title={course.title}
         aside={
           <div className="w-full md:min-w-[230px] md:text-right">
-            {isLive && !course.isFree && <p className="text-[15px]">{course.price?.compare_at_minor ? "Introductory offer" : "Price"}</p>}
-            {course.price?.compare_at_minor && !course.isFree && (
-              <p className="text-lg text-white/50 line-through">{formatMoney(course.price.compare_at_minor, course.price.currency)}</p>
+            {comingSoon ? (
+              <>
+                <p className="whitespace-nowrap text-4xl font-bold tracking-tight md:text-[52px]">Coming soon</p>
+                {course.launchNote && <p className="mt-3 text-[15px]">{course.launchNote}</p>}
+                <div className="mt-5 md:ml-auto md:w-[260px]">{cta}</div>
+              </>
+            ) : (
+              <>
+                {isLive && !course.isFree && <p className="text-[15px]">{course.price?.compare_at_minor ? "Introductory offer" : "Price"}</p>}
+                {course.price?.compare_at_minor && !course.isFree && (
+                  <p className="text-lg text-white/50 line-through">{formatMoney(course.price.compare_at_minor, course.price.currency)}</p>
+                )}
+                <p className={`whitespace-nowrap font-bold tracking-tight ${course.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
+                  {course.isFree ? "Free" : course.price && formatMoney(course.price.amount_minor, course.price.currency)}
+                </p>
+                <p className="mt-3 text-[15px]">{isLive ? "Live sessions + recordings" : accessLabel([course.access_days])}</p>
+                <div className="mt-5 md:ml-auto md:w-[210px]">{cta}</div>
+              </>
             )}
-            <p className={`whitespace-nowrap font-bold tracking-tight ${course.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
-              {course.isFree ? "Free" : course.price && formatMoney(course.price.amount_minor, course.price.currency)}
-            </p>
-            <p className="mt-3 text-[15px]">{isLive ? "Live sessions + recordings" : accessLabel([course.access_days])}</p>
-            <div className="mt-5 md:ml-auto md:w-[210px]">{cta}</div>
           </div>
         }>
         {course.description && <p className="mt-6 max-w-[560px] text-[15px] leading-relaxed">{course.description}</p>}

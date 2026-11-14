@@ -65,6 +65,13 @@ export function CourseDetailsForm({ course, categories, allTags = [] }: { course
         <label className="flex items-center gap-2"><input type="checkbox" name="is_featured" defaultChecked={course.is_featured} />Show in Featured Courses on the home page</label>
         <label className="flex items-center gap-2"><input type="checkbox" name="certificate_enabled" defaultChecked={course.certificate_enabled} />Issue a certificate on completion <span className="text-muted">(students get a certificate and an email when they finish)</span></label>
       </div>
+      <div className="grid gap-3 rounded-md border border-line p-3 md:grid-cols-[auto_1fr] md:items-center">
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="coming_soon" defaultChecked={course.coming_soon} /><span className="font-medium">Coming soon</span></label>
+        <label className="grid gap-1 text-sm font-medium">Launch note (optional)
+          <input name="launch_note" maxLength={120} defaultValue={course.launch_note ?? ""} placeholder="e.g. Launching January 2027" className="fc-input" />
+        </label>
+        <p className="text-xs text-muted md:col-span-2">A published course marked Coming soon is shown on the site with a badge, but can&apos;t be bought or enrolled in. Visitors can leave their email to be told at launch; sign-ups appear in Leads.</p>
+      </div>
 
       <details>
         <summary className="cursor-pointer text-sm font-medium">Search engine settings</summary>
