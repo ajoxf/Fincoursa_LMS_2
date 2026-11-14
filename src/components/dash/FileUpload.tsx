@@ -2,11 +2,11 @@
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type Uploaded = { path: string; publicUrl: string | null; name: string };
+type Uploaded = { path: string; publicUrl: string | null; name: string; contentType: string; size: number };
 
 /** Uploads one file to Supabase Storage through a server-signed URL. */
 export function FileUpload({ bucket, courseId, accept, label = "Upload file", onUploaded }: {
-  bucket: "course-images" | "course-files" | "agreements" | "site-files"; courseId?: string; accept?: string; label?: string;
+  bucket: "course-images" | "course-files" | "agreements" | "site-files" | "marketing-media"; courseId?: string; accept?: string; label?: string;
   onUploaded: (f: Uploaded) => void | Promise<void>;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -23,7 +23,7 @@ export function FileUpload({ bucket, courseId, accept, label = "Upload file", on
       if (!res.ok) throw new Error(signed.error ?? "Upload not allowed");
       const { error } = await createClient().storage.from(bucket).uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type });
       if (error) throw error;
-      await onUploaded({ path: signed.path, publicUrl: signed.publicUrl, name: file.name });
+      await onUploaded({ path: signed.path, publicUrl: signed.publicUrl, name: file.name, contentType: file.type, size: file.size });
       setState({ busy: false });
     } catch (e) {
       setState({ busy: false, error: e instanceof Error ? e.message : "Upload failed" });

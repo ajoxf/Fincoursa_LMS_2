@@ -22,6 +22,12 @@ export async function saveTracking(form: FormData) {
     linkedin_partner_id: id("linkedin_partner_id"),
     linkedin_signup_conversion_id: id("linkedin_signup_conversion_id"),
     linkedin_purchase_conversion_id: id("linkedin_purchase_conversion_id"),
+    linkedin_page_url: /^https:\/\/(www\.)?linkedin\.com\/company\//i.test(str(form, "linkedin_page_url")) ? str(form, "linkedin_page_url").slice(0, 300) : null,
+    linkedin_page_name: str(form, "linkedin_page_name").slice(0, 100) || null,
+    linkedin_page_logo_url: /^https:\/\//.test(str(form, "linkedin_page_logo_url")) ? str(form, "linkedin_page_logo_url").slice(0, 500) : null,
+    linkedin_page_followers: str(form, "linkedin_page_followers").slice(0, 20) || null,
+    linkedin_profile_name: str(form, "linkedin_profile_name").slice(0, 100) || null,
+    linkedin_profile_headline: str(form, "linkedin_profile_headline").slice(0, 200) || null,
   };
   await setSetting("tracking", value, admin.id);
   await audit(admin.id, "tracking.settings", value);
