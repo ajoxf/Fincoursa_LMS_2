@@ -32,7 +32,7 @@ export default async function PurchasesPage() {
             </p>
           </div>
           <p className="text-sm text-muted">
-            {cb.enabled ? `Earn ${+cb.percent.toFixed(2)}% cashback as credit on purchases. ` : ""}
+            {cb.enabled ? "Earn cashback as credit on purchases. " : ""}
             Credit is used automatically at checkout{cb.max_redeem_pct < 100 ? ` (up to ${cb.max_redeem_pct}% of an order)` : ""} in the currency it was earned in.
             {currencies.filter((c) => nextExpiry[c]).map((c) => ` Some ${c} credit expires on ${formatDate(nextExpiry[c]!)}.`).join("")}
           </p>

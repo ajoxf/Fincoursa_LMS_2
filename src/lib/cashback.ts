@@ -2,12 +2,18 @@ import "server-only";
 import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSetting } from "@/lib/site-settings";
+import { formatMoney } from "@/lib/money";
 
 /** Admin → Cashback & credit. Stored in site_settings under "cashback". */
+export type CashbackMode = "percent" | "fixed";
+
 export type CashbackSettings = {
   enabled: boolean;
-  /** default cashback, % of the amount paid before tax */
+  /** default cashback: a % of the amount paid (before tax), or a fixed amount per currency */
+  mode: CashbackMode;
   percent: number;
+  /** fixed cashback in minor units per currency, e.g. { USD: 1000 } = $10 */
+  fixed: Record<string, number>;
   /** days the credit can be used for; null = never expires */
   validity_days: number | null;
   /** most of an order's price (after any code) that credit may pay, in % */
@@ -19,17 +25,47 @@ export type CashbackSettings = {
 };
 
 export const CASHBACK_DEFAULTS: CashbackSettings = {
-  enabled: false, percent: 10, validity_days: 365, max_redeem_pct: 100, allow_with_coupon: true, earn_on_credit: false,
+  enabled: false, mode: "percent", percent: 10, fixed: {}, validity_days: 365, max_redeem_pct: 100, allow_with_coupon: true, earn_on_credit: false,
 };
 
 export const getCashbackSettings = cache(async (): Promise<CashbackSettings> =>
   ({ ...CASHBACK_DEFAULTS, ...((await getSetting<Partial<CashbackSettings>>("cashback")) ?? {}) }));
 
-/** The cashback % for an item: its own override if set (0 = none), otherwise the default. */
-export function cashbackPercent(s: CashbackSettings, override: number | string | null | undefined): number {
-  if (!s.enabled) return 0;
-  const v = override == null || override === "" ? s.percent : Number(override);
-  return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 0;
+/** A course's or programme's own setting; mode null = use the default. */
+export type ItemCashback = {
+  mode?: "none" | CashbackMode | null;
+  percent?: number | string | null;
+  fixed?: Record<string, number> | null;
+};
+
+export type CashbackRule = { mode: "percent"; percent: number } | { mode: "fixed"; fixed: Record<string, number> };
+
+/** The rule that applies to an item, or null when there is no cashback. */
+export function cashbackRule(s: CashbackSettings, item?: ItemCashback | null): CashbackRule | null {
+  if (!s.enabled) return null;
+  const mode = item?.mode ?? s.mode;
+  if (mode === "none") return null;
+  if (mode === "fixed") {
+    const fixed = item?.mode === "fixed" ? item.fixed ?? {} : s.fixed ?? {};
+    return Object.values(fixed).some((v) => Number(v) > 0) ? { mode: "fixed", fixed } : null;
+  }
+  const pct = Math.max(0, Math.min(100, Number(item?.mode === "percent" ? item.percent : s.percent) || 0));
+  return pct > 0 ? { mode: "percent", percent: pct } : null;
+}
+
+/** Cashback earned on an order in this currency; never more than the amount it is earned on. */
+export function cashbackAmount(rule: CashbackRule | null, currency: string, earnBaseMinor: number): number {
+  if (!rule || earnBaseMinor <= 0) return 0;
+  if (rule.mode === "percent") return Math.round(earnBaseMinor * rule.percent / 100);
+  return Math.min(earnBaseMinor, Math.max(0, Math.round(Number(rule.fixed[currency.toUpperCase()] ?? 0))));
+}
+
+/** "10%" or "$10.00"; null when the rule gives nothing in this currency. */
+export function cashbackLabel(rule: CashbackRule | null, currency: string): string | null {
+  if (!rule) return null;
+  if (rule.mode === "percent") return `${+rule.percent.toFixed(2)}%`;
+  const v = Number(rule.fixed[currency.toUpperCase()] ?? 0);
+  return v > 0 ? formatMoney(v, currency) : null;
 }
 
 export type CreditGrant = {

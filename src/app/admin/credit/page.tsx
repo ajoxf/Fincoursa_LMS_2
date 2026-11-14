@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, minorUnitsFactor } from "@/lib/money";
 import { formatDate, nowIso } from "@/lib/format";
-import { getCashbackSettings } from "@/lib/cashback";
+import { cashbackLabel, cashbackRule, getCashbackSettings, type CashbackRule } from "@/lib/cashback";
 import { Card } from "@/components/dash/Stat";
 import { adjustCustomerCredit, saveCashbackSettings, saveItemCashback } from "./actions";
 
@@ -14,7 +14,14 @@ type Grant = {
   id: string; currency: string; amount_minor: number; remaining_minor: number; source: string; note: string | null;
   expires_at: string | null; revoked_at: string | null; created_at: string; profile: { email: string | null; full_name: string | null } | null;
 };
-type Item = { id: string; title: string; cashback_percent: number | null };
+type Item = { id: string; title: string; cashback_mode: "none" | "percent" | "fixed" | null; cashback_percent: number | null; cashback_fixed: Record<string, number> | null };
+
+/** "10%" or "$10.00 · ₹800.00" for a rule across the currencies sold in */
+const describe = (rule: CashbackRule | null, currencies: string[]) =>
+  !rule ? "No cashback" : rule.mode === "percent" ? `${cashbackLabel(rule, "USD")} of amount paid`
+    : currencies.map((c) => cashbackLabel(rule, c)).filter(Boolean).join(" · ") || "No cashback";
+/** minor units → the number shown in an amount box */
+const major = (minor: number | undefined, c: string) => (minor ? String(minor / minorUnitsFactor(c)) : "");
 
 export default async function AdminCredit({ searchParams }: PageProps<"/admin/credit">) {
   await requireRole(["admin", "finance"], "/admin/credit");
@@ -26,8 +33,8 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
     getCashbackSettings(),
     db.from("credit_grants").select("id, currency, amount_minor, remaining_minor, source, note, expires_at, revoked_at, created_at, profile:profiles!credit_grants_user_id_fkey(email, full_name)")
       .order("created_at", { ascending: false }).limit(500),
-    db.from("courses").select("id, title, cashback_percent").neq("status", "archived").order("title"),
-    db.from("bundles").select("id, title, cashback_percent").neq("status", "archived").order("title"),
+    db.from("courses").select("id, title, cashback_mode, cashback_percent, cashback_fixed").neq("status", "archived").order("title"),
+    db.from("bundles").select("id, title, cashback_mode, cashback_percent, cashback_fixed").neq("status", "archived").order("title"),
     db.from("prices").select("currency").eq("is_active", true),
     db.from("credit_redemptions").select("amount_minor, grant:credit_grants(currency)").is("reversed_at", null),
   ]);
@@ -68,11 +75,24 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
           <label className="flex items-center gap-2 text-base font-medium">
             <input type="checkbox" name="enabled" defaultChecked={s.enabled} /> Cashback is {s.enabled ? <span className="text-success">on</span> : <span className="text-muted">off</span>}
           </label>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <label className="grid gap-1">Default cashback %
-              <input name="percent" defaultValue={s.percent} inputMode="decimal" className={field} />
-              <span className="text-xs text-muted">Of the amount paid, before tax. Courses can override it below.</span>
+          <fieldset className="grid gap-3 rounded-lg border border-line p-4">
+            <legend className="px-1 font-medium">Default cashback</legend>
+            <label className="flex flex-wrap items-center gap-2">
+              <input type="radio" name="mode" value="percent" defaultChecked={s.mode !== "fixed"} /> Percentage of the purchase
+              <input name="percent" defaultValue={s.percent} inputMode="decimal" aria-label="Cashback percent" className="fc-input w-24 !py-1.5" /> %
+              <span className="text-xs text-muted">of the amount paid, before tax</span>
             </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2"><input type="radio" name="mode" value="fixed" defaultChecked={s.mode === "fixed"} /> Fixed amount per purchase</label>
+              {currencies.map((c) => (
+                <label key={c} className="flex items-center gap-1">{c}
+                  <input name={`fixed_${c}`} defaultValue={major(s.fixed?.[c], c)} inputMode="decimal" placeholder="0" className="fc-input w-24 !py-1.5" />
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-muted">A fixed amount is given in the order&apos;s currency and never exceeds what was paid. Leave a currency empty for no cashback in it. Courses and programmes can have their own setting below.</p>
+          </fieldset>
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-1">Credit valid for (days)
               <input name="validity_days" defaultValue={s.validity_days ?? ""} inputMode="numeric" placeholder="No expiry" className={field} />
               <span className="text-xs text-muted">From the day it is earned. Leave empty for no expiry.</span>
@@ -89,15 +109,23 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
       </Card>
 
       <Card title="Cashback per course and programme">
-        <p className="mb-3 text-sm text-muted">Leave empty to use the default ({s.percent}%). Enter 0 for no cashback on that item.</p>
+        <p className="mb-3 text-sm text-muted">Default: {describe(cashbackRule({ ...s, enabled: true }), currencies)}. Choose &ldquo;Default&rdquo;, &ldquo;None&rdquo;, a percentage or a fixed amount for each item.</p>
         <div className="grid gap-1 text-sm">
           {[...((courses ?? []) as Item[]).map((c) => ({ ...c, kind: "course" })), ...((bundles ?? []) as Item[]).map((b) => ({ ...b, kind: "bundle" }))].map((it) => (
             <form key={`${it.kind}:${it.id}`} action={saveItemCashback} className="flex flex-wrap items-center gap-3 border-t border-line py-2">
               <input type="hidden" name="kind" value={it.kind} />
               <input type="hidden" name="id" value={it.id} />
               <span className="min-w-0 flex-1">{it.kind === "bundle" ? "Programme: " : ""}{it.title}</span>
-              <span className="text-xs text-muted">{!s.enabled ? "Cashback off" : it.cashback_percent == null ? `Default ${s.percent}%` : `${Number(it.cashback_percent)}%`}</span>
-              <input name="cashback_percent" defaultValue={it.cashback_percent ?? ""} placeholder="Default" inputMode="decimal" aria-label={`Cashback % for ${it.title}`} className="fc-input w-24 !py-1.5" />
+              <span className="text-xs text-muted">{!s.enabled ? "Cashback off" : describe(cashbackRule(s, { mode: it.cashback_mode, percent: it.cashback_percent, fixed: it.cashback_fixed }), currencies)}</span>
+              <select name="mode" defaultValue={it.cashback_mode ?? ""} aria-label={`Cashback for ${it.title}`} className="fc-input w-36 !py-1.5">
+                <option value="">Default</option><option value="none">None</option><option value="percent">Percentage</option><option value="fixed">Fixed amount</option>
+              </select>
+              <label className="flex items-center gap-1 text-xs">%<input name="percent" defaultValue={it.cashback_percent ?? ""} inputMode="decimal" className="fc-input w-16 !py-1.5" /></label>
+              {currencies.map((c) => (
+                <label key={c} className="flex items-center gap-1 text-xs">{c}
+                  <input name={`fixed_${c}`} defaultValue={major(it.cashback_fixed?.[c], c)} inputMode="decimal" className="fc-input w-20 !py-1.5" />
+                </label>
+              ))}
               <button className="text-xs underline">Save</button>
             </form>
           ))}

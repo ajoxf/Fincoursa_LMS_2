@@ -157,7 +157,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
           </dl>
           {quote.cashbackMinor > 0 && (
             <p className="mt-4 rounded-lg bg-accent/30 px-4 py-3 text-sm text-ink">
-              You&apos;ll earn <strong>{m(quote.cashbackMinor)}</strong> credit ({+quote.cashbackPercent.toFixed(2)}% cashback) to use on a future purchase
+              You&apos;ll earn <strong>{m(quote.cashbackMinor)}</strong> credit{quote.cashbackLabel?.endsWith("%") ? ` (${quote.cashbackLabel} cashback)` : ""} to use on a future purchase
               {quote.cashbackValidDays ? `, valid for ${quote.cashbackValidDays} days` : ""}.
             </p>
           )}

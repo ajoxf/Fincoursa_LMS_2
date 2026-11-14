@@ -4,7 +4,7 @@ import { pickPrice } from "@/lib/catalog";
 import { computeTax } from "@/lib/money";
 import { env, partnerCodesEnabled } from "@/lib/env";
 import { currencyForCountry } from "@/lib/currency";
-import { cashbackPercent, creditBalance, getCashbackSettings } from "@/lib/cashback";
+import { cashbackAmount, cashbackLabel, cashbackRule, creditBalance, getCashbackSettings, type ItemCashback } from "@/lib/cashback";
 
 export type QuoteInput = {
   courseSlug?: string;
@@ -40,7 +40,8 @@ export type Quote = {
   creditNote: string | null;
   /** cashback this order earns once paid */
   cashbackMinor: number;
-  cashbackPercent: number;
+  /** "10%" or "$10.00", for the summary; null when no cashback */
+  cashbackLabel: string | null;
   cashbackValidDays: number | null;
 };
 
@@ -53,20 +54,20 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
 
   let item: Quote["item"] | null = null;
   let price: ReturnType<typeof pickPrice> = null;
-  let cashbackOverride: number | null = null;
+  let itemCashback: ItemCashback | null = null;
 
   if (input.courseSlug) {
-    const { data } = await db.from("courses").select(`id, slug, title, status, coming_soon, cashback_percent, prices(${priceCols})`).eq("slug", input.courseSlug).maybeSingle();
+    const { data } = await db.from("courses").select(`id, slug, title, status, coming_soon, cashback_mode, cashback_percent, cashback_fixed, prices(${priceCols})`).eq("slug", input.courseSlug).maybeSingle();
     // "Coming soon" courses are visible but can't be bought yet
     if (!data || data.status !== "published" || data.coming_soon) return null;
     price = pickPrice(data.prices, currency);
-    cashbackOverride = data.cashback_percent;
+    itemCashback = { mode: data.cashback_mode, percent: data.cashback_percent, fixed: data.cashback_fixed };
     if (price) item = { kind: "course", id: data.id, slug: data.slug, title: data.title, priceId: price.id, courseIds: [data.id] };
   } else if (input.bundleSlug) {
-    const { data } = await db.from("bundles").select(`id, slug, title, status, cashback_percent, prices(${priceCols}), bundle_courses(course_id)`).eq("slug", input.bundleSlug).maybeSingle();
+    const { data } = await db.from("bundles").select(`id, slug, title, status, cashback_mode, cashback_percent, cashback_fixed, prices(${priceCols}), bundle_courses(course_id)`).eq("slug", input.bundleSlug).maybeSingle();
     if (!data || data.status !== "published") return null;
     price = pickPrice(data.prices, currency);
-    cashbackOverride = data.cashback_percent;
+    itemCashback = { mode: data.cashback_mode, percent: data.cashback_percent, fixed: data.cashback_fixed };
     if (price) item = { kind: "bundle", id: data.id, slug: data.slug, title: data.title, priceId: price.id,
       courseIds: (data.bundle_courses ?? []).map((b) => b.course_id) };
   }
@@ -118,9 +119,9 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
   const totalMinor = reverseCharge ? (includes ? base - t.tax : base) : t.total;
 
   // Cashback is earned on what is paid, before tax (and optionally on the credit part too).
-  const pct = cashbackPercent(cb, cashbackOverride);
+  const rule = cashbackRule(cb, itemCashback);
   const earnBase = computeTax(cb.earn_on_credit ? afterCode : base, rate, includes).net;
-  const cashbackMinor = pct > 0 ? Math.round(earnBase * pct / 100) : 0;
+  const cashbackMinor = cashbackAmount(rule, price.currency, earnBase);
 
   return {
     item, currency: price.currency, subtotalMinor: subtotal, discountMinor: discount,
@@ -128,7 +129,7 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
     taxName: tax?.name ?? null, taxLabel: tax?.label ?? "Tax", pricesIncludeTax: includes, reverseCharge,
     coupon, couponError,
     creditAvailableMinor: creditAvailable, creditMinor: credit, creditNote,
-    cashbackMinor, cashbackPercent: pct, cashbackValidDays: cb.validity_days ?? null,
+    cashbackMinor, cashbackLabel: cashbackMinor > 0 ? cashbackLabel(rule, price.currency) : null, cashbackValidDays: cb.validity_days ?? null,
   };
 }
 

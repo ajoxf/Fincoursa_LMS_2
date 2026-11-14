@@ -1,14 +1,20 @@
 -- Cashback & store credit.
 -- A paid order can earn cashback: credit in the order's currency that the buyer can spend on a later purchase.
 -- Rules are set by an admin (Admin → Cashback & credit, stored in site_settings 'cashback'):
---   enabled, percent (default % of the amount paid, before tax), validity_days (null = never expires),
+--   enabled, mode ('percent' of the amount paid before tax, or a 'fixed' amount per currency), percent,
+--   fixed ({"USD": 1000, ...} in minor units), validity_days (null = never expires),
 --   max_redeem_pct (most of an order's price that credit may pay), allow_with_coupon, earn_on_credit.
--- A course or programme can override the default percent (null = use the default, 0 = no cashback).
+-- A course or programme can override it: cashback_mode null = use the default, 'none', 'percent'
+-- (cashback_percent) or 'fixed' (cashback_fixed, per currency).
 
-alter table public.courses add column if not exists cashback_percent numeric(5,2)
-  check (cashback_percent is null or (cashback_percent >= 0 and cashback_percent <= 100));
-alter table public.bundles add column if not exists cashback_percent numeric(5,2)
-  check (cashback_percent is null or (cashback_percent >= 0 and cashback_percent <= 100));
+alter table public.courses
+  add column if not exists cashback_mode text check (cashback_mode in ('none', 'percent', 'fixed')),
+  add column if not exists cashback_percent numeric(5,2) check (cashback_percent is null or (cashback_percent >= 0 and cashback_percent <= 100)),
+  add column if not exists cashback_fixed jsonb;
+alter table public.bundles
+  add column if not exists cashback_mode text check (cashback_mode in ('none', 'percent', 'fixed')),
+  add column if not exists cashback_percent numeric(5,2) check (cashback_percent is null or (cashback_percent >= 0 and cashback_percent <= 100)),
+  add column if not exists cashback_fixed jsonb;
 
 -- orders.discount_minor stays the TOTAL discount (code + credit) so tax, invoices and earnings keep working;
 -- credit_minor is the part of it paid with credit. cashback_* are snapshotted when the order is created.
@@ -167,5 +173,5 @@ end $$;
 revoke all on function public.adjust_credit(uuid, text, bigint, text, timestamptz, uuid) from public, anon, authenticated;
 
 insert into public.site_settings (key, value)
-values ('cashback', '{"enabled": false, "percent": 10, "validity_days": 365, "max_redeem_pct": 100, "allow_with_coupon": true, "earn_on_credit": false}')
+values ('cashback', '{"enabled": false, "mode": "percent", "percent": 10, "fixed": {}, "validity_days": 365, "max_redeem_pct": 100, "allow_with_coupon": true, "earn_on_credit": false}')
 on conflict (key) do nothing;
