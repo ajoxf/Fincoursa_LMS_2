@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { pickPrice } from "@/lib/catalog";
 import { computeTax } from "@/lib/money";
 import { env, partnerCodesEnabled } from "@/lib/env";
+import { currencyForCountry } from "@/lib/currency";
 
 export type QuoteInput = {
   courseSlug?: string;
@@ -33,8 +34,9 @@ export type Quote = {
 /** Server-side price calculation. Never trust amounts sent from the browser. */
 export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
   const db = createAdminClient();
-  const currency = (input.currency ?? env.defaultCurrency).toUpperCase();
-  const priceCols = "id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active";
+  // The buyer's country picks the currency when the item has a price in it; otherwise the default currency.
+  const currency = (input.currency ?? currencyForCountry(input.country) ?? env.defaultCurrency).toUpperCase();
+  const priceCols = "id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active, created_at";
 
   let item: Quote["item"] | null = null;
   let price: ReturnType<typeof pickPrice> = null;

@@ -6,21 +6,16 @@ import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurriculum } from "@/lib/course-admin";
 import { syncPendingVideos } from "@/lib/mux";
-import { formatMoney, minorUnitsFactor } from "@/lib/money";
 import { Card } from "@/components/dash/Stat";
 import { CourseBuilder } from "@/components/dash/CourseBuilder";
 import { CourseDetailsForm } from "./CourseDetailsForm";
 import { Announcements } from "./Announcements";
 import { formatDate } from "@/lib/format";
-import { addCourseInstructor, archivePrice, deleteCourse, removeCourseInstructor, savePrice, setCourseStatus } from "../actions";
+import { addCourseInstructor, deleteCourse, removeCourseInstructor, setCourseStatus } from "../actions";
+import { PricingEditor, type PriceRow } from "./PricingEditor";
 
 export const metadata: Metadata = { title: "Edit course" };
 
-const PRICE_TYPES = [
-  { id: "one_time", label: "One-time payment" },
-  { id: "payment_plan", label: "Payment plan" },
-  { id: "subscription", label: "Subscription" },
-];
 
 export default async function EditCoursePage({ params }: PageProps<"/admin/courses/[id]">) {
   const { id } = await params;
@@ -35,11 +30,13 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
     db.from("enrollments").select("progress_pct, completed_at").eq("course_id", id).is("revoked_at", null),
     db.from("courses").select("tags"),
   ]);
+  const { data: taxRows } = await db.from("tax_rates").select("country_code, name, rate, prices_include_tax").eq("is_active", true);
+  const taxes = (taxRows ?? []).map((t) => ({ ...t, rate: Number(t.rate) }));
   const { data: news } = await db.from("course_announcements")
     .select("id, title, body, created_at, campaign:email_campaigns(sent, total, status)").eq("course_id", id).order("created_at", { ascending: false }).limit(20);
   const allTags = Array.from(new Set((tagRows ?? []).flatMap((r: { tags: string[] | null }) => r.tags ?? []))).sort();
   if (!course) notFound();
-  const prices = (course.prices ?? []).filter((p: { is_active: boolean }) => p.is_active);
+  const prices: PriceRow[] = (course.prices ?? []).filter((p: { is_active: boolean }) => p.is_active);
   const lessons = chapters.reduce((n, c) => n + c.lessons.length, 0);
   const students = enrolled?.length ?? 0;
   const completionRate = students ? Math.round((enrolled!.filter((e) => e.completed_at).length / students) * 100) : 0;
@@ -78,28 +75,7 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
       </Card>
 
       <Card title="2 · Pricing">
-        <div className="grid gap-3">
-          {prices.map((p: { id: string; type: string; currency: string; amount_minor: number; compare_at_minor: number | null; installments: number | null; interval: string | null }) => (
-            <form key={p.id} action={savePrice.bind(null, id, p.id)} className="grid items-end gap-2 rounded-md border border-line p-3 sm:grid-cols-[1fr_90px_120px_120px_auto]">
-              <PriceFields p={p} />
-              <div className="flex gap-2">
-                <button className="fc-btn fc-btn-dark !px-4 !py-2 text-sm">Save</button>
-                <button formAction={archivePrice.bind(null, id, p.id)} className="text-xs text-danger underline">Remove</button>
-              </div>
-              <p className="text-xs text-muted sm:col-span-5">
-                {p.amount_minor === 0 ? "Free — students enrol without checkout." : `${formatMoney(p.amount_minor, p.currency)} ${p.type === "payment_plan" ? `in ${p.installments} instalments` : p.type === "subscription" ? `per ${p.interval}` : "one-time"}, VAT included for UAE buyers.`}
-              </p>
-            </form>
-          ))}
-          <details className="rounded-md border border-dashed border-line p-3">
-            <summary className="cursor-pointer text-sm font-medium">+ Add a price (e.g. another currency)</summary>
-            <form action={savePrice.bind(null, id, null)} className="mt-3 grid items-end gap-2 sm:grid-cols-[1fr_90px_120px_120px_auto]">
-              <PriceFields p={null} />
-              <button className="fc-btn fc-btn-dark !px-4 !py-2 text-sm">Add price</button>
-            </form>
-          </details>
-          <p className="text-xs text-muted">Set the amount to 0 to make the course free. Payment plans and subscriptions need a gateway that supports them.</p>
-        </div>
+        <PricingEditor courseId={id} prices={prices} taxes={taxes} defaultCurrency={env.defaultCurrency} />
       </Card>
 
       <Card title="3 · Instructors & revenue share">
@@ -159,21 +135,3 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
   );
 }
 
-function PriceFields({ p }: { p: { type: string; currency: string; amount_minor: number; compare_at_minor: number | null; installments: number | null; interval: string | null } | null }) {
-  const cur = p?.currency ?? env.defaultCurrency;
-  const f = minorUnitsFactor(cur);
-  return (
-    <>
-      <label className="grid gap-1 text-xs font-medium">Type
-        <select name="type" defaultValue={p?.type === "free" ? "one_time" : p?.type ?? "one_time"} className="fc-input !py-2">
-          {PRICE_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-        </select>
-      </label>
-      <label className="grid gap-1 text-xs font-medium">Currency<input name="currency" defaultValue={cur} maxLength={3} className="fc-input !py-2 uppercase" /></label>
-      <label className="grid gap-1 text-xs font-medium">Price<input name="amount" type="number" min={0} step="0.01" defaultValue={p ? p.amount_minor / f : ""} required className="fc-input !py-2" /></label>
-      <label className="grid gap-1 text-xs font-medium">Was (optional)<input name="compare_at" type="number" min={0} step="0.01" defaultValue={p?.compare_at_minor ? p.compare_at_minor / f : ""} className="fc-input !py-2" /></label>
-      <input type="hidden" name="installments" value={p?.installments ?? 3} />
-      <input type="hidden" name="interval" value={p?.interval ?? "month"} />
-    </>
-  );
-}
