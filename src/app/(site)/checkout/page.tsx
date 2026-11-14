@@ -103,6 +103,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             <button className="justify-self-start text-sm text-ink underline underline-offset-4">Update total</button>
             {quote.couponError && <p className="text-sm text-danger">{quote.couponError}</p>}
             {quote.coupon && <p className="text-sm text-success">Code {quote.coupon.code} applied.</p>}
+            {quote.foundingNote && <p className="text-sm text-muted">{quote.foundingNote}</p>}
           </form>
 
           <form action={startCheckout} className="grid gap-4 rounded-2xl bg-white p-6 md:p-8">
@@ -144,6 +145,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
           <dl className="mt-6 grid gap-3 text-[15px] text-ink">
             <div className="flex justify-between"><dt>Price</dt><dd>{m(quote.subtotalMinor)}</dd></div>
             {quote.discountMinor > 0 && <div className="flex justify-between text-success"><dt>Discount ({quote.coupon?.code})</dt><dd>−{m(quote.discountMinor)}</dd></div>}
+            {quote.foundingMinor > 0 && <div className="flex justify-between text-success"><dt>Founding member discount</dt><dd>−{m(quote.foundingMinor)}</dd></div>}
             {quote.creditMinor > 0 && <div className="flex justify-between text-success"><dt>FinCoursa credit</dt><dd>−{m(quote.creditMinor)}</dd></div>}
             {quote.taxMinor > 0 && (
               <div className="flex justify-between text-muted">

@@ -4,6 +4,7 @@ import { pickPrice } from "@/lib/catalog";
 import { computeTax } from "@/lib/money";
 import { env, partnerCodesEnabled } from "@/lib/env";
 import { currencyForCountry } from "@/lib/currency";
+import { benefitLive, foundingDiscount, getFoundingSettings, getMembership } from "@/lib/founding";
 import { cashbackAmount, cashbackLabel, cashbackRule, creditBalance, getCashbackSettings, type ItemCashback } from "@/lib/cashback";
 
 export type QuoteInput = {
@@ -34,6 +35,9 @@ export type Quote = {
   reverseCharge: boolean;
   coupon: { id: string; code: string } | null;
   couponError: string | null;
+  /** founding-member discount (members only), and why it isn't applied */
+  foundingMinor: number;
+  foundingNote: string | null;
   /** store credit the buyer has in this currency, how much this order uses, and why it can't be used */
   creditAvailableMinor: number;
   creditMinor: number;
@@ -95,6 +99,21 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
     }
   }
 
+  // Founding members get their discount on every purchase. Without "combine with codes", the larger of
+  // the member discount and the code applies.
+  let founding = 0;
+  let foundingNote: string | null = null;
+  const fs = await getFoundingSettings();
+  if (input.userId && benefitLive(fs) && (await getMembership(input.userId))) {
+    if (coupon && !fs.allow_with_coupon) {
+      const alone = foundingDiscount(fs, price.currency, subtotal);
+      if (alone > discount) {
+        foundingNote = `Your founding member discount is larger than code ${coupon.code}, so it was used instead.`;
+        coupon = null; discount = 0; founding = alone;
+      } else foundingNote = "Your code is larger than your founding member discount, so the code was used instead.";
+    } else founding = foundingDiscount(fs, price.currency, subtotal - discount);
+  }
+
   // Only countries switched on in Admin → Taxes are charged.
   const { data: tax } = input.country
     ? await db.from("tax_rates").select("name, label, rate, prices_include_tax, reverse_charge").eq("country_code", input.country).eq("is_active", true).maybeSingle()
@@ -104,7 +123,7 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
 
   // Store credit pays part of the price after any code, before tax (like a discount).
   const cb = await getCashbackSettings();
-  const afterCode = subtotal - discount;
+  const afterCode = subtotal - discount - founding;
   const creditAvailable = input.userId ? await creditBalance(input.userId, price.currency) : 0;
   let credit = 0;
   let creditNote: string | null = null;
@@ -127,7 +146,7 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
     item, currency: price.currency, subtotalMinor: subtotal, discountMinor: discount,
     taxMinor: reverseCharge ? 0 : t.tax, totalMinor, taxRate: reverseCharge ? 0 : rate,
     taxName: tax?.name ?? null, taxLabel: tax?.label ?? "Tax", pricesIncludeTax: includes, reverseCharge,
-    coupon, couponError,
+    coupon, couponError, foundingMinor: founding, foundingNote,
     creditAvailableMinor: creditAvailable, creditMinor: credit, creditNote,
     cashbackMinor, cashbackLabel: cashbackMinor > 0 ? cashbackLabel(rule, price.currency) : null, cashbackValidDays: cb.validity_days ?? null,
   };

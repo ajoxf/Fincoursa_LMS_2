@@ -62,13 +62,14 @@ export function welcomeEmail(o: { name?: string | null; dashboardUrl: string; co
 
 export type ReceiptLine = { title: string; amount: string };
 export function receiptEmail(o: {
-  name?: string | null; orderNumber: number; date: string; lines: ReceiptLine[]; discount?: string | null; credit?: string | null; cashback?: string | null;
+  name?: string | null; orderNumber: number; date: string; lines: ReceiptLine[]; discount?: string | null; founding?: string | null; credit?: string | null; cashback?: string | null;
   vatLabel?: string | null; vat?: string | null; total: string; invoiceUrl: string; learnUrl: string; trn?: string | null;
   vatAdded?: boolean; reverseCharge?: boolean; sessions?: SessionLine[];
 }): Rendered {
   const rows = o.lines.map((l) => `<tr><td style="padding:8px 0;border-bottom:1px solid ${T.border}">${esc(l.title)}</td><td align="right" style="padding:8px 0;border-bottom:1px solid ${T.border};white-space:nowrap">${esc(l.amount)}</td></tr>`).join("");
   const extra = [
     o.discount ? `<tr><td style="padding:6px 0;color:${T.muted}">Discount</td><td align="right" style="padding:6px 0;color:${T.muted}">−${esc(o.discount)}</td></tr>` : "",
+    o.founding ? `<tr><td style="padding:6px 0;color:${T.muted}">Founding member discount</td><td align="right" style="padding:6px 0;color:${T.muted}">−${esc(o.founding)}</td></tr>` : "",
     o.credit ? `<tr><td style="padding:6px 0;color:${T.muted}">FinCoursa credit</td><td align="right" style="padding:6px 0;color:${T.muted}">−${esc(o.credit)}</td></tr>` : "",
     o.vat ? `<tr><td style="padding:6px 0;color:${T.muted}">${esc(o.vatLabel ?? "VAT")} (${o.vatAdded ? "added" : "included"})</td><td align="right" style="padding:6px 0;color:${T.muted}">${esc(o.vat)}</td></tr>` : "",
     o.reverseCharge ? `<tr><td colspan="2" style="padding:6px 0;color:${T.muted}">Reverse charge: tax not charged; you account for it in your country.</td></tr>` : "",
@@ -80,7 +81,7 @@ export function receiptEmail(o: {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin:8px 0 16px">${rows}${extra}</table>
 ${o.cashback ? `<p style="margin:0 0 12px">You earned <strong>${esc(o.cashback)}</strong> FinCoursa credit for a future purchase. It is applied at checkout automatically.</p>` : ""}
 <p style="margin:0 0 12px"><a href="${esc(o.invoiceUrl)}" style="color:${T.primary}">View or print your ${o.trn ? "tax invoice" : "invoice"}</a></p>${o.sessions?.length ? sessionsHtml(o.sessions) : ""}`,
-    text: `Thank you. Your payment was received.${o.sessions?.length ? `\n\nYour live sessions:\n${sessionsText(o.sessions)}` : ""}\n\n${o.trn ? "Tax invoice" : "Receipt"} #${o.orderNumber} · ${o.date}\n${o.lines.map((l) => `${l.title}: ${l.amount}`).join("\n")}${o.discount ? `\nDiscount: -${o.discount}` : ""}${o.credit ? `\nFinCoursa credit: -${o.credit}` : ""}${o.vat ? `\n${o.vatLabel ?? "VAT"} (included): ${o.vat}` : ""}\nTotal paid: ${o.total}${o.cashback ? `\n\nYou earned ${o.cashback} FinCoursa credit for a future purchase.` : ""}\n\nInvoice: ${o.invoiceUrl}`,
+    text: `Thank you. Your payment was received.${o.sessions?.length ? `\n\nYour live sessions:\n${sessionsText(o.sessions)}` : ""}\n\n${o.trn ? "Tax invoice" : "Receipt"} #${o.orderNumber} · ${o.date}\n${o.lines.map((l) => `${l.title}: ${l.amount}`).join("\n")}${o.discount ? `\nDiscount: -${o.discount}` : ""}${o.founding ? `\nFounding member discount: -${o.founding}` : ""}${o.credit ? `\nFinCoursa credit: -${o.credit}` : ""}${o.vat ? `\n${o.vatLabel ?? "VAT"} (included): ${o.vat}` : ""}\nTotal paid: ${o.total}${o.cashback ? `\n\nYou earned ${o.cashback} FinCoursa credit for a future purchase.` : ""}\n\nInvoice: ${o.invoiceUrl}`,
   };
   return {
     subject: `Your FinCoursa receipt #${o.orderNumber}`,

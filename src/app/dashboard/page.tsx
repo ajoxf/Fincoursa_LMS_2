@@ -4,6 +4,8 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Stat, Progress } from "@/components/dash/Stat";
 import { formatDate } from "@/lib/format";
+import { benefitLive, foundingLabel, getFoundingSettings, getMembership } from "@/lib/founding";
+import { env } from "@/lib/env";
 import { announcementsFor } from "@/lib/announcements";
 import { CourseUpdatesList } from "@/components/player/CourseUpdates";
 import { assetUrl, isThinkificAsset } from "@/lib/assets";
@@ -53,12 +55,20 @@ export default async function StudentDashboard({ searchParams }: PageProps<"/das
   const done = enrollments.filter((e) => e.completed_at);
   const resume = inProgress.find((e) => Number(e.progress_pct) > 0) ?? inProgress[0];
   const updates = await announcementsFor(enrollments.map((e) => e.course_id), 5);
+  const [member, fs] = await Promise.all([getMembership(user.id), getFoundingSettings()]);
+  const perk = member && benefitLive(fs) ? foundingLabel(fs, env.defaultCurrency) : null;
 
   return (
     <div className="grid gap-8">
       {denied && <p className="rounded-card bg-warning/10 p-4 text-sm text-warning">You don&apos;t have access to that page.</p>}
       <div>
         <h1 className="text-3xl font-bold text-primary">Welcome back{user.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}</h1>
+        {member && (
+          <p className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-ink">
+            ★ Founding member #{member.member_number}
+            {perk && <span className="font-normal">· {perk} off your future purchases{fs.benefit_ends_at ? ` until ${formatDate(fs.benefit_ends_at)}` : ", for life"}</span>}
+          </p>
+        )}
         {resume && (
           <div className="fc-card mt-6 flex flex-col gap-4 overflow-hidden p-6 md:flex-row md:items-center md:justify-between md:p-5">
             <Thumb course={resume.course} className="hidden aspect-[4/3] w-40 shrink-0 rounded-lg md:block" />

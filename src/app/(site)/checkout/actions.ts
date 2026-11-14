@@ -51,12 +51,12 @@ export async function startCheckout(form: FormData) {
 
   const { data: order, error } = await db.from("orders").insert({
     user_id: user.id, currency: quote.currency,
-    subtotal_minor: quote.subtotalMinor, discount_minor: quote.discountMinor + quote.creditMinor, tax_minor: quote.taxMinor, total_minor: quote.totalMinor,
+    subtotal_minor: quote.subtotalMinor, discount_minor: quote.discountMinor + quote.foundingMinor + quote.creditMinor, tax_minor: quote.taxMinor, total_minor: quote.totalMinor,
     tax_rate: quote.taxRate, billing_country: country, coupon_id: quote.coupon?.id ?? null,
     tax_name: quote.reverseCharge ? null : quote.taxName, billing_company: company, billing_tax_id: taxId, reverse_charge: quote.reverseCharge,
     affiliate_id: attr?.affiliateId ?? null, attribution: attr?.attribution ?? null, affiliate_campaign: attr?.campaign ?? null,
     gateway: gatewayId ?? "free",
-    credit_minor: quote.creditMinor, cashback_minor: quote.cashbackMinor, cashback_valid_days: quote.cashbackValidDays,
+    credit_minor: quote.creditMinor, founding_discount_minor: quote.foundingMinor, cashback_minor: quote.cashbackMinor, cashback_valid_days: quote.cashbackValidDays,
   }).select("id, number").single();
   if (error || !order) throw new Error("Could not create order");
 
@@ -64,7 +64,7 @@ export async function startCheckout(form: FormData) {
     order_id: order.id, title: quote.item.title, price_id: quote.item.priceId,
     course_id: quote.item.kind === "course" ? quote.item.id : null,
     bundle_id: quote.item.kind === "bundle" ? quote.item.id : null,
-    unit_amount_minor: quote.subtotalMinor, discount_minor: quote.discountMinor + quote.creditMinor, quantity: 1,
+    unit_amount_minor: quote.subtotalMinor, discount_minor: quote.discountMinor + quote.foundingMinor + quote.creditMinor, quantity: 1,
   });
   if (country) await db.from("profiles").update({ country_code: country }).eq("id", user.id);
 
