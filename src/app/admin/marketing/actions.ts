@@ -8,7 +8,7 @@ import { sendEmail } from "@/lib/email/send";
 import { AUTOMATION_DEFAULTS, getAutomations, loadCourse, render, runAutomations, varsFor, type AutomationSettings } from "@/lib/automations";
 import { formatDate } from "@/lib/format";
 
-const back = (k: "ok" | "err", msg: string): never => redirect(`/admin/marketing?${k}=${encodeURIComponent(msg)}`);
+const back = (k: "ok" | "err", msg: string): never => redirect(`/admin/marketing?tab=settings&${k}=${encodeURIComponent(msg)}`);
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
 async function audit(actor: string, action: string, data?: object) {
