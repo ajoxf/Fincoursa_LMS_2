@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured, env } from "@/lib/env";
 import { demoCatalog } from "@/lib/demo-catalog";
 import { isThinkificAsset } from "@/lib/assets";
+import { headers } from "next/headers";
+import { currencyForCountry } from "@/lib/currency";
 
 /** Old Thinkific CDN links no longer resolve (AccessDenied): treat them as "no image" so pages fall back cleanly. */
 const img = (u: string | null | undefined) => (u && !isThinkificAsset(u) ? u : null);
@@ -90,7 +92,7 @@ const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, du
   sort_order, is_featured, coming_soon, launch_note, live_lessons:lessons(starts_at),
   category:categories(name),
   course_instructors(is_primary, instructor:instructors(id, slug, name, title, bio, photo_url, org_logo_url, coming_soon)),
-  prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active)`;
+  prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active, created_at)`;
 
 /** What buyers get, for one course or all the courses in a bundle: "90 days of access" or "Full lifetime access". */
 export function accessLabel(days: (number | null | undefined)[]): string {
@@ -100,17 +102,30 @@ export function accessLabel(days: (number | null | undefined)[]): string {
   return "Access period varies by course";
 }
 
+/**
+ * The price a buyer sees: in their preferred currency (from their country) if the item has one,
+ * otherwise in the site's default currency, otherwise whatever is set. Ties go to the oldest price,
+ * so the choice never flips between page loads.
+ */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export function pickPrice(prices: any[] | null | undefined, currency = env.defaultCurrency): Price | null {
-  const active = (prices ?? []).filter((p) => p.is_active !== false);
-  return active.find((p) => p.currency === currency && p.type === "one_time")
-    ?? active.find((p) => p.currency === currency)
-    ?? active[0]
-    ?? null;
+export function pickPrice(prices: any[] | null | undefined, preferred?: string | null): Price | null {
+  const active = (prices ?? []).filter((p) => p.is_active !== false)
+    .sort((a, b) => String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")) || String(a.id).localeCompare(String(b.id)));
+  const inCur = (c: string | null | undefined) => (c ? active.find((p) => p.currency === c && p.type === "one_time") ?? active.find((p) => p.currency === c) : undefined);
+  return inCur(preferred?.toUpperCase()) ?? inCur(env.defaultCurrency) ?? active[0] ?? null;
 }
 
-function toCourseCard(row: any): CourseCard {
-  const price = pickPrice(row.prices);
+/** The visitor's preferred currency, from their country (Vercel geo header); null when unknown. */
+export async function visitorCurrency(): Promise<string | null> {
+  try {
+    return currencyForCountry((await headers()).get("x-vercel-ip-country"));
+  } catch {
+    return null; // outside a request (build time)
+  }
+}
+
+function toCourseCard(row: any, currency: string | null = null): CourseCard {
+  const price = pickPrice(row.prices, currency);
   return {
     id: row.id,
     slug: row.slug,
@@ -146,7 +161,8 @@ export const getCourses = cache(async (opts: { featured?: boolean; free?: boolea
   if (opts.featured) q = q.eq("is_featured", true);
   const { data, error } = await q;
   if (error) throw error;
-  const cards = (data ?? []).map(toCourseCard);
+  const cur = await visitorCurrency();
+  const cards = (data ?? []).map((row) => toCourseCard(row, cur));
   return opts.free === undefined ? cards : cards.filter((c) => c.isFree === opts.free);
 });
 
@@ -161,7 +177,7 @@ export const getCourse = cache(async (slug: string): Promise<CourseDetail | null
   if (error) throw error;
   if (!data) return null;
   return {
-    ...toCourseCard(data),
+    ...toCourseCard(data, await visitorCurrency()),
     access_days: data.access_days,
     certificate_enabled: data.certificate_enabled,
     highlights: (data as { highlights?: string[] }).highlights ?? [],
@@ -177,18 +193,19 @@ export const getBundles = cache(async (): Promise<BundleCard[]> => {
   const { data, error } = await supabase
     .from("bundles")
     .select(`id, slug, title, description, thumbnail_url, sort_order,
-             prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active),
+             prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active, created_at),
              bundle_courses(position, course:courses(${COURSE_SELECT}))`)
     .eq("status", "published")
     .order("sort_order");
   if (error) throw error;
+  const cur = await visitorCurrency();
   return (data ?? []).map((b) => {
-    const price = pickPrice(b.prices);
+    const price = pickPrice(b.prices, cur);
     const courses = (b.bundle_courses ?? [])
       .sort((x, y) => x.position - y.position)
       .map((bc) => bc.course)
       .filter(Boolean)
-      .map(toCourseCard);
+      .map((row) => toCourseCard(row, cur));
     return {
       id: b.id,
       slug: b.slug,

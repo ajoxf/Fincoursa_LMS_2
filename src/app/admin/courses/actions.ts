@@ -106,10 +106,16 @@ export async function setCourseStatus(courseId: string, status: "draft" | "publi
   refresh(courseId);
 }
 
-export async function savePrice(courseId: string, priceId: string | null, form: FormData) {
+export type PriceState = { ok?: boolean; error?: string } | null;
+
+/** Add or update one price. Each currency can have only one active price per course. */
+export async function savePrice(courseId: string, priceId: string | null, _: PriceState, form: FormData): Promise<PriceState> {
   await requireRole(["admin"]);
-  const currency = String(form.get("currency") ?? env.defaultCurrency).toUpperCase().slice(0, 3);
+  const currency = String(form.get("currency") ?? env.defaultCurrency).trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency)) return { error: "Choose a currency." };
   const type = String(form.get("type") ?? "one_time");
+  const raw = Number(form.get("amount"));
+  if (!Number.isFinite(raw) || raw < 0) return { error: "Enter a price of 0 or more." };
   const f = minorUnitsFactor(currency);
   const amount = Math.round(Number(form.get("amount") || 0) * f);
   const compare = Number(form.get("compare_at") || 0);
@@ -121,9 +127,13 @@ export async function savePrice(courseId: string, priceId: string | null, form: 
     is_active: true,
   };
   const db = createAdminClient();
+  let clash = db.from("prices").select("id").eq("course_id", courseId).eq("currency", currency).eq("is_active", true);
+  if (priceId) clash = clash.neq("id", priceId);
+  if ((await clash.limit(1)).data?.length) return { error: `There's already a ${currency} price for this course. Edit that one instead.` };
   const { error } = priceId ? await db.from("prices").update(row).eq("id", priceId) : await db.from("prices").insert(row);
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   refresh(courseId);
+  return { ok: true };
 }
 
 export async function archivePrice(courseId: string, priceId: string) {
