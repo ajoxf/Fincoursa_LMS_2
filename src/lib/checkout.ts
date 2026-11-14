@@ -40,8 +40,9 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
   let price: ReturnType<typeof pickPrice> = null;
 
   if (input.courseSlug) {
-    const { data } = await db.from("courses").select(`id, slug, title, status, prices(${priceCols})`).eq("slug", input.courseSlug).maybeSingle();
-    if (!data || data.status !== "published") return null;
+    const { data } = await db.from("courses").select(`id, slug, title, status, coming_soon, prices(${priceCols})`).eq("slug", input.courseSlug).maybeSingle();
+    // "Coming soon" courses are visible but can't be bought yet
+    if (!data || data.status !== "published" || data.coming_soon) return null;
     price = pickPrice(data.prices, currency);
     if (price) item = { kind: "course", id: data.id, slug: data.slug, title: data.title, priceId: price.id, courseIds: [data.id] };
   } else if (input.bundleSlug) {

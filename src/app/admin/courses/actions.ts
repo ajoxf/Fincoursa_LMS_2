@@ -57,6 +57,7 @@ const details = z.object({
   seo_description: z.string().trim().max(400).optional(),
   highlights: z.string().max(3000).optional(),
   tags: z.string().max(1000).optional(),
+  launch_note: z.string().trim().max(120).optional(),
 });
 
 export async function saveCourseDetails(courseId: string, _: FormState, form: FormData): Promise<FormState> {
@@ -82,6 +83,7 @@ export async function saveCourseDetails(courseId: string, _: FormState, form: Fo
     category_id: categoryId, level: d.level || null, thumbnail_url: d.thumbnail_url || null,
     access_days: days > 0 ? Math.round(days) : null,
     is_featured: form.get("is_featured") === "on", certificate_enabled: form.get("certificate_enabled") === "on",
+    coming_soon: form.get("coming_soon") === "on", launch_note: d.launch_note || null,
     seo_title: d.seo_title || null, seo_description: d.seo_description || null,
     tags: parseTags(d.tags),
     highlights: (d.highlights ?? "").split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 12),

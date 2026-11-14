@@ -8,6 +8,8 @@ import { sendEnrolled } from "@/lib/email/events";
 
 export async function enrollFree(courseId: string, slug: string) {
   const user = await requireUser(`/courses/${slug}`);
+  const { data: c } = await createAdminClient().from("courses").select("coming_soon").eq("id", courseId).maybeSingle();
+  if (c?.coming_soon) redirect(`/courses/${slug}`); // not open for enrolment yet
   const supabase = await createClient();
   const { error } = await supabase.rpc("enroll_free", { p_course: courseId });
   if (error) throw new Error(error.message);

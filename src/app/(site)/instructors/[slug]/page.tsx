@@ -29,7 +29,7 @@ export default async function InstructorPage({ params }: PageProps<"/instructors
           <div className="fc-container absolute inset-x-0 bottom-16">
             <div className="flex gap-2">
               <span className="fc-pill fc-pill-dark">The Faculty</span>
-              <span className="fc-pill fc-pill-dark">Verified</span>
+              <span className="fc-pill fc-pill-dark">{person.coming_soon ? "Coming soon" : "Verified"}</span>
             </div>
             <h1 className="fc-display mt-4 text-5xl md:text-[56px]">{person.name}</h1>
             {person.title && <p className="mt-3 text-[15px]">{person.title}</p>}
