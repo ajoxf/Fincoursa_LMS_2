@@ -8,7 +8,7 @@ import { sendEmail } from "@/lib/email/send";
 import { AUTOMATION_DEFAULTS, getAutomations, loadCourse, render, runAutomations, varsFor, type AutomationSettings } from "@/lib/automations";
 import { formatDate } from "@/lib/format";
 
-const back = (k: "ok" | "err", msg: string): never => redirect(`/admin/marketing?${k}=${encodeURIComponent(msg)}`);
+const back = (k: "ok" | "err", msg: string): never => redirect(`/admin/marketing?tab=settings&${k}=${encodeURIComponent(msg)}`);
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
 async function audit(actor: string, action: string, data?: object) {
@@ -78,4 +78,31 @@ export async function runAutomationsNow() {
   await audit(admin.id, "automations.run", r);
   revalidatePath("/admin/marketing");
   back("ok", `Sent: ${r.abandoned} checkout reminders, ${r.offer} offer reminders, ${r.welcome} welcome emails.`);
+}
+
+/** "About FinCoursa": the profile the marketing assistant reads first. Empty = back to the default. */
+export async function saveMarketingProfile(form: FormData) {
+  const admin = await requireRole(["admin"]);
+  const text = str(form, "profile").slice(0, 12000);
+  await setSetting("marketing_profile", { text }, admin.id);
+  await audit(admin.id, "marketing_profile.saved", { length: text.length });
+  revalidatePath("/admin/marketing");
+  redirect(`/admin/marketing?tab=about&ok=${encodeURIComponent(text ? "Saved. The assistant will use this from now on." : "Back to the default profile.")}`);
+}
+
+/** Tick or untick a Getting started step. */
+export async function toggleChecklist(step: string, done: boolean) {
+  const admin = await requireRole(["admin"]);
+  const { getSetting } = await import("@/lib/site-settings");
+  const cur = (await getSetting<{ done?: string[] }>("marketing_checklist"))?.done ?? [];
+  const next = done ? [...new Set([...cur, step])] : cur.filter((s) => s !== step);
+  await setSetting("marketing_checklist", { done: next }, admin.id);
+  revalidatePath("/admin/marketing");
+}
+
+/** Mark a saved draft as used, or archive it (hidden from the list). */
+export async function setDraftStatus(id: string, status: "draft" | "used" | "archived") {
+  await requireRole(["admin"]);
+  await createAdminClient().from("marketing_drafts").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/admin/marketing");
 }

@@ -13,7 +13,10 @@ const STATUS: Record<string, string> = { draft: "Draft", scheduled: "Scheduled",
 
 export default async function EmailsPage({ searchParams }: PageProps<"/admin/emails">) {
   await requireRole(["admin"], "/admin/emails");
-  const from = (await searchParams).from;
+  const sp = await searchParams;
+  const from = sp.from;
+  // "Open in Emails" from the marketing assistant (Admin → Marketing)
+  const fromAssistant = typeof sp.marketing === "string" && /^[0-9a-f-]{36}$/i.test(sp.marketing) ? sp.marketing : null;
   const db = createAdminClient();
   const [{ data: courses }, { data: history }, consenting, { data: reuse }] = await Promise.all([
     db.from("courses").select("id, title").neq("status", "archived").order("sort_order"),
@@ -23,13 +26,19 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
       ? db.from("email_campaigns").select("kind, subject, heading, body, cta_label, cta_url, audience").eq("id", from).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
+  const { data: assisted } = fromAssistant
+    ? await db.from("marketing_drafts").select("output").eq("id", fromAssistant).eq("kind", "email").maybeSingle()
+    : { data: null };
+  const ae = assisted?.output as { subject?: string; body?: string; button_text?: string; button_link?: string } | undefined;
   const title = new Map((courses ?? []).map((c) => [c.id, c.title]));
   const audienceText = (a: Audience) => [
     a.courses?.length ? a.courses.map((c) => title.get(c) ?? "a course").join(", ") : "Everyone",
     a.countries?.length ? a.countries.join(", ") : null,
     a.buyers_only ? "buyers only" : null,
   ].filter(Boolean).join(" · ");
-  const draft = reuse ? { ...reuse, kind: (reuse.kind === "update" ? "update" : "promotion") as "promotion" | "update", ...(reuse.audience as Audience) } : undefined;
+  const draft = reuse ? { ...reuse, kind: (reuse.kind === "update" ? "update" : "promotion") as "promotion" | "update", ...(reuse.audience as Audience) }
+    : ae ? { kind: "promotion" as const, subject: ae.subject, heading: ae.subject, body: ae.body, cta_label: ae.button_text ?? null, cta_url: ae.button_link ?? null }
+    : undefined;
 
   return (
     <div className="grid gap-6">
@@ -42,7 +51,7 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
       </div>
 
       <section id="compose" className="scroll-mt-24">
-        <Card title={draft ? "New email (copied from an earlier one)" : "New email"}>
+        <Card title={ae ? "New email (written by the marketing assistant: check it, send yourself a test, then send)" : draft ? "New email (copied from an earlier one)" : "New email"}>
           <Composer courses={courses ?? []} draft={draft} consenting={consenting.count ?? 0} />
         </Card>
       </section>
