@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/invoices/[i
   const supabase = await createClient();
   const { data: o } = await supabase
     .from("orders")
-    .select("number, status, currency, subtotal_minor, discount_minor, tax_minor, total_minor, refunded_minor, tax_rate, tax_name, billing_country, billing_company, billing_tax_id, reverse_charge, gateway, paid_at, created_at, user_id, order_items(title, unit_amount_minor, discount_minor, quantity)")
+    .select("number, status, currency, subtotal_minor, discount_minor, credit_minor, cashback_minor, tax_minor, total_minor, refunded_minor, tax_rate, tax_name, billing_country, billing_company, billing_tax_id, reverse_charge, gateway, paid_at, created_at, user_id, order_items(title, unit_amount_minor, discount_minor, quantity)")
     .eq("id", id).maybeSingle();
   if (!o || o.status === "pending" || o.status === "failed") return NextResponse.json({ error: "not found" }, { status: 404 });
   const { data: buyer } = await supabase.from("profiles").select("full_name, email").eq("id", o.user_id).maybeSingle();
@@ -133,7 +133,8 @@ td.r,th.r{padding-left:16px}
 
     <div class="totals">
       <div><span>Subtotal</span><span>${m(o.subtotal_minor)}</span></div>
-      ${o.discount_minor ? `<div><span>Discount</span><span>−${m(o.discount_minor)}</span></div>` : ""}
+      ${(o.discount_minor ?? 0) - (o.credit_minor ?? 0) > 0 ? `<div><span>Discount</span><span>−${m((o.discount_minor ?? 0) - (o.credit_minor ?? 0))}</span></div>` : ""}
+      ${o.credit_minor ? `<div><span>FinCoursa credit</span><span>−${m(o.credit_minor)}</span></div>` : ""}
       <div><span>Taxable amount</span><span>${m(net)}</span></div>
       ${removedTax > 0 ? `<div><span>${esc(taxShort)} not charged (reverse charge)</span><span>−${m(removedTax)}</span></div>` : ""}
       ${o.reverse_charge ? "" : `<div><span>${esc(o.tax_name || taxShort)} ${pct}</span><span>${m(o.tax_minor)}</span></div>`}
@@ -141,6 +142,7 @@ td.r,th.r{padding-left:16px}
       <div class="grand"><span>Total</span><span>${m(o.total_minor)}</span></div>
       ${o.refunded_minor ? `<div><span>Refunded</span><span>−${m(o.refunded_minor)}</span></div>` : ""}
       <div class="muted"><span>${status === "Paid" ? "Amount paid" : "Net paid"}</span><span>${m(o.total_minor - (o.refunded_minor ?? 0))}</span></div>
+      ${o.cashback_minor ? `<div class="muted"><span>Cashback credit earned</span><span>${m(o.cashback_minor)}</span></div>` : ""}
     </div>
 
     ${o.reverse_charge ? `<p class="note"><b>Reverse charge:</b> ${esc(taxShort)} is not charged on this supply. The customer is responsible for accounting for ${esc(taxShort)} in their country.</p>` : ""}

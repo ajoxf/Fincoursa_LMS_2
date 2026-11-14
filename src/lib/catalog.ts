@@ -72,6 +72,8 @@ export type CourseCard = {
   comingSoon?: boolean;
   /** Optional line such as "Launching January 2027" */
   launchNote?: string | null;
+  /** Cashback % override (Admin → Cashback & credit); null = the default rate */
+  cashbackPercent?: number | null;
 };
 
 export type CourseDetail = CourseCard & { chapters: Chapter[]; access_days: number | null; certificate_enabled: boolean; highlights: string[] };
@@ -89,7 +91,7 @@ export type BundleCard = {
 };
 
 const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, duration_minutes, access_days, certificate_enabled, level, tags,
-  sort_order, is_featured, coming_soon, launch_note, live_lessons:lessons(starts_at),
+  sort_order, is_featured, coming_soon, launch_note, cashback_percent, live_lessons:lessons(starts_at),
   category:categories(name),
   course_instructors(is_primary, instructor:instructors(id, slug, name, title, bio, photo_url, org_logo_url, coming_soon)),
   prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active, created_at)`;
@@ -148,6 +150,7 @@ function toCourseCard(row: any, currency: string | null = null): CourseCard {
     isFree: !price || price.amount_minor === 0,
     comingSoon: row.coming_soon === true,
     launchNote: row.launch_note ?? null,
+    cashbackPercent: row.cashback_percent == null ? null : Number(row.cashback_percent),
   };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
