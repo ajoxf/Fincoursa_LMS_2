@@ -6,7 +6,7 @@ import { notifyLessonCompleted } from "@/app/actions/progress";
 
 export type QuizQuestion = { id: string; prompt: string; image?: string | null; options: { id: string; text: string }[] };
 /** The student's latest attempt, with the answer key (from the quiz_review RPC). */
-export type QuizReview = { answers: Record<string, string>; score: number; passed: boolean; submitted_at: string; key: Record<string, string> };
+export type QuizReview = { answers: Record<string, string>; score: number; passed: boolean; submitted_at: string; key: Record<string, string>; explanations?: Record<string, string> };
 
 type Mode = "take" | "result" | "review";
 
@@ -145,6 +145,22 @@ export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit, 
             );
           })}
         </div>
+        {reviewing?.explanations?.[q.id] && (
+          <div className="mt-4 rounded-md border border-line bg-surface p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Explanation</p>
+            <div className="mt-2 grid gap-2 text-[15px] leading-relaxed">
+              {reviewing.explanations[q.id].split(/\n{2,}/).map((para, k) => {
+                // bold a leading section label such as "Why:" or "Remember:"
+                const m = /^(Answer|Why not the others|Why|Remember|Key idea|Calculation):/.exec(para);
+                return (
+                  <p key={k} className="whitespace-pre-line">
+                    {m ? <><strong className="font-semibold">{m[1]}:</strong>{para.slice(m[0].length)}</> : para}
+                  </p>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </fieldset>
 
       {error && <p className="text-sm text-danger">{error}</p>}

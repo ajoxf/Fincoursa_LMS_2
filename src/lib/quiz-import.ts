@@ -1,7 +1,7 @@
 // Turns a quiz .json (or .js) file into quiz questions. Forgiving on purpose: admins may export quizzes from
 // other tools, so several common shapes and key names are accepted. Safe to use in the browser.
 
-export type ImportedQuestion = { id: string; prompt: string; image: string | null; options: { id: string; text: string }[]; correct: string };
+export type ImportedQuestion = { id: string; prompt: string; image: string | null; options: { id: string; text: string }[]; correct: string; explanation?: string };
 export type QuizImport = {
   questions: ImportedQuestion[]; passPct: number | null; skipped: string[];
   /** set when the correct answers were given as numbers: how they were read */
@@ -220,7 +220,8 @@ function parseQuizData(data: unknown): QuizImport {
     if (!prompt) return void skipped.push(`${label}: no question text`);
     if (options.length < 2) return void skipped.push(`${label}: needs at least two answers`);
     if (!correct) return void skipped.push(`${label}: couldn't tell which answer is correct`);
-    questions.push({ id: uid(), prompt, image, options: options.map(({ id, text }) => ({ id, text })), correct });
+    const explanation = str(pick(q, ["explanation", "rationale", "explain", "feedback"]));
+    questions.push({ id: uid(), prompt, image, options: options.map(({ id, text }) => ({ id, text })), correct, ...(explanation ? { explanation } : {}) });
     if (!image && (q.hasImage === true || q.has_image === true || q.needsImage === true)) needImage.push(questions.length);
   });
   if (!questions.length) throw new Error(`No questions could be imported. ${skipped.slice(0, 3).join("; ")}`);
