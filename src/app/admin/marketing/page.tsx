@@ -4,15 +4,16 @@ import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ApprovalsTab, DemandTab, InstitutionsTab } from "./GrowthTabs";
 import { SettingsTab } from "./SettingsTab";
+import { CampaignsTab, OverviewTab } from "./CampaignTabs";
 
 export const metadata: Metadata = { title: "Marketing" };
 
-const TABS = [["approvals", "Approvals"], ["institutions", "Institutions"], ["demand", "Demand"], ["settings", "Settings"]] as const;
+const TABS = [["overview", "Overview"], ["campaigns", "Campaigns"], ["approvals", "Approvals"], ["institutions", "Institutions"], ["demand", "Demand"], ["settings", "Settings"]] as const;
 
 export default async function AdminMarketing({ searchParams }: PageProps<"/admin/marketing">) {
   await requireRole(["admin", "support", "finance"], "/admin/marketing");
   const sp = await searchParams;
-  const tab = TABS.some(([t]) => t === sp.tab) ? (sp.tab as string) : "approvals";
+  const tab = TABS.some(([t]) => t === sp.tab) ? (sp.tab as string) : "overview";
   const ok = typeof sp.ok === "string" ? sp.ok : null;
   const err = typeof sp.err === "string" ? sp.err : null;
   const { count } = await createAdminClient().from("outbox").select("id", { count: "exact", head: true }).eq("status", "pending");
@@ -22,8 +23,8 @@ export default async function AdminMarketing({ searchParams }: PageProps<"/admin
       <div>
         <h1 className="text-3xl font-bold text-primary">Marketing</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted">
-          Institutions that enquire, or whose people sign up, are tracked here automatically. They get a thank-you and a proposal page,
-          and follow-ups are drafted for you. Nothing but the thank-you is sent until you approve it.
+          Plan and run campaigns through one process, see what each one brings in (CAC, LTV, revenue), and handle institution
+          enquiries. Proposals and follow-ups wait in Approvals; nothing but the instant thank-you is sent without you.
         </p>
       </div>
       <nav className="flex flex-wrap gap-1 border-b border-line" aria-label="Marketing sections">
@@ -36,6 +37,8 @@ export default async function AdminMarketing({ searchParams }: PageProps<"/admin
       </nav>
       {ok && <p className="rounded-lg bg-success/10 p-3 text-sm text-success">{ok}</p>}
       {err && <p className="rounded-lg bg-danger/10 p-3 text-sm text-danger">{err}</p>}
+      {tab === "overview" && <OverviewTab period={typeof sp.p === "string" ? sp.p : "90"} />}
+      {tab === "campaigns" && <CampaignsTab />}
       {tab === "approvals" && <ApprovalsTab />}
       {tab === "institutions" && <InstitutionsTab stage={typeof sp.stage === "string" ? sp.stage : undefined} />}
       {tab === "demand" && <DemandTab />}

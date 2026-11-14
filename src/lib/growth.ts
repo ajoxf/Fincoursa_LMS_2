@@ -134,6 +134,8 @@ async function draft(lead: Lead, kind: "proposal" | "follow_up", step: number, c
 export type Enquiry = {
   organization: string; org_type?: string; country?: string | null; contact_name: string; email: string; role?: string;
   team_size?: number | null; course_ids?: string[]; message?: string;
+  /** campaign that brought them (lib/attribution) */
+  campaign_id?: string | null; touch?: unknown;
 };
 
 /** A new enquiry: create the lead, send the thank-you now, alert the team, and draft the proposal for approval. */
@@ -147,6 +149,7 @@ export async function createLeadFromEnquiry(e: Enquiry) {
     email: e.email, role: e.role ?? null, team_size: e.team_size ?? null, course_ids: e.course_ids ?? [], message: e.message ?? null,
     source: "enquiry", email_domain: workDomain(e.email), seats, currency: q.currency, seat_price_minor: q.seat_price_minor,
     discount_pct: q.discount_pct, value_minor: q.value_minor, proposal_token: randomBytes(18).toString("base64url"),
+    campaign_id: e.campaign_id ?? null, touch: e.touch ?? null,
   }).select("id, organization, contact_name, email, country, team_size, course_ids, seats, currency, value_minor, proposal_token").single();
   if (error || !lead) throw new Error(error?.message ?? "could not save the enquiry");
   await logEvent(lead.id, "created", `Enquiry from ${e.contact_name}${e.role ? ` (${e.role})` : ""}${e.message ? `: "${e.message.slice(0, 500)}"` : ""}`);
@@ -175,9 +178,10 @@ export async function runGrowth(now = new Date()) {
   const out = { opportunities: 0, follow_ups: 0 };
 
   // several people from one organisation signed up on their own: a team opportunity
-  const { data: people } = await db.from("profiles").select("email, full_name").not("email", "is", null).limit(50000);
+  const { fetchAll } = await import("@/lib/marketing-metrics");
+  const people = await fetchAll<{ email: string | null; full_name: string | null }>((a, b) => db.from("profiles").select("email, full_name").not("email", "is", null).order("id").range(a, b));
   const byDomain = new Map<string, string[]>();
-  for (const p of people ?? []) {
+  for (const p of people) {
     const d = workDomain(p.email);
     if (d) byDomain.set(d, [...(byDomain.get(d) ?? []), p.full_name || p.email!]);
   }

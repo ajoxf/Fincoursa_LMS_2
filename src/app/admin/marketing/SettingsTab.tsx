@@ -6,6 +6,8 @@ import { Card } from "@/components/dash/Stat";
 import { runAutomationsNow, saveAutomations, saveTracking, sendAutomationTest } from "./actions";
 import { saveGrowthSettings } from "./growth-actions";
 import { getGrowthSettings } from "@/lib/growth";
+import { getReportSettings } from "@/lib/marketing-metrics";
+import { saveReportSettings } from "./campaign-actions";
 
 const LABEL: Record<string, string> = {
   auto_abandoned: "Checkout reminder", auto_offer: "Offer closing", auto_welcome_1: "Welcome 1", auto_welcome_2: "Welcome 2",
@@ -28,7 +30,7 @@ const TestButton = ({ kind }: { kind: string }) => (
 
 /** Admin → Marketing → Settings: institution sales settings, LinkedIn tracking and the automatic emails. */
 export async function SettingsTab() {
-  const g = await getGrowthSettings();
+  const [g, rep] = await Promise.all([getGrowthSettings(), getReportSettings()]);
   const db = createAdminClient();
   const [t, a, { data: courses }, { data: log }, { count: optedIn }] = await Promise.all([
     getTracking(), getAutomations(),
@@ -40,6 +42,18 @@ export async function SettingsTab() {
 
   return (
     <div className="grid gap-6">
+      <Card title="Reporting currency">
+        <form action={saveReportSettings} className="grid gap-3 text-sm">
+          <p className="text-muted">Overview shows everything in US dollars. Set how many units of each currency equal 1 US dollar (update monthly).</p>
+          <div className="flex flex-wrap gap-4">
+            {Object.entries(rep.fx).filter(([c]) => c !== "USD").map(([c, v]) => (
+              <label key={c} className="flex items-center gap-2">1 USD = <input name={`fx_${c}`} defaultValue={v} inputMode="decimal" className="fc-input w-20 !py-1.5" /> {c}</label>
+            ))}
+          </div>
+          <button className="fc-btn fc-btn-dark justify-self-start !min-w-0 !px-5 !py-2">Save rates</button>
+        </form>
+      </Card>
+
       <Card title="Selling to institutions">
         <form action={saveGrowthSettings} className="grid gap-5 text-sm">
           <p className="text-muted">Used for every institution enquiry: the thank-you email (sent straight away), the proposal and quote, and the follow-ups (both wait in Approvals).</p>

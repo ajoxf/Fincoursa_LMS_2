@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { allow, clientIp, LIMITS, TOO_MANY } from "@/lib/rate-limit";
 import { createLeadFromEnquiry, ORG_TYPES } from "@/lib/growth";
+import { attributionFor } from "@/lib/attribution";
 
 const schema = z.object({
   contact_name: z.string().trim().min(1).max(200),
@@ -34,7 +35,8 @@ export async function submitInstitutionEnquiry(_: EnquiryState, form: FormData):
   const { website: _hp, ...d } = parsed.data;
   void _hp;
   try {
-    await createLeadFromEnquiry({ ...d, country, course_ids: ids });
+    const source = await attributionFor(null).catch(() => ({ campaign_id: null, touch: null }));
+    await createLeadFromEnquiry({ ...d, country, course_ids: ids, ...source });
   } catch (e) {
     console.error("[institutions] enquiry", e);
     return { ok: false, error: "Something went wrong. Please try again, or email team@fincoursa.com." };

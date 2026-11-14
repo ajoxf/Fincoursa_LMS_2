@@ -9,6 +9,18 @@ const CAMPAIGN_COOKIE = "fc_campaign";
  * 1. Refreshes the Supabase session cookie on every request.
  * 2. Affiliate tracking: ?ref=CODE stores the code in a first-party cookie and records a click.
  */
+// Marketing attribution (see src/lib/attribution.ts): ?utm_campaign=<code> (or ?c=<code>) on any page is remembered.
+function rememberTouch(request: NextRequest, response: NextResponse) {
+  const sp = request.nextUrl.searchParams;
+  const code = (sp.get("c") ?? sp.get("utm_campaign") ?? "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 60);
+  const source = (sp.get("utm_source") ?? "").slice(0, 40);
+  if (!code && !source) return;
+  const touch = encodeURIComponent(JSON.stringify({ c: code || undefined, s: source || undefined, m: (sp.get("utm_medium") ?? "").slice(0, 40) || undefined, l: request.nextUrl.pathname.slice(0, 120), t: Date.now() }));
+  const opts = { sameSite: "lax" as const, httpOnly: true, secure: true, path: "/" };
+  response.cookies.set("fc_touch", touch, { ...opts, maxAge: 30 * 86400 });
+  if (!request.cookies.get("fc_first")) response.cookies.set("fc_first", touch, { ...opts, maxAge: 365 * 86400 });
+}
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -52,6 +64,7 @@ export async function proxy(request: NextRequest) {
       }
     }
   }
+  rememberTouch(request, response);
   return response;
 }
 

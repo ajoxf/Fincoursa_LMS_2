@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { allow, clientIp, LIMITS, TOO_MANY } from "@/lib/rate-limit";
 import { headers } from "next/headers";
 import { createLeadFromEnquiry, workDomain } from "@/lib/growth";
+import { attributionFor } from "@/lib/attribution";
 
 const schema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -33,6 +34,7 @@ export async function submitContact(_: ContactState, form: FormData): Promise<Co
     await createLeadFromEnquiry({
       organization: organization || workDomain(email) || `${name} (organisation not given)`,
       org_type: program_type === "university" ? "university" : "corporate", country, contact_name: name, email, message,
+      ...(await attributionFor(null).catch(() => ({ campaign_id: null, touch: null }))),
     }).catch((e) => console.error("[contact] lead", e));
   }
   return { ok: true };
