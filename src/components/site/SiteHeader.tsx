@@ -1,4 +1,5 @@
 import { getSessionUser } from "@/lib/auth";
+import { getBundles } from "@/lib/catalog";
 import { HeaderBar } from "./HeaderBar";
 
 export const learnLinks = [
@@ -15,11 +16,13 @@ export const mainLinks = [
 ];
 
 export async function SiteHeader() {
-  const user = await getSessionUser();
+  const [user, bundles] = await Promise.all([getSessionUser(), getBundles().catch(() => [])]);
+  // "Programmes" only appears while at least one programme is published
+  const learn = bundles.length ? learnLinks : learnLinks.filter((l) => l.href !== "/pages/programmes");
   const name = user ? (user.fullName?.trim() || user.email?.split("@")[0] || "Account") : null;
   return (
     <HeaderBar
-      learnLinks={learnLinks}
+      learnLinks={learn}
       mainLinks={mainLinks}
       user={name ? { name, isAdmin: user!.roles.includes("admin"), isInstructor: user!.roles.includes("instructor"), isPartner: user!.roles.includes("affiliate") } : null}
     />
