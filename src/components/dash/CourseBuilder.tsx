@@ -422,6 +422,10 @@ function QuizEditor({ courseId, questions, setQuestions, passPct, setPassPct }: 
             <button type="button" onClick={() => update(i, { ...q, options: [...q.options, { id: uid(), text: "" }] })} className="underline">+ Add answer</button>
             <span className="text-muted">Select the circle next to the correct answer.</span>
           </div>
+          <label className="grid gap-1 pl-6 text-xs font-medium">Explanation <span className="font-normal text-muted">(optional; shown to students only after they submit the quiz)</span>
+            <textarea rows={3} value={q.explanation ?? ""} onChange={(e) => update(i, { ...q, explanation: e.target.value })}
+              placeholder="Why the correct answer is right, and why the others are not" className="fc-input min-w-0 !py-1.5 text-sm font-normal" />
+          </label>
         </div>
       ))}
       <button type="button" className="fc-btn fc-btn-outline justify-self-start !py-2 text-sm"
