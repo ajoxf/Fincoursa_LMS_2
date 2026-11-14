@@ -11,7 +11,13 @@ import { assetUrl } from "@/lib/assets";
 
 export async function generateMetadata({ params }: PageProps<"/bundles/[slug]">): Promise<Metadata> {
   const b = await getBundle((await params).slug);
-  return b ? { title: b.title, description: b.description ?? undefined } : {};
+  if (!b) return {};
+  const description = b.description ?? undefined;
+  return {
+    title: b.title, description, alternates: { canonical: `/bundles/${b.slug}` },
+    openGraph: { title: b.title, description, url: `/bundles/${b.slug}`, ...(b.thumbnail_url ? { images: [{ url: b.thumbnail_url, alt: b.title }] } : {}) },
+    twitter: { card: "summary_large_image", title: b.title, description, ...(b.thumbnail_url ? { images: [b.thumbnail_url] } : {}) },
+  };
 }
 
 export default async function BundlePage({ params }: PageProps<"/bundles/[slug]">) {

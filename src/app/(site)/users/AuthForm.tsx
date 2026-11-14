@@ -1,12 +1,15 @@
 "use client";
 import { useActionState, useState, useTransition } from "react";
+import { TrackConversion } from "@/components/site/Tracking";
 import { resendConfirmation, type AuthState } from "./actions";
 
 type Field = { name: string; label: string; type?: string; required?: boolean; autoComplete?: string; defaultValue?: string };
 type Check = { name: string; label: string };
 
-export function AuthForm({ action, fields, submit, next, checks = [] }: {
+export function AuthForm({ action, fields, submit, next, checks = [], conversion }: {
   action: (s: AuthState, f: FormData) => Promise<AuthState>; fields: Field[]; submit: string; next?: string; checks?: Check[];
+  /** ad conversion to record when the form succeeds (sign-up) */
+  conversion?: "signup";
 }) {
   const [state, formAction, pending] = useActionState(action, null);
 
@@ -18,6 +21,7 @@ export function AuthForm({ action, fields, submit, next, checks = [] }: {
         <p className="text-[15px] leading-relaxed text-ink/85">{state.message}</p>
         <p className="text-sm text-muted">The link works on any device. Once you&apos;ve clicked it, you&apos;ll be signed in.</p>
         {state.email && <Resend email={state.email} next={next} />}
+        {conversion && <TrackConversion kind={conversion} />}
       </div>
     );
   }

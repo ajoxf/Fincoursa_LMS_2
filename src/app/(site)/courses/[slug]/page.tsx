@@ -17,7 +17,14 @@ import { SESSION_ZONES, formatDate, sessionDay, sessionNotOver, sessionTimes } f
 
 export async function generateMetadata({ params }: PageProps<"/courses/[slug]">): Promise<Metadata> {
   const course = await getCourse((await params).slug);
-  return course ? { title: course.title, description: course.description ?? undefined } : {};
+  if (!course) return {};
+  const description = course.description ?? course.subtitle ?? undefined;
+  // shared links show the course picture, title and description
+  return {
+    title: course.title, description, alternates: { canonical: `/courses/${course.slug}` },
+    openGraph: { title: course.title, description, url: `/courses/${course.slug}`, ...(course.thumbnail_url ? { images: [{ url: course.thumbnail_url, alt: course.title }] } : {}) },
+    twitter: { card: "summary_large_image", title: course.title, description, ...(course.thumbnail_url ? { images: [course.thumbnail_url] } : {}) },
+  };
 }
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;

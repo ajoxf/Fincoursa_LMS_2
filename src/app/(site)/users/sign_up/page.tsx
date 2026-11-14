@@ -11,7 +11,7 @@ export default async function SignUpPage({ searchParams }: PageProps<"/users/sig
     <section className="fc-container max-w-md py-20">
       <h1 className="text-3xl font-bold text-primary">Create your account</h1>
       <div className="mt-8">
-        <AuthForm action={signUp} next={typeof next === "string" ? next : undefined} submit="Create account" fields={[
+        <AuthForm action={signUp} conversion="signup" next={typeof next === "string" ? next : undefined} submit="Create account" fields={[
           { name: "full_name", label: "Full name", required: true, autoComplete: "name" },
           { name: "email", label: "Email", type: "email", required: true, autoComplete: "email" },
           { name: "password", label: "Password", type: "password", required: true, autoComplete: "new-password" },
