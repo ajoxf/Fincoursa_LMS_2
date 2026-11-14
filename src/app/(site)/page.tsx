@@ -68,8 +68,8 @@ export default async function HomePage() {
       {/* 3b. Upcoming live workshops (only when scheduled) */}
       <UpcomingLive courses={live} text={{ label: t.live_label, title: t.live_title, sub: t.live_sub }} />
 
-      {/* 4. Programmes (bundles) */}
-      <section className="bg-surface-dark">
+      {/* 4. Programmes (bundles), only when at least one programme is published */}
+      {bundles.length > 0 && <section className="bg-surface-dark">
         <div className="fc-container py-24">
           <SectionHeading dark label={t.paths_label} title={t.paths_title} />
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -79,7 +79,7 @@ export default async function HomePage() {
             <Link href="/pages/programmes" className="fc-btn fc-btn-outline-lime fc-btn-lg">{t.paths_button}</Link>
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* 5. Featured catalog */}
       <section className="bg-surface">
