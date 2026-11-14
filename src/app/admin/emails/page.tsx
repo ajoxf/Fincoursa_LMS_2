@@ -6,6 +6,9 @@ import { Card } from "@/components/dash/Stat";
 import { KIND_LABEL, type Audience, type CampaignKind } from "@/lib/campaigns";
 import { Composer } from "./Composer";
 import { HistoryActions } from "./HistoryActions";
+import { AutomaticEmails, InstitutionEmails } from "./AutomaticEmails";
+
+const TABS = [["send", "Send an email"], ["automatic", "Automatic emails"], ["institutions", "Institution emails"]] as const;
 
 export const metadata: Metadata = { title: "Emails & updates" };
 
@@ -13,7 +16,9 @@ const STATUS: Record<string, string> = { draft: "Draft", scheduled: "Scheduled",
 
 export default async function EmailsPage({ searchParams }: PageProps<"/admin/emails">) {
   await requireRole(["admin"], "/admin/emails");
-  const from = (await searchParams).from;
+  const sp = await searchParams;
+  const from = sp.from;
+  const tab = TABS.some(([v]) => v === sp.tab) ? (sp.tab as string) : "send";
   const db = createAdminClient();
   const [{ data: courses }, { data: history }, consenting, { data: reuse }] = await Promise.all([
     db.from("courses").select("id, title").neq("status", "archived").order("sort_order"),
@@ -36,10 +41,20 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
       <div>
         <h1 className="text-3xl font-bold text-primary">Emails &amp; updates</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted">
-          Send weekly updates, new-course news and offers to your students. To tell the students of one course about a change in that course,
-          post a course update from the course&apos;s page (Admin → Courses), which also shows inside the course.
+          Send weekly updates, new-course news and offers to your students, and set up the emails that go out automatically. To tell the students
+          of one course about a change in that course, post a course update from the course&apos;s page (Admin → Courses), which also shows inside the course.
         </p>
       </div>
+      <nav className="flex flex-wrap gap-2">
+        {TABS.map(([v, l]) => (
+          <a key={v} href={`/admin/emails?tab=${v}`} className={`rounded-full px-4 py-1.5 text-sm ${tab === v ? "bg-ink text-white" : "bg-surface"}`}>{l}</a>
+        ))}
+      </nav>
+      {typeof sp.ok === "string" && <p className="rounded-lg bg-success/10 p-3 text-sm text-success">{sp.ok}</p>}
+      {typeof sp.err === "string" && <p className="rounded-lg bg-danger/10 p-3 text-sm text-danger">{sp.err}</p>}
+      {tab === "automatic" && <AutomaticEmails />}
+      {tab === "institutions" && <InstitutionEmails />}
+      {tab === "send" && <>
 
       <section id="compose" className="scroll-mt-24">
         <Card title={draft ? "New email (copied from an earlier one)" : "New email"}>
@@ -69,6 +84,7 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
           </ul>
         )}
       </Card>
+      </>}
     </div>
   );
 }

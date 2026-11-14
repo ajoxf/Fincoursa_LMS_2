@@ -130,11 +130,29 @@ export async function runGrowthNow() {
   go("/admin/marketing?tab=approvals", "ok", `Checked: ${r.opportunities} new organisation opportunities, ${r.follow_ups} follow-ups drafted.`);
 }
 
+/** Admin → Emails & updates → Institution emails: the wording only. */
+export async function saveInstitutionEmails(form: FormData) {
+  const admin = await requireRole(["admin"]);
+  const cur = await getGrowthSettings();
+  const copy = (p: string, d: { subject: string; body: string }) => ({ subject: str(form, `${p}_subject`).slice(0, 300) || d.subject, body: str(form, `${p}_body`).slice(0, 10000) || d.body });
+  const value: GrowthSettings = {
+    ...cur, ack: copy("ack", cur.ack), proposal: copy("proposal", cur.proposal),
+    follow_ups: cur.follow_ups.map((f, i) => {
+      const d = Math.round(Number(str(form, `fu${i}_days`)));
+      return { days: d > 0 ? d : f.days, ...copy(`fu${i}`, f) };
+    }),
+  };
+  await setSetting("growth", value, admin.id);
+  await createAdminClient().from("audit_log").insert({ actor_id: admin.id, action: "growth.emails", entity: "site_settings", entity_id: "growth" });
+  revalidatePath("/admin/emails");
+  go("/admin/emails?tab=institutions", "ok", "Institution emails saved.");
+}
+
 export async function saveGrowthSettings(form: FormData) {
   const admin = await requireRole(["admin"]);
   const back = "/admin/marketing?tab=settings";
+  const cur = await getGrowthSettings();
   const num = (k: string, d: number) => { const v = Number(str(form, k)); return Number.isFinite(v) && v > 0 ? v : d; };
-  const copy = (p: string, d: { subject: string; body: string }) => ({ subject: str(form, `${p}_subject`) || d.subject, body: str(form, `${p}_body`) || d.body });
   const tiers = [0, 1, 2].map((i) => ({ seats: Math.round(num(`tier${i}_seats`, 0)), pct: num(`tier${i}_pct`, 0) })).filter((t) => t.seats > 0 && t.pct > 0 && t.pct < 90);
   const value: GrowthSettings = {
     team_email: str(form, "team_email") || GROWTH_DEFAULTS.team_email,
@@ -143,8 +161,8 @@ export async function saveGrowthSettings(form: FormData) {
     tiers,
     pilot_seats: Math.round(num("pilot_seats", 5)), pilot_days: Math.round(num("pilot_days", 30)),
     proposal_valid_days: Math.round(num("proposal_valid_days", 30)), domain_threshold: Math.max(2, Math.round(num("domain_threshold", 3))),
-    ack: copy("ack", GROWTH_DEFAULTS.ack), proposal: copy("proposal", GROWTH_DEFAULTS.proposal),
-    follow_ups: GROWTH_DEFAULTS.follow_ups.map((f, i) => ({ days: Math.round(num(`fu${i}_days`, f.days)), ...copy(`fu${i}`, f) })),
+    // the email wording is edited in Emails & updates; keep it as it is
+    ack: cur.ack, proposal: cur.proposal, follow_ups: cur.follow_ups,
   };
   await setSetting("growth", value, admin.id);
   await createAdminClient().from("audit_log").insert({ actor_id: admin.id, action: "growth.settings", entity: "site_settings", entity_id: "growth" });
