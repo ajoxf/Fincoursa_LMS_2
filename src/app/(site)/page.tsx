@@ -2,7 +2,6 @@ import Link from "next/link";
 import { getBundles, getCourse, getCourses, getInstructors } from "@/lib/catalog";
 import { UpcomingLive } from "@/components/site/UpcomingLive";
 import { sessionNotOver } from "@/lib/format";
-import { brand } from "@/components/site/brand";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { CatalogFilter } from "@/components/site/CatalogFilter";
 import { FacultyCard } from "@/components/site/FacultyCard";
@@ -15,10 +14,8 @@ import { getBranding, getHomeContent, getIntroVideo } from "@/lib/site-settings"
 export default async function HomePage() {
   const [courses, bundles, faculty, all, intro] = await Promise.all([getCourses({ featured: true }), getBundles(), getInstructors(), getCourses(), getIntroVideo()]);
   const [branding, t] = await Promise.all([getBranding(), getHomeContent()]);
-  // "Industry experts" strip: the admin's list (Admin → Home page), or the defaults as text
-  const partners = branding.partners?.length
-    ? branding.partners.map((p) => ({ name: p.name, src: p.logo_url, style: "font-semibold" }))
-    : brand.partners;
+  // "Industry experts" strip: only shown when the admin has added organisations (Admin → Home page & logos)
+  const partners = (branding.partners ?? []).map((p) => ({ name: p.name, src: p.logo_url, style: "font-semibold" }));
   // Courses with upcoming live sessions get a compact "Upcoming live workshops" section
   const liveSlugs = all.filter((c) => c.liveSessions.some((t) => sessionNotOver(t, 180))).map((c) => c.slug);
   const live = (await Promise.all(liveSlugs.map((slug) => getCourse(slug)))).filter((c) => c !== null);
@@ -42,9 +39,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 2. Industry experts */}
+      {/* 2. Industry experts (hidden while the admin list is empty) */}
       <section className="bg-white">
-        <div className="fc-container pt-28">
+        {partners.length > 0 && <div className="fc-container pt-28">
           <p className="text-center text-base font-medium tracking-wide text-ink uppercase">{t.experts_label}</p>
           <div className="fc-marquee mx-auto mt-10 max-w-[1040px] overflow-hidden">
             <div className="fc-marquee-track items-center gap-20">
@@ -56,7 +53,7 @@ export default async function HomePage() {
               )))}
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* 3. Built for growth */}
         <div className="fc-container grid items-center gap-8 pb-16 pt-24 md:grid-cols-2">

@@ -9,6 +9,7 @@ import { enrollFree } from "@/app/actions/enroll";
 import { PageHero, Chips } from "@/components/site/PageHero";
 import { FacultyBanner } from "@/components/site/FacultyBanner";
 import { LocalTime } from "@/components/site/LocalTime";
+import { LessonTypeIcon } from "@/components/site/LessonTypeIcon";
 import { SESSION_ZONES, sessionDay, sessionNotOver, sessionTimes } from "@/lib/format";
 
 export async function generateMetadata({ params }: PageProps<"/courses/[slug]">): Promise<Metadata> {
@@ -137,7 +138,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                     {ch.lessons.map((l) => (
                       <li key={l.id} className="flex items-center justify-between gap-4 py-2">
                         <span className="flex items-center gap-3">
-                          <span aria-hidden className="text-muted">{l.type === "video" ? "▶" : l.type === "quiz" ? "?" : "▤"}</span>{l.title}
+                          <span className="text-muted"><LessonTypeIcon type={l.type} /></span>{l.title}
                         </span>
                         <span className="flex items-center gap-4 text-muted">
                           {l.is_preview && <Link href={`/learn/${course.slug}/${l.id}`} className="font-medium text-ink underline underline-offset-4">Preview</Link>}
