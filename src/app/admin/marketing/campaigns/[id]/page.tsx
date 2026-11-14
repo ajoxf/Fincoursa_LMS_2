@@ -10,6 +10,8 @@ import { campaignLifetime, CHANNELS, fmtUsd } from "@/lib/marketing-metrics";
 import { STAGES } from "@/lib/campaign-process";
 import { Card } from "@/components/dash/Stat";
 import { addCheck, addCost, deleteCost, moveCampaign, updateCampaign } from "../../campaign-actions";
+import { createPost } from "../../post-actions";
+import { POST_STATUS, postResults } from "@/lib/campaign-posts";
 
 export const metadata: Metadata = { title: "Campaign" };
 
@@ -24,11 +26,14 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
   const { id } = await params;
   const sp = await searchParams;
   const db = createAdminClient();
-  const [{ data: c }, { data: costs }, { data: checks }, r] = await Promise.all([
+  const [{ data: c }, { data: costs }, { data: checks }, r, { data: posts }, perPost] = await Promise.all([
     db.from("campaigns").select("*").eq("id", id).maybeSingle(),
     db.from("campaign_costs").select("id, spent_on, amount_minor, currency, note").eq("campaign_id", id).order("spent_on", { ascending: false }),
     db.from("campaign_checks").select("id, on_track, note, created_at").eq("campaign_id", id).order("created_at", { ascending: false }),
     campaignLifetime(id),
+    db.from("campaign_posts").select("id, title, variant, status, planned_for, posted_at, impressions, reactions, comments, reposts").eq("campaign_id", id)
+      .order("planned_for", { ascending: true, nullsFirst: false }).order("created_at"),
+    postResults(id),
   ]);
   if (!c) notFound();
   const site = env.siteUrl.replace(/\/$/, "");
@@ -82,6 +87,34 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
                 {" "}({Math.round(((actual ?? 0) / Number(c.target_value)) * 100)}%)</p>
             ) : <p className="mt-3 text-sm text-muted">Set a target in the brief to track progress.</p>}
             {c.budget_minor != null && <p className="text-sm text-muted">Budget {formatMoney(c.budget_minor, cur)} · spent {formatMoney((costs ?? []).filter((k) => k.currency === cur).reduce((a, k) => a + Number(k.amount_minor), 0), cur)}</p>}
+          </Card>
+
+          <Card title="Posts" action={<form><button formAction={createPost.bind(null, id)} className="fc-btn fc-btn-dark !min-w-0 !px-4 !py-1.5">New post</button></form>}>
+            {(posts ?? []).length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="text-left text-xs text-muted">{["Post", "Status", "Date", "Impressions", "Engagement", "Clicks", "Sign-ups", "Customers"].map((h) => <th key={h} className="py-2 pr-3 font-medium">{h}</th>)}</tr></thead>
+                  <tbody>
+                    {(posts ?? []).map((p) => {
+                      const k = perPost.get(p.variant);
+                      const eng = (p.reactions ?? 0) + (p.comments ?? 0) + (p.reposts ?? 0);
+                      return (
+                        <tr key={p.id} className="border-t border-line">
+                          <td className="py-2 pr-3"><Link href={`/admin/marketing/campaigns/${id}/posts/${p.id}`} className="font-medium underline">{p.title}</Link> <span className="text-xs text-muted">?v={p.variant}</span></td>
+                          <td className="py-2 pr-3">{POST_STATUS.find(([v]) => v === p.status)?.[1]}</td>
+                          <td className="py-2 pr-3 whitespace-nowrap">{p.posted_at ? formatDate(p.posted_at) : p.planned_for ? `${formatDate(p.planned_for)} (planned)` : "–"}</td>
+                          <td className="py-2 pr-3 tabular-nums">{p.impressions?.toLocaleString() ?? "–"}</td>
+                          <td className="py-2 pr-3 tabular-nums">{p.impressions ? `${((eng / p.impressions) * 100).toFixed(1)}%` : "–"}</td>
+                          <td className="py-2 pr-3 tabular-nums">{k?.clicks ?? 0}</td>
+                          <td className="py-2 pr-3 tabular-nums">{k?.signups ?? 0}</td>
+                          <td className="py-2 pr-3 tabular-nums">{k?.customers ?? 0}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p className="text-sm text-muted">No posts yet. Each post gets its own tracked link, so you can see which one brings sign-ups and sales.</p>}
           </Card>
 
           <Card title="The brief">

@@ -7,7 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * is kept in two first-party cookies: fc_first (the first campaign ever, 1 year) and fc_touch (the latest, 30 days).
  * Sign-ups are credited to the first campaign; sales and institution enquiries to the latest one.
  */
-export type Touch = { c?: string; s?: string; m?: string; l?: string; t?: number };
+/** c campaign code, v post variant, s source, m medium, l landing path, t time */
+export type Touch = { c?: string; v?: string; s?: string; m?: string; l?: string; t?: number };
 export const TOUCH_COOKIE = "fc_touch";
 export const FIRST_COOKIE = "fc_first";
 
