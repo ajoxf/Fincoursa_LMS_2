@@ -75,3 +75,26 @@ export async function moveBundleCourse(bundleId: string, courseId: string, dir: 
   for (const r of list) await db.from("bundle_courses").update({ position: r.position }).eq("bundle_id", bundleId).eq("course_id", r.course_id);
   refresh(bundleId);
 }
+
+export type DeleteState = { error?: string } | null;
+
+/**
+ * Permanently delete a programme. Only allowed while nobody has ordered it: orders keep their programme for
+ * invoices and refunds (the database also refuses). Its course links, prices and programme-only discount codes
+ * go with it; students who were enrolled through it keep their courses.
+ */
+export async function deleteBundle(bundleId: string, _: DeleteState, form: FormData): Promise<DeleteState> {
+  const admin = await requireRole(["admin"]);
+  const db = createAdminClient();
+  const { data: b } = await db.from("bundles").select("title").eq("id", bundleId).maybeSingle();
+  if (!b) return { error: "This programme no longer exists." };
+  if (String(form.get("confirm_title") ?? "").trim() !== b.title.trim()) return { error: "Type the programme title exactly to confirm." };
+  const { count } = await db.from("order_items").select("id", { count: "exact", head: true }).eq("bundle_id", bundleId);
+  if ((count ?? 0) > 0) return { error: "This programme has orders, so it can't be deleted. Set its status to Archived instead." };
+  const { error } = await db.from("bundles").delete().eq("id", bundleId);
+  if (error) return { error: error.code === "23503" ? "This programme has orders, so it can't be deleted. Set its status to Archived instead." : error.message };
+  await db.from("audit_log").insert({ actor_id: admin.id, action: "bundle.deleted", entity: "bundle", entity_id: bundleId, data: { title: b.title } });
+  revalidatePath("/admin/bundles");
+  revalidatePath("/pages/programmes");
+  redirect("/admin/bundles");
+}

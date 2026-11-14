@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/dash/Stat";
 import { BundleForm } from "./BundleForm";
+import { DeleteBundle } from "./DeleteBundle";
 import { addBundleCourse, moveBundleCourse, removeBundleCourse } from "../actions";
 
 export const metadata: Metadata = { title: "Edit programme" };
@@ -13,9 +14,12 @@ export default async function EditBundle({ params }: PageProps<"/admin/bundles/[
   const { id } = await params;
   await requireRole(["admin"], `/admin/bundles/${id}`);
   const db = createAdminClient();
-  const [{ data: bundle }, { data: courses }] = await Promise.all([
+  const [{ data: bundle }, { data: courses }, { count: orders }, { count: enrolments }, { count: codes }] = await Promise.all([
     db.from("bundles").select("*, prices(amount_minor, currency, is_active), bundle_courses(course_id, position, course:courses(title, status))").eq("id", id).maybeSingle(),
     db.from("courses").select("id, title").neq("status", "archived").order("title"),
+    db.from("order_items").select("id", { count: "exact", head: true }).eq("bundle_id", id),
+    db.from("enrollments").select("id", { count: "exact", head: true }).eq("bundle_id", id),
+    db.from("coupons").select("id", { count: "exact", head: true }).eq("bundle_id", id),
   ]);
   if (!bundle) notFound();
   const price = (bundle.prices ?? []).find((p: { is_active: boolean }) => p.is_active) ?? null;
@@ -53,6 +57,9 @@ export default async function EditBundle({ params }: PageProps<"/admin/bundles/[
           <button className="fc-btn fc-btn-dark">Add</button>
         </form>
         <p className="mt-2 text-xs text-muted">Buying the programme enrols the student in every course listed here. Revenue is split equally across these courses for instructor earnings.</p>
+      </Card>
+      <Card title="Delete programme">
+        <DeleteBundle bundleId={id} title={bundle.title} orders={orders ?? 0} enrolments={enrolments ?? 0} codes={codes ?? 0} />
       </Card>
     </div>
   );
