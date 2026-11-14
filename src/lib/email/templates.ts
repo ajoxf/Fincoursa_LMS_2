@@ -365,3 +365,20 @@ export function partnerInviteEmail(o: { name?: string | null; code: string; comm
     }),
   };
 }
+
+/** Automatic marketing email (Admin → Marketing): plain-text body with paragraphs and "- " lists, one button. */
+export function automationEmail(o: { subject: string; body: string; cta: { label: string; url: string }; unsubscribeUrl?: string }): Rendered {
+  const paras = o.body.split(/\n{2,}/).map((x) => x.trim()).filter(Boolean);
+  const html = paras.map((para) => {
+    const lines = para.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lines.every((l) => l.startsWith("- "))) {
+      return `<ul style="margin:0 0 12px;padding-left:20px">${lines.map((l) => `<li style="margin:0 0 6px">${esc(l.slice(2))}</li>`).join("")}</ul>`;
+    }
+    return `<p style="margin:0 0 12px">${lines.map(esc).join("<br>")}</p>`;
+  }).join("");
+  // greeting line ("Hi Asha,") is the first paragraph; the heading repeats the subject
+  return {
+    subject: o.subject,
+    ...layout({ preheader: paras[1]?.slice(0, 120) ?? o.subject, heading: o.subject, body: { html, text: paras.join("\n\n") }, cta: o.cta, unsubscribeUrl: o.unsubscribeUrl }),
+  };
+}

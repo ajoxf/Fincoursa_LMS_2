@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
 import { simulatePayment } from "../actions";
 import { AutoRefresh } from "./AutoRefresh";
+import { TrackConversion } from "@/components/site/Tracking";
 import { connect } from "@/lib/payments/registry";
 import { applyGatewayEvents } from "@/lib/payments/apply";
 
@@ -46,6 +47,7 @@ export default async function SuccessPage({ searchParams }: PageProps<"/checkout
               <span aria-hidden className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent">
                 <svg width="24" height="24" viewBox="0 0 10 10"><path d="M2 5.2 4.1 7.2 8 3" fill="none" stroke="#101827" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </span>
+              {order.total_minor > 0 && <TrackConversion kind="purchase" once={order.id} />}
               <h1 className="fc-h2 mt-6 text-ink">You&apos;re enrolled!</h1>
               <p className="mt-4 text-[15px] text-ink/85">Order #{order.number} · {formatMoney(order.total_minor, order.currency)}. Your receipt and tax invoice are on their way to your inbox.</p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
