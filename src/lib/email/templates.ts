@@ -16,6 +16,11 @@ export const EMAIL_THEME = {
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const T = EMAIL_THEME;
+/** links inside the text: black, with a lime underline like the website */
+const LINK = `color:${T.text};text-decoration:none;border-bottom:2px solid ${T.accent}`;
+/** a "- " list: lime square markers */
+const bullets = (items: string[]) => `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 12px">${items.map((i) =>
+  `<tr><td valign="top" style="padding:7px 10px 6px 0"><span style="display:block;width:8px;height:8px;background:${T.accent};border-radius:2px"></span></td><td style="padding:0 0 6px">${i}</td></tr>`).join("")}</table>`;
 
 type Block = { html: string; text: string };
 type Rendered = { subject: string; html: string; text: string };
@@ -27,14 +32,14 @@ function layout(opts: { preheader: string; heading: string; body: Block; cta?: {
 <span style="display:none;max-height:0;overflow:hidden">${esc(opts.preheader)}</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${T.surface};padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden">
-<tr><td style="background:${T.primary};padding:24px 28px"><span style="font-size:24px;font-weight:700;letter-spacing:-0.5px;color:#ffffff">FinCoursa</span></td></tr>
+<tr><td style="background:${T.primary};padding:24px 28px;border-bottom:4px solid ${T.accent}"><span style="font-size:24px;font-weight:700;letter-spacing:-0.5px;color:#ffffff">FinCoursa</span><span style="display:inline-block;width:8px;height:8px;margin-left:3px;background:${T.accent};border-radius:2px"></span></td></tr>
 <tr><td style="padding:28px">
 <h1 style="margin:0 0 16px;font-size:28px;line-height:1.15;font-weight:400;letter-spacing:-0.5px;color:${T.text}">${esc(opts.heading)}</h1>
 <div style="font-size:15px;line-height:1.6">${opts.body.html}</div>
 ${opts.cta ? `<p style="margin:28px 0 8px"><a href="${esc(opts.cta.url)}" style="display:inline-block;background:${T.accent};color:${T.accentText};text-decoration:none;font-weight:600;padding:14px 28px;border-radius:8px">${esc(opts.cta.label)}</a></p>
 <p style="margin:0;font-size:12px;color:${T.muted}">Or paste this link into your browser:<br><span style="word-break:break-all">${esc(opts.cta.url)}</span></p>` : ""}
 </td></tr>
-<tr><td style="background:${T.primary};padding:16px 28px;font-size:12px;color:#d1d5db">${opts.footer ? esc(opts.footer) + "<br>" : ""}FinCoursa Academy · <a href="${site}" style="color:#d1d5db">${site.replace(/^https?:\/\//, "")}</a>${opts.unsubscribeUrl ? `<br><a href="${esc(opts.unsubscribeUrl)}" style="color:#d1d5db">Unsubscribe from marketing emails</a>` : ""}</td></tr>
+<tr><td style="background:${T.primary};padding:20px 28px;font-size:12px;line-height:1.6;color:#d1d5db">${opts.footer ? esc(opts.footer) + "<br>" : ""}FinCoursa Academy · <a href="${site}" style="color:${T.accent};text-decoration:none">${site.replace(/^https?:\/\//, "")}</a>${opts.unsubscribeUrl ? `<br><a href="${esc(opts.unsubscribeUrl)}" style="color:#d1d5db">Unsubscribe from marketing emails</a>` : ""}</td></tr>
 </table></td></tr></table></body></html>`;
   const text = `${opts.heading}\n\n${opts.body.text}${opts.cta ? `\n\n${opts.cta.label}: ${opts.cta.url}` : ""}\n\n—\nFinCoursa Academy · ${site}${opts.footer ? `\n${opts.footer}` : ""}${opts.unsubscribeUrl ? `\nUnsubscribe from marketing emails: ${opts.unsubscribeUrl}` : ""}`;
   return { html, text };
@@ -80,7 +85,7 @@ export function receiptEmail(o: {
 <p style="margin:0 0 4px;font-size:13px;color:${T.muted}">${o.trn ? "Tax invoice" : "Receipt"} #${o.orderNumber} · ${esc(o.date)}${o.trn ? ` · TRN ${esc(o.trn)}` : ""}</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin:8px 0 16px">${rows}${extra}</table>
 ${o.cashback ? `<p style="margin:0 0 12px">You earned <strong>${esc(o.cashback)}</strong> FinCoursa credit for a future purchase. It is applied at checkout automatically.</p>` : ""}
-<p style="margin:0 0 12px"><a href="${esc(o.invoiceUrl)}" style="color:${T.primary}">View or print your ${o.trn ? "tax invoice" : "invoice"}</a></p>${o.sessions?.length ? sessionsHtml(o.sessions) : ""}`,
+<p style="margin:0 0 12px"><a href="${esc(o.invoiceUrl)}" style="${LINK}">View or print your ${o.trn ? "tax invoice" : "invoice"}</a></p>${o.sessions?.length ? sessionsHtml(o.sessions) : ""}`,
     text: `Thank you. Your payment was received.${o.sessions?.length ? `\n\nYour live sessions:\n${sessionsText(o.sessions)}` : ""}\n\n${o.trn ? "Tax invoice" : "Receipt"} #${o.orderNumber} · ${o.date}\n${o.lines.map((l) => `${l.title}: ${l.amount}`).join("\n")}${o.discount ? `\nDiscount: -${o.discount}` : ""}${o.founding ? `\nFounding member discount: -${o.founding}` : ""}${o.credit ? `\nFinCoursa credit: -${o.credit}` : ""}${o.vat ? `\n${o.vatLabel ?? "VAT"} (included): ${o.vat}` : ""}\nTotal paid: ${o.total}${o.cashback ? `\n\nYou earned ${o.cashback} FinCoursa credit for a future purchase.` : ""}\n\nInvoice: ${o.invoiceUrl}`,
   };
   return {
@@ -103,7 +108,7 @@ const sessionsText = (sessions: SessionLine[]) => sessions.map((x) => `- ${x.day
 export function liveReminderEmail(o: { name?: string | null; course: string; session: SessionLine; url: string; calendarUrl: string }): Rendered {
   const body: Block = {
     html: `<p style="margin:0 0 12px">Hi ${esc(first(o.name))}, a quick reminder that <b>${esc(o.course)}</b> is live soon.</p>${sessionsHtml([o.session])}
-<p style="margin:16px 0 0;font-size:13px"><a href="${esc(o.calendarUrl)}" style="color:${T.primary}">Add it to your calendar</a></p>`,
+<p style="margin:16px 0 0;font-size:13px"><a href="${esc(o.calendarUrl)}" style="${LINK}">Add it to your calendar</a></p>`,
     text: `Hi ${first(o.name)}, ${o.course} is live soon.\n${sessionsText([o.session])}\nJoin from your account: ${o.url}`,
   };
   return {
@@ -151,9 +156,9 @@ export function courseCompletedEmail(o: { name?: string | null; course: string; 
           ? p(`You've completed ${o.course}. Your certificate of completion is ready. It has its own verification link you can add to your CV or LinkedIn profile.`)
           : p(`You've completed every lesson in ${o.course}. The course stays in your account, so you can go back to any lesson whenever you want a refresher.`),
         cert
-          ? { html: `<p style="margin:0 0 12px">Ready for the next step? <a href="${esc(o.nextUrl)}" style="color:${T.primary}">See what to learn next</a>.</p>`, text: `Next course ideas: ${o.nextUrl}` }
+          ? { html: `<p style="margin:0 0 12px">Ready for the next step? <a href="${esc(o.nextUrl)}" style="${LINK}">See what to learn next</a>.</p>`, text: `Next course ideas: ${o.nextUrl}` }
           : o.courseUrl
-            ? { html: `<p style="margin:0 0 12px"><a href="${esc(o.courseUrl)}" style="color:${T.primary}">Go back to the course</a> any time, or see what to learn next below.</p>`, text: `Go back to the course: ${o.courseUrl}` }
+            ? { html: `<p style="margin:0 0 12px"><a href="${esc(o.courseUrl)}" style="${LINK}">Go back to the course</a> any time, or see what to learn next below.</p>`, text: `Go back to the course: ${o.courseUrl}` }
             : p("Ready for the next step? Have a look at what to learn next."),
       ),
       cta: cert ? { label: "View your certificate", url: o.certificateUrl! } : { label: "See what to learn next", url: o.nextUrl },
@@ -195,7 +200,7 @@ export function refundEmail(o: { name?: string | null; orderNumber: number; item
         o.full
           ? p("As this was a full refund, the course has been removed from your account.")
           : p("This was a partial refund, so your course access stays as it is."),
-        { html: `<p style="margin:0 0 12px"><a href="${esc(o.invoiceUrl)}" style="color:${T.primary}">View your updated invoice</a></p>`, text: `Updated invoice: ${o.invoiceUrl}` },
+        { html: `<p style="margin:0 0 12px"><a href="${esc(o.invoiceUrl)}" style="${LINK}">View your updated invoice</a></p>`, text: `Updated invoice: ${o.invoiceUrl}` },
       ),
       footer: "Questions about this refund? Just reply to this email.",
     }),
@@ -281,7 +286,7 @@ export function migrationInviteEmail(o: { name?: string | null; url: string; cou
 /** Plain text written by an admin → safe HTML paragraphs; blank lines split paragraphs, links become clickable. */
 function richText(body: string): Block {
   const paras = body.replace(/\r/g, "").split(/\n{2,}/).map((x) => x.trim()).filter(Boolean);
-  const link = (escaped: string) => escaped.replace(/https?:\/\/[^\s<]+[^\s<.,;:!?)]/g, (u) => `<a href="${u}" style="color:${T.text}">${u}</a>`);
+  const link = (escaped: string) => escaped.replace(/https?:\/\/[^\s<]+[^\s<.,;:!?)]/g, (u) => `<a href="${u}" style="${LINK}">${u}</a>`);
   return {
     html: paras.map((x) => `<p style="margin:0 0 12px">${link(esc(x)).replace(/\n/g, "<br>")}</p>`).join(""),
     text: paras.join("\n\n"),
@@ -372,7 +377,7 @@ export function automationEmail(o: { subject: string; body: string; cta: { label
   const html = paras.map((para) => {
     const lines = para.split("\n").map((l) => l.trim()).filter(Boolean);
     if (lines.every((l) => l.startsWith("- "))) {
-      return `<ul style="margin:0 0 12px;padding-left:20px">${lines.map((l) => `<li style="margin:0 0 6px">${esc(l.slice(2))}</li>`).join("")}</ul>`;
+      return bullets(lines.map((l) => esc(l.slice(2))));
     }
     return `<p style="margin:0 0 12px">${lines.map(esc).join("<br>")}</p>`;
   }).join("");
