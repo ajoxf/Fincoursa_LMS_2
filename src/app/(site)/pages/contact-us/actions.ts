@@ -3,6 +3,9 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { allow, clientIp, LIMITS, TOO_MANY } from "@/lib/rate-limit";
+import { headers } from "next/headers";
+import { createLeadFromEnquiry, workDomain } from "@/lib/growth";
+import { attributionFor } from "@/lib/attribution";
 
 const schema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -22,8 +25,17 @@ export async function submitContact(_: ContactState, form: FormData): Promise<Co
   if (!(await allow("contact", await clientIp(), LIMITS.contact.limit, LIMITS.contact.window))) return { ok: false, error: TOO_MANY };
   if (parsed.data.website) return { ok: true }; // bot filled the honeypot
   const { name, email, organization, program_type, message } = parsed.data;
-  const row = { name, email, organization, program_type, message };
+  const country = ((await headers()).get("x-vercel-ip-country") || "").toUpperCase() || null;
+  const row = { name, email, organization, program_type, message, country };
   const { error } = await createAdminClient().from("contact_requests").insert(row);
   if (error) return { ok: false, error: "Something went wrong. Please try again." };
+  // organisations (corporate / university / custom) also become leads in Admin → Marketing
+  if (program_type !== "general") {
+    await createLeadFromEnquiry({
+      organization: organization || workDomain(email) || `${name} (organisation not given)`,
+      org_type: program_type === "university" ? "university" : "corporate", country, contact_name: name, email, message,
+      ...(await attributionFor(null).catch(() => ({ campaign_id: null, touch: null }))),
+    }).catch((e) => console.error("[contact] lead", e));
+  }
   return { ok: true };
 }

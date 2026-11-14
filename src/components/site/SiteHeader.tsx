@@ -11,7 +11,7 @@ export const learnLinks = [
 
 export const mainLinks = [
   { href: "/pages/instructors", label: "Instructors" },
-  { href: "/#org-section", label: "For Organizations" },
+  { href: "/pages/institutions", label: "For Institutions" },
   { href: "/pages/contact-us", label: "Contact" },
 ];
 

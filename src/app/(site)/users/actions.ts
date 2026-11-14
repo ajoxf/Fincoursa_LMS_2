@@ -1,5 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
+import { attributeSignup } from "@/lib/attribution";
 import { headers, cookies } from "next/headers";
 import { after } from "next/server";
 import { z } from "zod";
@@ -97,6 +98,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     // marketing emails only with an explicit tick (never pre-ticked)
     if (form.get("marketing") === "on") await createAdminClient().from("profiles").update({ marketing_opt_in: true }).eq("id", userId);
     after(() => sendWelcome(userId)); // after the response, so sign-up stays fast
+    await attributeSignup(userId).catch(() => {}); // which campaign brought them (Admin → Marketing)
   }
   if (!data.session) return { done: true, email: parsed.data.email.toLowerCase(), message: CHECK_EMAIL(parsed.data.email.toLowerCase()), resend: true };
   redirect(next);

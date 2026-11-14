@@ -9,7 +9,7 @@ const links = [
   { href: "/pages/live-courses", label: "Live Courses" },
   { href: "/pages/free-courses", label: "Free Courses" },
   { href: "/pages/instructors", label: "Instructors" },
-  { href: "/#org-section", label: "For Organisations" },
+  { href: "/pages/institutions", label: "For Institutions" },
   { href: "/pages/contact-us", label: "Contact" },
 ];
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { allow, clientIp, LIMITS, TOO_MANY } from "@/lib/rate-limit";
+import { headers } from "next/headers";
 
 const schema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -24,7 +25,8 @@ export async function notifyMe(courseId: string, _: NotifyState, form: FormData)
   if (!course) return { ok: false, error: "This course is no longer available." };
   const { error } = await db.from("contact_requests").insert({
     name: parsed.data.name, email: parsed.data.email, program_type: "waitlist",
-    message: `Notify me when "${course.title}" launches.`,
+    message: `Notify me when "${course.title}" launches.`, course_id: courseId,
+    country: ((await headers()).get("x-vercel-ip-country") || "").toUpperCase() || null,
   });
   if (error) return { ok: false, error: "Something went wrong. Please try again." };
   return { ok: true };

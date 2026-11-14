@@ -10,6 +10,7 @@ import { after } from "next/server";
 import { allow, LIMITS, TOO_MANY } from "@/lib/rate-limit";
 import { sendEnrolledForOrder, sendPaymentPending, sendReceipt } from "@/lib/email/events";
 import { applyGatewayEvents } from "@/lib/payments/apply";
+import { attributionFor } from "@/lib/attribution";
 
 export async function startCheckout(form: FormData) {
   const s = (k: string) => (String(form.get(k) ?? "").trim() || undefined);
@@ -41,6 +42,8 @@ export async function startCheckout(form: FormData) {
     refCode: jar.get("fc_ref")?.value, campaign: jar.get("fc_campaign")?.value, buyerId: user.id, couponId: quote.coupon?.id,
   });
 
+  const source = await attributionFor(user.id).catch(() => ({ campaign_id: null, touch: null }));
+
   let gatewayId: string | null = null;
   if (quote.totalMinor > 0) {
     const allowed = await gatewaysFor(country, quote.currency);
@@ -56,6 +59,7 @@ export async function startCheckout(form: FormData) {
     tax_name: quote.reverseCharge ? null : quote.taxName, billing_company: company, billing_tax_id: taxId, reverse_charge: quote.reverseCharge,
     affiliate_id: attr?.affiliateId ?? null, attribution: attr?.attribution ?? null, affiliate_campaign: attr?.campaign ?? null,
     gateway: gatewayId ?? "free",
+    campaign_id: source.campaign_id, touch: source.touch,
     credit_minor: quote.creditMinor, founding_discount_minor: quote.foundingMinor, cashback_minor: quote.cashbackMinor, cashback_valid_days: quote.cashbackValidDays,
   }).select("id, number").single();
   if (error || !order) throw new Error("Could not create order");

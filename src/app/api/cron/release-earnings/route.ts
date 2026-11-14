@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendLiveReminders, sendMissedCompletionEmails } from "@/lib/email/events";
 import { processScheduledCampaigns } from "@/lib/campaigns";
 import { runAutomations } from "@/lib/automations";
+import { runGrowth } from "@/lib/growth";
+import { sendWeeklyReview } from "@/lib/campaign-process";
 
 export const maxDuration = 300;
 
@@ -19,5 +21,9 @@ export async function GET(request: NextRequest) {
   const campaignEmails = await processScheduledCampaigns().catch((e) => { console.error("[cron] campaigns", e); return 0; });
   // automatic marketing emails: abandoned checkout, offer closing, welcome sequence (Admin → Marketing)
   const automations = await runAutomations().catch((e) => { console.error("[cron] automations", e); return null; });
-  return NextResponse.json({ ok: true, completionEmails, liveReminders, campaignEmails, automations });
+  // institution opportunities from sign-ups, and follow-up drafts for proposals (Admin → Marketing)
+  const growth = await runGrowth().catch((e) => { console.error("[cron] growth", e); return null; });
+  // Mondays: last week's numbers and the campaign to-dos to the team
+  const weekly = await sendWeeklyReview().catch((e) => { console.error("[cron] weekly review", e); return null; });
+  return NextResponse.json({ ok: true, completionEmails, liveReminders, campaignEmails, automations, growth, weekly });
 }

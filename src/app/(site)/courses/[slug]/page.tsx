@@ -85,6 +85,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                 <p className="whitespace-nowrap text-4xl font-bold tracking-tight md:text-[52px]">Coming soon</p>
                 {course.launchNote && <p className="mt-3 text-[15px]">{course.launchNote}</p>}
                 <div className="mt-5 md:ml-auto md:w-[260px]">{cta}</div>
+                <a href={`/pages/institutions?course=${course.slug}#enquire`} className="mt-3 block text-sm text-white/80 underline underline-offset-4 hover:text-white">Enquire for your team</a>
               </>
             ) : (
               <>
@@ -100,6 +101,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                 {joinOffer && <p className="mt-1 text-[15px] font-semibold text-accent">★ Buy{fs.join_ends_at ? ` by ${formatDate(fs.join_ends_at)}` : " now"} to become a founding member: {joinOffer} off future courses{fs.benefit_ends_at ? "" : " for life"}</p>}
                 {cbLabel && <p className="mt-1 text-[15px] font-semibold text-accent">Earn {cbLabel} back as credit</p>}
                 <div className="mt-5 md:ml-auto md:w-[210px]">{cta}</div>
+                {!course.isFree && <a href={`/pages/institutions?course=${course.slug}#enquire`} className="mt-3 block text-sm text-white/80 underline underline-offset-4 hover:text-white">Buying for a team? Get a quote</a>}
               </>
             )}
           </div>
