@@ -95,7 +95,7 @@ export async function SettingsTab() {
         </form>
       </Card>
 
-      <Card title="LinkedIn ads tracking">
+      <Card title="LinkedIn">
         <form action={saveTracking} className="grid gap-4 text-sm">
           <p className="text-muted">
             Adds the LinkedIn Insight Tag so LinkedIn can measure your ads and build retargeting audiences. Visitors see a cookie notice and the
@@ -105,6 +105,15 @@ export async function SettingsTab() {
             <label className="grid gap-1">Insight Tag partner ID<input name="linkedin_partner_id" defaultValue={t.linkedin_partner_id ?? ""} inputMode="numeric" placeholder="e.g. 1234567" className="fc-input" /></label>
             <label className="grid gap-1">Sign-up conversion ID<input name="linkedin_signup_conversion_id" defaultValue={t.linkedin_signup_conversion_id ?? ""} inputMode="numeric" placeholder="optional" className="fc-input" /></label>
             <label className="grid gap-1">Purchase conversion ID<input name="linkedin_purchase_conversion_id" defaultValue={t.linkedin_purchase_conversion_id ?? ""} inputMode="numeric" placeholder="optional" className="fc-input" /></label>
+          </div>
+          <div className="grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
+            <p className="text-muted sm:col-span-2">LinkedIn page, for posts: &ldquo;Copy text and open LinkedIn&rdquo; opens this page&apos;s composer, and the preview shows these names.</p>
+            <label className="grid gap-1 sm:col-span-2">Company Page link<input name="linkedin_page_url" defaultValue={t.linkedin_page_url ?? ""} placeholder="https://www.linkedin.com/company/123456/" className="fc-input" /></label>
+            <label className="grid gap-1">Page name<input name="linkedin_page_name" defaultValue={t.linkedin_page_name ?? ""} placeholder="FinCoursa" className="fc-input" /></label>
+            <label className="grid gap-1">Followers (shown in the preview)<input name="linkedin_page_followers" defaultValue={t.linkedin_page_followers ?? ""} placeholder="e.g. 1,240" className="fc-input" /></label>
+            <label className="grid gap-1 sm:col-span-2">Page logo image link (optional, else the site logo)<input name="linkedin_page_logo_url" defaultValue={t.linkedin_page_logo_url ?? ""} className="fc-input" /></label>
+            <label className="grid gap-1">Your name (posts from your profile)<input name="linkedin_profile_name" defaultValue={t.linkedin_profile_name ?? ""} className="fc-input" /></label>
+            <label className="grid gap-1">Your headline<input name="linkedin_profile_headline" defaultValue={t.linkedin_profile_headline ?? ""} placeholder="Founder, FinCoursa" className="fc-input" /></label>
           </div>
           <p className="text-xs text-muted">Status: {t.linkedin_partner_id ? <span className="text-success">on</span> : "off (leave the partner ID empty to switch it off)"}</p>
           <button className="fc-btn fc-btn-dark justify-self-start !min-w-0 !px-5 !py-2">Save tracking</button>

@@ -8,6 +8,7 @@ const BUCKETS = {
   "course-files": { maxMb: 500, types: /.*/ },
   // signed agreements with instructors and partners (PDF, Word or a photo/scan)
   "site-files": { maxMb: 20, types: /^application\/pdf$/ },
+  "marketing-media": { maxMb: 200, types: /^(image\/(png|jpe?g|webp|gif)|video\/(mp4|quicktime)|application\/pdf)$/ },
   agreements: { maxMb: 25, types: /^(application\/pdf|image\/(png|jpe?g|webp)|application\/(msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document))$/ },
 } as const;
 
@@ -35,6 +36,6 @@ export async function POST(request: Request) {
   const { data, error } = await db.storage.from(bucket).createSignedUploadUrl(path);
   if (error || !data) return NextResponse.json({ error: error?.message ?? "could not sign upload" }, { status: 500 });
 
-  const publicUrl = bucket === "course-images" || bucket === "site-files" ? db.storage.from(bucket).getPublicUrl(path).data.publicUrl : null;
+  const publicUrl = bucket === "course-images" || bucket === "site-files" || bucket === "marketing-media" ? db.storage.from(bucket).getPublicUrl(path).data.publicUrl : null;
   return NextResponse.json({ path, token: data.token, publicUrl });
 }
