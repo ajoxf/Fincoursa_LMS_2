@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 
 import type { OrgTab } from "@/lib/home-content";
 
@@ -29,6 +30,9 @@ export function OrgTabs({ tabs }: { tabs: OrgTab[] }) {
             </li>
           ))}
         </ul>
+        <Link href="/pages/institutions" className="mt-6 inline-flex text-sm font-semibold text-accent underline underline-offset-4 hover:text-white">
+          See how it works and request a proposal →
+        </Link>
       </div>
     </div>
   );

@@ -114,7 +114,7 @@ export default async function HomePage() {
             <h3 className="fc-h2 max-w-sm text-ink">{t.org_box_title}</h3>
             <div>
               <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink/85">{t.org_box_body}</p>
-              <Link href="/pages/contact-us" className="fc-btn fc-btn-primary mt-5 fc-btn-lg">{t.org_box_button}</Link>
+              <Link href="/pages/institutions#enquire" className="fc-btn fc-btn-primary mt-5 fc-btn-lg">{t.org_box_button}</Link>
             </div>
           </div>
         </div>
