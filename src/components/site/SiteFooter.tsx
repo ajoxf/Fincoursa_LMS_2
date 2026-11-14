@@ -1,6 +1,7 @@
 import { Logo } from "@/components/site/Logo";
 import Link from "next/link";
 import { brand } from "./brand";
+import { getBundles } from "@/lib/catalog";
 
 const links = [
   { href: "/pages/programmes", label: "Programmes" },
@@ -12,7 +13,10 @@ const links = [
   { href: "/pages/contact-us", label: "Contact" },
 ];
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  // "Programmes" only appears while at least one programme is published
+  const hasProgrammes = (await getBundles().catch(() => [])).length > 0;
+  const shown = hasProgrammes ? links : links.filter((l) => l.href !== "/pages/programmes");
   return (
     <footer className="mt-auto bg-surface-dark text-white/85">
       <div className="fc-container">
@@ -21,7 +25,7 @@ export function SiteFooter() {
             <Logo tone="light" className="h-7" />
           </Link>
           <nav className="flex flex-wrap gap-x-10 gap-y-3 text-[15px]">
-            {links.map((l) => <Link key={l.label} href={l.href} className="hover:text-white">{l.label}</Link>)}
+            {shown.map((l) => <Link key={l.label} href={l.href} className="hover:text-white">{l.label}</Link>)}
           </nav>
         </div>
         <div className="border-t border-white/20 py-6 text-[15px]">
