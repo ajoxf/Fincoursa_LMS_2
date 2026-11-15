@@ -127,9 +127,29 @@ export async function savePrice(courseId: string, priceId: string | null, _: Pri
     is_active: true,
   };
   const db = createAdminClient();
-  let clash = db.from("prices").select("id").eq("course_id", courseId).eq("currency", currency).eq("is_active", true);
+  let clash = db.from("prices").select("id").eq("course_id", courseId).eq("currency", currency).eq("is_active", true).is("access_until", null);
   if (priceId) clash = clash.neq("id", priceId);
   if ((await clash.limit(1)).data?.length) return { error: `There's already a ${currency} price for this course. Edit that one instead.` };
+  const { error } = priceId ? await db.from("prices").update(row).eq("id", priceId) : await db.from("prices").insert(row);
+  if (error) return { error: error.message };
+  refresh(courseId);
+  return { ok: true };
+}
+
+/** An access option: an extra price whose access runs until a fixed date (e.g. "Through June 2027 exam"). */
+export async function saveAccessOption(courseId: string, priceId: string | null, _: PriceState, form: FormData): Promise<PriceState> {
+  await requireRole(["admin"]);
+  const currency = String(form.get("currency") ?? env.defaultCurrency).trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency)) return { error: "Choose a currency." };
+  const amount = Number(form.get("amount"));
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "Enter a price above 0." };
+  const until = String(form.get("access_until") ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(until)) return { error: "Choose the date access ends." };
+  if (until <= new Date().toISOString().slice(0, 10)) return { error: "The end date must be in the future." };
+  const label = String(form.get("label") ?? "").trim().slice(0, 80);
+  if (!label) return { error: "Give the option a name buyers will see, e.g. \"Through June 2027 exam\"." };
+  const row = { course_id: courseId, currency, type: "one_time", amount_minor: Math.round(amount * minorUnitsFactor(currency)), access_until: until, label, is_active: true };
+  const db = createAdminClient();
   const { error } = priceId ? await db.from("prices").update(row).eq("id", priceId) : await db.from("prices").insert(row);
   if (error) return { error: error.message };
   refresh(courseId);

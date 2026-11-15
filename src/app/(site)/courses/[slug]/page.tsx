@@ -59,8 +59,13 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
   const memberSave = paidCourse && member && benefitLive(fs) ? foundingLabel(fs, course.price!.currency) : null;
   const joinOffer = paidCourse && !member && joiningOpen(fs) && fs.qualifying_course_ids.includes(course.id)
     ? foundingLabel(fs, course.price!.currency) : null;
+  const cbSettings = await getCashbackSettings();
   const cbLabel = !course.isFree && !enrollment && course.price
-    ? cashbackLabel(cashbackRule(await getCashbackSettings(), course.cashback), course.price.currency) : null;
+    ? cashbackLabel(cashbackRule(cbSettings, course.cashback), course.price.currency) : null;
+  const cbUntil = cbSettings.ends_at ? formatDate(cbSettings.ends_at, "long") : null;
+  // a free preview lesson to try before buying (e.g. the Question Bank's free sample)
+  const sample = !enrollment && !comingSoon ? course.chapters.flatMap((c) => c.lessons).find((l) => l.is_preview) : undefined;
+  const options = !enrollment && !comingSoon && !course.isFree ? course.options ?? [] : [];
   const cta = comingSoon ? (
     <NotifyMe courseId={course.id} />
   ) : enrollment ? (
@@ -99,8 +104,21 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                 <p className="mt-3 text-[15px]">{isLive ? "Live sessions + recordings" : accessLabel([course.access_days])}</p>
                 {memberSave && <p className="mt-1 text-[15px] font-semibold text-accent">★ Founding member: {memberSave} off at checkout</p>}
                 {joinOffer && <p className="mt-1 text-[15px] font-semibold text-accent">★ Buy{fs.join_ends_at ? ` by ${formatDate(fs.join_ends_at)}` : " now"} to become a founding member: {joinOffer} off future courses{fs.benefit_ends_at ? "" : " for life"}</p>}
-                {cbLabel && <p className="mt-1 text-[15px] font-semibold text-accent">Earn {cbLabel} back as credit</p>}
+                {cbLabel && <p className="mt-1 text-[15px] font-semibold text-accent">
+                  {cbLabel === "100%" ? "Get your full fee back as credit for your next course" : `Earn ${cbLabel} back as credit`}{cbUntil ? `: buy by ${cbUntil}` : ""}</p>}
                 <div className="mt-5 md:ml-auto md:w-[210px]">{cta}</div>
+                {options.map((o) => (
+                  <Link key={o.id} href={`/checkout?course=${course.slug}&price=${o.id}`}
+                    className="mt-3 block rounded-lg border border-white/40 px-4 py-3 text-left text-[15px] hover:border-white md:ml-auto md:w-[260px]">
+                    <span className="block font-semibold">{o.label || "Longer access"}: {formatMoney(o.amount_minor, o.currency)}</span>
+                    <span className="block text-sm text-white/75">Access until {formatDate(o.access_until!, "long")} →</span>
+                  </Link>
+                ))}
+                {sample && (
+                  <Link href={`/learn/${course.slug}/${sample.id}`} className="mt-3 block text-[15px] font-semibold text-accent underline underline-offset-4">
+                    Try the free sample first →
+                  </Link>
+                )}
                 {!course.isFree && <a href={`/pages/institutions?course=${course.slug}#enquire`} className="mt-3 block text-sm text-white/80 underline underline-offset-4 hover:text-white">Buying for a team? Get a quote</a>}
               </>
             )}

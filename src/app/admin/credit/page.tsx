@@ -97,6 +97,10 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
               <input name="validity_days" defaultValue={s.validity_days ?? ""} inputMode="numeric" placeholder="No expiry" className={field} />
               <span className="text-xs text-muted">From the day it is earned. Leave empty for no expiry.</span>
             </label>
+            <label className="grid gap-1">Offer ends on (optional)
+              <input type="date" name="ends_at" defaultValue={s.ends_at ?? ""} className={field} />
+              <span className="text-xs text-muted">Orders paid after this day (UAE time) earn no cashback. Credit already earned stays valid.</span>
+            </label>
             <label className="grid gap-1">Most of an order credit can pay (%)
               <input name="max_redeem_pct" defaultValue={s.max_redeem_pct} inputMode="numeric" className={field} />
               <span className="text-xs text-muted">100 lets credit cover the whole price.</span>

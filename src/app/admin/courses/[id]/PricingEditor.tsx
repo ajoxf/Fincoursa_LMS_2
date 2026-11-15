@@ -2,9 +2,9 @@
 import { useActionState, useState } from "react";
 import { formatMoney, minorUnitsFactor } from "@/lib/money";
 import { countriesForCurrency, countryName, PRICE_CURRENCIES } from "@/lib/currency";
-import { archivePrice, savePrice, type PriceState } from "../actions";
+import { archivePrice, saveAccessOption, savePrice, type PriceState } from "../actions";
 
-export type PriceRow = { id: string; type: string; currency: string; amount_minor: number; compare_at_minor: number | null; installments: number | null; interval: string | null };
+export type PriceRow = { id: string; type: string; currency: string; amount_minor: number; compare_at_minor: number | null; installments: number | null; interval: string | null; access_until?: string | null; label?: string | null };
 export type TaxRow = { country_code: string; name: string; rate: number; prices_include_tax: boolean };
 
 const TYPES = [
@@ -111,7 +111,8 @@ export function PricingEditor({ courseId, prices, taxes, defaultCurrency }: { co
   const [addKey, setAddKey] = useState(0);
   const [adding, setAdding] = useState(false);
   // stable order: default currency first, then alphabetical
-  const rows = [...prices].sort((a, b) => Number(b.currency === defaultCurrency) - Number(a.currency === defaultCurrency) || a.currency.localeCompare(b.currency));
+  const options = prices.filter((p) => p.access_until);
+  const rows = prices.filter((p) => !p.access_until).sort((a, b) => Number(b.currency === defaultCurrency) - Number(a.currency === defaultCurrency) || a.currency.localeCompare(b.currency));
   const currencies = rows.map((r) => r.currency);
   const seen = new Set<string>();
   return (
@@ -130,10 +131,61 @@ export function PricingEditor({ courseId, prices, taxes, defaultCurrency }: { co
       ) : (
         <button type="button" onClick={() => setAdding(true)} className="justify-self-start text-sm font-medium underline">+ Add a price in another currency</button>
       )}
+      <AccessOptions courseId={courseId} options={options} defaultCurrency={defaultCurrency} />
       <p className="text-xs text-muted">
         Buyers see the price in their country&apos;s currency when the course has one (for example INR for India); everyone else sees the {defaultCurrency} price.
         Set the amount to 0 to make the course free. Payment plans and subscriptions need a gateway that supports them.
       </p>
+    </div>
+  );
+}
+
+function OptionForm({ courseId, o, defaultCurrency, onDone }: { courseId: string; o: PriceRow | null; defaultCurrency: string; onDone?: () => void }) {
+  const [state, action, pending] = useActionState<PriceState, FormData>(async (prev, form) => {
+    const r = await saveAccessOption(courseId, o?.id ?? null, prev, form);
+    if (r?.ok && onDone) onDone();
+    return r;
+  }, null);
+  return (
+    <form action={action} className="grid items-end gap-2 rounded-md border border-line p-3 sm:grid-cols-[1fr_100px_120px_150px_auto]">
+      <label className="grid gap-1 text-xs font-medium">Name buyers see
+        <input name="label" defaultValue={o?.label ?? ""} placeholder="Through June 2027 exam" className="fc-input !py-2" />
+      </label>
+      <label className="grid gap-1 text-xs font-medium">Currency
+        <select name="currency" defaultValue={o?.currency ?? defaultCurrency} className="fc-input !py-2">
+          {[...new Set([o?.currency ?? defaultCurrency, ...PRICE_CURRENCIES])].map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </label>
+      <label className="grid gap-1 text-xs font-medium">Price
+        <input name="amount" type="number" min={0} step="0.01" required defaultValue={o ? o.amount_minor / minorUnitsFactor(o.currency) : ""} className="fc-input !py-2" />
+      </label>
+      <label className="grid gap-1 text-xs font-medium">Access until
+        <input name="access_until" type="date" required defaultValue={o?.access_until ?? ""} className="fc-input !py-2" />
+      </label>
+      <div className="flex items-center gap-3">
+        <button disabled={pending} className="fc-btn fc-btn-dark !px-4 !py-2 text-sm">{pending ? "Saving…" : o ? "Save" : "Add option"}</button>
+        {o && <button type="button" onClick={() => { if (confirm(`Remove the "${o.label}" ${o.currency} option?`)) archivePrice(courseId, o.id); }} className="text-xs text-danger underline">Remove</button>}
+      </div>
+      {state?.ok && <p className="text-xs text-success sm:col-span-5">Saved.</p>}
+      {state?.error && <p className="text-xs text-danger sm:col-span-5">{state.error}</p>}
+    </form>
+  );
+}
+
+/** Extra prices with a fixed end date, offered next to the standard price on the course page and at checkout. */
+function AccessOptions({ courseId, options, defaultCurrency }: { courseId: string; options: PriceRow[]; defaultCurrency: string }) {
+  const [adding, setAdding] = useState(false);
+  const [k, setK] = useState(0);
+  return (
+    <div className="mt-2 grid gap-2 border-t border-line pt-4">
+      <p className="text-sm font-medium">Access options</p>
+      <p className="text-xs text-muted">Optional extra prices whose access runs until a fixed date, for example &ldquo;Through June 2027 exam&rdquo;. Buyers see them under
+        the main price, in their currency. Add one per currency you sell in.</p>
+      {[...options].sort((a, b) => a.currency.localeCompare(b.currency)).map((o) => (
+        <OptionForm key={`${o.id}:${o.amount_minor}:${o.access_until}:${o.label}`} courseId={courseId} o={o} defaultCurrency={defaultCurrency} />
+      ))}
+      {adding ? <OptionForm key={k} courseId={courseId} o={null} defaultCurrency={defaultCurrency} onDone={() => { setAdding(false); setK((x) => x + 1); }} />
+        : <button type="button" onClick={() => setAdding(true)} className="justify-self-start text-sm font-medium underline">+ Add an access option</button>}
     </div>
   );
 }

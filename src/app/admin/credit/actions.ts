@@ -38,6 +38,8 @@ export async function saveCashbackSettings(form: FormData) {
   const maxRedeem = num(form.get("max_redeem_pct"));
   const validity = String(form.get("validity_days") ?? "").trim();
   const days = validity === "" ? null : num(validity);
+  const endsAt = String(form.get("ends_at") ?? "").trim();
+  if (endsAt && !/^\d{4}-\d{2}-\d{2}$/.test(endsAt)) back("err", "Use a valid end date, or leave it empty.");
   if (!(percent >= 0 && percent <= 100)) back("err", "Cashback must be between 0 and 100%.");
   if (!(maxRedeem >= 1 && maxRedeem <= 100)) back("err", "Credit per order must be between 1 and 100%.");
   if (days !== null && !(Number.isInteger(days) && days >= 1 && days <= 3650)) back("err", "Validity must be 1–3650 days, or empty for no expiry.");
@@ -52,6 +54,7 @@ export async function saveCashbackSettings(form: FormData) {
     max_redeem_pct: Math.round(maxRedeem),
     allow_with_coupon: form.get("allow_with_coupon") === "on",
     earn_on_credit: form.get("earn_on_credit") === "on",
+    ends_at: endsAt || null,
   };
   await setSetting("cashback", value, admin.id);
   await audit(admin.id, "cashback.settings", "site_settings", "cashback", value);

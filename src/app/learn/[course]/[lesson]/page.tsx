@@ -42,6 +42,8 @@ export default async function LessonPage({ params, searchParams }: PageProps<"/l
   const lesson = lessons[idx];
 
   const user = await getSessionUser();
+  // free sample quizzes are free in exchange for an account (so answers can be checked and the email kept)
+  if (!user && lesson.is_preview && lesson.type === "quiz") redirect(`/users/sign_up?next=${encodeURIComponent(`/learn/${slug}/${lessonId}`)}&sample=1`);
   const enrollment = user ? await getEnrollment(course.id) : null;
   const supabase = await createClient();
   const { data: unlocked } = await supabase.rpc("lesson_unlocked", { p_lesson: lessonId });
