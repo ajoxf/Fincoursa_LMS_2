@@ -174,7 +174,7 @@ export const getCourse = cache(async (slug: string): Promise<CourseDetail | null
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("courses")
-    .select(`${COURSE_SELECT}, highlights, chapters(id, title, position, lessons(id, title, type, position, is_preview, duration_seconds, starts_at, live_minutes))`)
+    .select(`${COURSE_SELECT}, highlights, chapters(id, title, position, lessons(id, title, type, position, is_preview, is_hidden, duration_seconds, starts_at, live_minutes))`)
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw error;
@@ -186,7 +186,8 @@ export const getCourse = cache(async (slug: string): Promise<CourseDetail | null
     highlights: (data as { highlights?: string[] }).highlights ?? [],
     chapters: (data.chapters ?? [])
       .sort((a, b) => a.position - b.position)
-      .map((ch) => ({ ...ch, lessons: (ch.lessons ?? []).sort((a, b) => a.position - b.position) })),
+      // hidden lessons (Admin → Courses → lesson → "Hidden from students") are left out everywhere students see the course
+      .map((ch) => ({ ...ch, lessons: (ch.lessons ?? []).filter((l) => !l.is_hidden).sort((a, b) => a.position - b.position) })),
   };
 });
 

@@ -69,7 +69,7 @@ export async function addLesson(courseId: string, chapterId: string, title: stri
 }
 
 export type LessonPatch = {
-  title?: string; is_preview?: boolean; is_required?: boolean; drip_days?: number | null;
+  title?: string; is_preview?: boolean; is_required?: boolean; is_hidden?: boolean; drip_days?: number | null;
   duration_seconds?: number; type?: string;
   starts_at?: string | null; live_minutes?: number | null; zoom_meeting_id?: string | null;
 };
