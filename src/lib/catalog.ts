@@ -62,6 +62,8 @@ export type CourseCard = {
   category: string | null;
   /** the category's place in the catalogue (Admin → categories); uncategorised courses come last */
   categoryOrder?: number;
+  /** the category's URL name, for its topic page (/topics/<slug>) */
+  categorySlug?: string | null;
   level: string | null;
   /** Extra labels shown as chips and catalog filters */
   tags: string[];
@@ -100,7 +102,7 @@ export type BundleCard = {
 
 const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, duration_minutes, access_days, certificate_enabled, level, tags,
   sort_order, is_featured, coming_soon, launch_note, cashback_mode, cashback_percent, cashback_fixed, live_lessons:lessons(starts_at),
-  category:categories(name, sort_order),
+  category:categories(name, sort_order, slug),
   course_instructors(is_primary, instructor:instructors(id, slug, name, title, bio, photo_url, org_logo_url, coming_soon)),
   prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active, created_at, access_until, label)`;
 
@@ -154,6 +156,7 @@ function toCourseCard(row: any, currency: string | null = null): CourseCard {
     duration_minutes: row.duration_minutes ?? 0,
     category: row.category?.name ?? null,
     categoryOrder: row.category?.sort_order ?? 999,
+    categorySlug: row.category?.slug ?? null,
     level: row.level ?? null,
     tags: row.tags ?? [],
     certificate: row.certificate_enabled === true,
@@ -272,3 +275,15 @@ export const getInstructor = cache(async (slug: string) => {
 });
 
 export { formatDuration } from "@/lib/format";
+
+/** Topics for the Learn menu and topic pages: categories that have at least one published course, in the admin's order. */
+export const getTopics = cache(async (): Promise<{ slug: string; name: string; count: number }[]> => {
+  const courses = await getCourses().catch(() => [] as CourseCard[]);
+  const map = new Map<string, { slug: string; name: string; count: number; order: number }>();
+  for (const c of courses) {
+    if (!c.category || !c.categorySlug) continue;
+    const t = map.get(c.categorySlug) ?? { slug: c.categorySlug, name: c.category, count: 0, order: c.categoryOrder ?? 999 };
+    t.count++; map.set(c.categorySlug, t);
+  }
+  return [...map.values()].sort((a, b) => a.order - b.order).map(({ slug, name, count }) => ({ slug, name, count }));
+});
