@@ -66,6 +66,9 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
   // a free preview lesson to try before buying (e.g. the Question Bank's free sample)
   const sample = !enrollment && !comingSoon ? course.chapters.flatMap((c) => c.lessons).find((l) => l.is_preview) : undefined;
   const options = !enrollment && !comingSoon && !course.isFree ? course.options ?? [] : [];
+  // "What's included" lines that start with "Offer:" are also shown as benefits in the price panel
+  const isOffer = (h: string) => /^offer:\s*/i.test(h);
+  const offerLines = !enrollment && !comingSoon ? course.highlights.filter(isOffer).map((h) => h.replace(/^offer:\s*/i, "")) : [];
   const cta = comingSoon ? (
     <NotifyMe courseId={course.id} />
   ) : enrollment ? (
@@ -93,34 +96,66 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                 <a href={`/pages/institutions?course=${course.slug}#enquire`} className="mt-3 block text-sm text-white/80 underline underline-offset-4 hover:text-white">Enquire for your team</a>
               </>
             ) : (
-              <>
-                {isLive && !course.isFree && <p className="text-[15px]">{course.price?.compare_at_minor ? "Introductory offer" : "Price"}</p>}
-                {course.price?.compare_at_minor && !course.isFree && (
-                  <p className="text-lg text-white/50 line-through">{formatMoney(course.price.compare_at_minor, course.price.currency)}</p>
-                )}
-                <p className={`whitespace-nowrap font-bold tracking-tight ${course.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
+              <div className="w-full rounded-2xl border border-accent/50 bg-white/[0.04] p-6 text-left md:w-[380px]">
+                {/* price */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {course.price?.compare_at_minor && !course.isFree ? (
+                    <>
+                      <span className="fc-chip fc-chip-lime !py-0.5 text-xs font-semibold">{isLive ? "Introductory offer" : "Launch price"}</span>
+                      <span className="text-lg text-white/50 line-through">{formatMoney(course.price.compare_at_minor, course.price.currency)}</span>
+                    </>
+                  ) : isLive && !course.isFree ? <span className="text-[15px]">Price</span> : null}
+                </div>
+                <p className={`mt-1 whitespace-nowrap font-bold tracking-tight ${course.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
                   {course.isFree ? "Free" : course.price && formatMoney(course.price.amount_minor, course.price.currency)}
                 </p>
-                <p className="mt-3 text-[15px]">{isLive ? "Live sessions + recordings" : accessLabel([course.access_days])}</p>
-                {memberSave && <p className="mt-1 text-[15px] font-semibold text-accent">★ Founding member: {memberSave} off at checkout</p>}
-                {joinOffer && <p className="mt-1 text-[15px] font-semibold text-accent">★ Buy{fs.join_ends_at ? ` by ${formatDate(fs.join_ends_at)}` : " now"} to become a founding member: {joinOffer} off future courses{fs.benefit_ends_at ? "" : " for life"}</p>}
-                {cbLabel && <p className="mt-1 text-[15px] font-semibold text-accent">
-                  {cbLabel === "100%" ? "Get your full fee back as credit for your next course" : `Earn ${cbLabel} back as credit`}{cbUntil ? `: buy by ${cbUntil}` : ""}</p>}
-                <div className="mt-5 md:ml-auto md:w-[210px]">{cta}</div>
+                <p className="mt-1 text-sm text-white/75">
+                  {isLive ? "Live sessions + recordings" : accessLabel([course.access_days])}{!course.isFree ? " · plus applicable taxes" : ""}
+                </p>
+
+                {/* benefits */}
+                {(cbLabel || memberSave || joinOffer || offerLines.length > 0) && (
+                  <ul className="mt-5 grid gap-2.5 border-t border-white/15 pt-5 text-[15px]">
+                    {cbLabel && (
+                      <Benefit strong>
+                        {cbLabel === "100%" ? "Get your full fee back as FinCoursa credit" : `Earn ${cbLabel} back as FinCoursa credit`}
+                        {cbUntil && <span className="block text-sm font-normal text-white/70">Buy by {cbUntil}. Credit, not cash, for your next course.</span>}
+                      </Benefit>
+                    )}
+                    {memberSave && <Benefit strong>Founding member: {memberSave} off at checkout</Benefit>}
+                    {joinOffer && <Benefit strong>Buy{fs.join_ends_at ? ` by ${formatDate(fs.join_ends_at)}` : " now"} to become a founding member: {joinOffer} off future courses{fs.benefit_ends_at ? "" : " for life"}</Benefit>}
+                    {offerLines.map((t) => <Benefit key={t}>{t}</Benefit>)}
+                  </ul>
+                )}
+
+                <div className="mt-6">{cta}</div>
+
+                {/* other ways in */}
                 {options.map((o) => (
                   <Link key={o.id} href={`/checkout?course=${course.slug}&price=${o.id}`}
-                    className="mt-3 block rounded-lg border border-white/40 px-4 py-3 text-left text-[15px] hover:border-white md:ml-auto md:w-[260px]">
-                    <span className="block font-semibold">{o.label || "Longer access"}: {formatMoney(o.amount_minor, o.currency)}</span>
-                    <span className="block text-sm text-white/75">Access until {formatDate(o.access_until!, "long")} →</span>
+                    className="group mt-3 flex items-center justify-between gap-4 rounded-xl border border-white/30 px-4 py-3.5 transition hover:border-accent">
+                    <span>
+                      <span className="block font-semibold">{o.label || "Longer access"}</span>
+                      <span className="block text-sm text-white/70">Access until {formatDate(o.access_until!, "long")}</span>
+                    </span>
+                    <span className="whitespace-nowrap text-lg font-semibold">{formatMoney(o.amount_minor, o.currency)} <span className="text-accent transition group-hover:translate-x-0.5">→</span></span>
                   </Link>
                 ))}
                 {sample && (
-                  <Link href={`/learn/${course.slug}/${sample.id}`} className="mt-3 block text-[15px] font-semibold text-accent underline underline-offset-4">
-                    Try the free sample first →
+                  <Link href={`/learn/${course.slug}/${sample.id}`}
+                    className="mt-3 flex w-full items-center justify-center rounded-xl border-2 border-accent px-4 py-3 text-[15px] font-semibold text-accent transition hover:bg-accent hover:text-ink">
+                    Try free sample questions first
                   </Link>
                 )}
-                {!course.isFree && <a href={`/pages/institutions?course=${course.slug}#enquire`} className="mt-3 block text-sm text-white/80 underline underline-offset-4 hover:text-white">Buying for a team? Get a quote</a>}
-              </>
+                {!course.isFree && <a href={`/pages/institutions?course=${course.slug}#enquire`} className="mt-4 block text-center text-sm text-white/80 underline underline-offset-4 hover:text-white">Buying for a team? Get a quote</a>}
+
+                {!course.isFree && (
+                  <p className="mt-4 border-t border-white/15 pt-3 text-xs leading-relaxed text-white/55">
+                    Prices exclude taxes; any tax is added at checkout.{cbLabel ? ` Cashback is given only as FinCoursa credit, not cash. Credit can't be withdrawn, refunded or transferred${cbSettings.validity_days ? ` and expires after ${Math.round(cbSettings.validity_days / 30)} months` : ""}.` : ""}{" "}
+                    <Link href="/pages/terms-conditions" className="underline">Terms</Link>
+                  </p>
+                )}
+              </div>
             )}
           </div>
         }>
@@ -167,7 +202,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
               <div className="mb-16 rounded-2xl border border-accent bg-black p-6 text-white md:p-8">
                 <p className="text-sm font-medium uppercase tracking-[0.14em] text-accent">What&apos;s included</p>
                 <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {course.highlights.map((h) => (
+                  {course.highlights.map((h) => h.replace(/^offer:\s*/i, "")).map((h) => (
                     <li key={h} className="flex items-start gap-3 text-[15px]">
                       <span aria-hidden className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent">
                         <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5.2 4.1 7.2 8 3" fill="none" stroke="#101827" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -213,5 +248,14 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
         </div>
       </section>
     </>
+  );
+}
+
+function Benefit({ children, strong }: { children: React.ReactNode; strong?: boolean }) {
+  return (
+    <li className="flex gap-2.5">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="mt-0.5 shrink-0"><circle cx="10" cy="10" r="10" fill="#d6fd3b" /><path d="M6 10.2l2.6 2.6L14 7.4" fill="none" stroke="#101827" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      <span className={strong ? "font-semibold text-white" : "text-white/90"}>{children}</span>
+    </li>
   );
 }
