@@ -49,7 +49,13 @@ export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit, 
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  if (!questions.length) return <p className="text-muted">This quiz has no questions yet.</p>;
+  if (!questions.length) return (
+    <div className="mx-auto grid max-w-md gap-2 py-10 text-center">
+      <span className="fc-chip justify-self-center">Coming soon</span>
+      <p className="font-semibold">Questions for this lesson are on the way.</p>
+      <p className="text-sm text-muted">It doesn&apos;t count toward your progress, so you can carry on with the next lesson.</p>
+    </div>
+  );
 
   const isRight = (r: QuizReview, qid: string) => Boolean(r.key[qid]) && r.answers[qid] === r.key[qid];
   const answeredCount = questions.filter((q) => answers[q.id]).length;
