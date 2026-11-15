@@ -259,7 +259,7 @@ export function partnerApprovedEmail(o: { name?: string | null; code: string; co
       heading: `Welcome aboard, ${first(o.name)}`,
       body: join(
         p(`Your partner account is approved. You earn ${o.commissionPct}% commission on every course sale you refer.`),
-        { html: `<p style="margin:0 0 12px">Your referral link:<br><a href="${esc(o.link)}" style="color:${T.primary};word-break:break-all">${esc(o.link)}</a></p>`, text: `Your referral link: ${o.link}` },
+        { html: `<p style="margin:0 0 12px">Your referral link:<br><a href="${esc(o.link)}" style="${LINK};word-break:break-all">${esc(o.link)}</a></p>`, text: `Your referral link: ${o.link}` },
         p("Commission becomes payable 30 days after each sale, once the refund window has passed. Add your payout details in the dashboard so we can pay you."),
       ),
       cta: { label: "Open your partner dashboard", url: o.dashboardUrl },
@@ -375,7 +375,7 @@ export function partnerInviteEmail(o: { name?: string | null; code: string; comm
         { html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin:4px 0 16px;background:${T.surface};border-radius:12px">
 <tr><td style="padding:12px 16px 4px;color:${T.muted}">Your code</td><td align="right" style="padding:12px 16px 4px;font-family:monospace;font-weight:700">${esc(o.code)}</td></tr>
 <tr><td style="padding:4px 16px;color:${T.muted}">Commission</td><td align="right" style="padding:4px 16px;font-weight:700">${esc(o.commissionPct)}%</td></tr>
-<tr><td colspan="2" style="padding:4px 16px 12px;color:${T.muted}">Your referral link<br><a href="${esc(o.link)}" style="color:${T.text};word-break:break-all">${esc(o.link)}</a></td></tr></table>`,
+<tr><td colspan="2" style="padding:4px 16px 12px;color:${T.muted}">Your referral link<br><a href="${esc(o.link)}" style="${LINK};word-break:break-all">${esc(o.link)}</a></td></tr></table>`,
           text: `Your code: ${o.code}\nCommission: ${o.commissionPct}%\nYour referral link: ${o.link}` },
         p("Share your link anywhere. Sales from people who sign up through it are credited to you, and commission becomes payable 30 days after each sale, once the refund window has passed."),
         o.setupUrl
