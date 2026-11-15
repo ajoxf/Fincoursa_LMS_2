@@ -125,7 +125,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                     {cbLabel && (
                       <Benefit strong>
                         {cbLabel === "100%" ? "Get your full fee back as FinCoursa credit*" : `Earn ${cbLabel} back as FinCoursa credit*`}
-                        {cbUntil && <span className="block text-sm font-normal text-white/70">Offer ends {cbUntil}.{cbSettings.validity_days ? ` Credit stays usable for ${Math.round(cbSettings.validity_days / 30)} months after your purchase.` : ""}</span>}
+                        {cbUntil && <span className="block text-sm font-normal text-white/70">Offer ends {cbUntil}.{cbSettings.validity_days ? ` Credit stays usable for ${cbSettings.validity_days} days after your purchase.` : ""}</span>}
                       </Benefit>
                     )}
                     {reviewPct && <Benefit strong>Send us your feedback and a review: get {reviewPct}% back as credit*</Benefit>}
@@ -161,7 +161,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                     {cbLabel && (
                       <p><span className="font-semibold text-white/80">* Credit, not cash.</span> Cashback is added to your FinCoursa account as credit. You can only use it
                         to pay for future courses on fincoursa.com{cbSettings.max_redeem_pct < 100 ? ` (up to ${cbSettings.max_redeem_pct}% of an order)` : ""}. It can&apos;t be
-                        withdrawn, paid out to your bank or card, refunded or transferred.{cbUntil ? ` Buy by ${cbUntil} to earn it.` : ""}{cbSettings.validity_days ? ` Each credit can be used for ${Math.round(cbSettings.validity_days / 30)} months from the day you buy; after that it expires.` : ""}</p>
+                        withdrawn, paid out to your bank or card, refunded or transferred.{cbUntil ? ` Buy by ${cbUntil} to earn it.` : ""}{cbSettings.validity_days ? ` Each credit can be used for ${cbSettings.validity_days} days from the day you buy; after that it expires.` : ""}</p>
                     )}
                     {noteLines.map((n) => <p key={n}>{n}</p>)}
                     <p>Prices exclude taxes; any tax is added at checkout. <Link href="/pages/terms-conditions" className="underline">Terms &amp; Conditions</Link></p>
