@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { after } from "next/server";
+import { syncEmailContact } from "@/lib/email-list";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -12,6 +14,7 @@ async function save(form: FormData) {
   const name = String(form.get("full_name") ?? "").trim().slice(0, 200);
   const country = String(form.get("country_code") ?? "").trim().toUpperCase().slice(0, 2) || null;
   await supabase.from("profiles").update({ full_name: name, country_code: country, marketing_opt_in: form.get("marketing") === "on" }).eq("id", user.id);
+  after(() => syncEmailContact(user.id)); // keep the Resend list in step with the tick box
   const pw = String(form.get("password") ?? "");
   if (pw.length >= 8) await supabase.auth.updateUser({ password: pw });
   revalidatePath("/dashboard/settings");

@@ -6,6 +6,7 @@ import { sendEmail } from "@/lib/email/send";
 import { courseAccessEmail } from "@/lib/email/templates";
 import { env } from "@/lib/env";
 import { formatDate } from "@/lib/format";
+import { syncEmailContact } from "@/lib/email-list";
 
 async function audit(actor: string, action: string, entityId: string, data?: object) {
   await createAdminClient().from("audit_log").insert({ actor_id: actor, action, entity: "enrollments", entity_id: entityId, data });
@@ -75,6 +76,7 @@ export async function updateStudentProfile(userId: string, form: FormData) {
   // admins can only turn marketing emails OFF for someone (on request); opting in is the customer's own choice
   if (form.get("unsubscribe") === "on") patch.marketing_opt_in = false;
   await createAdminClient().from("profiles").update(patch).eq("id", userId);
+  if (patch.marketing_opt_in === false) await syncEmailContact(userId).catch(() => "failed");
   await createAdminClient().from("audit_log").insert({ actor_id: admin.id, action: "profile.updated_by_staff", entity: "profiles", entity_id: userId, data: { fields: Object.keys(patch) } });
   revalidatePath(`/admin/customers/${userId}`);
 }

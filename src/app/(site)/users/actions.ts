@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { allow, clientIp, LIMITS, TOO_MANY } from "@/lib/rate-limit";
 import { sendPasswordReset, sendSignInLink, sendSignupConfirmation, sendWelcome } from "@/lib/email/events";
+import { syncEmailContact } from "@/lib/email-list";
 
 export type AuthState = { error?: string; message?: string; done?: boolean; email?: string; resend?: boolean } | null;
 
@@ -121,7 +122,10 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     const ref = (await cookies()).get("fc_ref")?.value;
     if (ref) await createAdminClient().rpc("record_referral_signup", { p_user: userId, p_code: ref });
     // marketing emails only with an explicit tick (never pre-ticked)
-    if (form.get("marketing") === "on") await createAdminClient().from("profiles").update({ marketing_opt_in: true }).eq("id", userId);
+    if (form.get("marketing") === "on") {
+      await createAdminClient().from("profiles").update({ marketing_opt_in: true }).eq("id", userId);
+      after(() => syncEmailContact(userId)); // add them to the Resend list
+    }
     after(() => sendWelcome(userId)); // after the response, so sign-up stays fast
     await attributeSignup(userId).catch(() => {}); // which campaign brought them (Admin → Marketing)
   }
