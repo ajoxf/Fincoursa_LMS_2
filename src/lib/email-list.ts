@@ -13,11 +13,14 @@ type ListSettings = { segment_id?: string | null };
 type Result = "synced" | "skipped" | "failed";
 
 const base = () => process.env.RESEND_API_BASE ?? "https://api.resend.com";
+/** The sending key is usually restricted to "send emails only", which Resend refuses for contacts,
+ *  so the list sync uses its own full-access key when one is set. */
+const contactsKey = () => process.env.RESEND_CONTACTS_API_KEY || process.env.RESEND_API_KEY;
 
 async function api(method: string, path: string, body?: object) {
   const res = await fetch(`${base()}${path}`, {
     method,
-    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${contactsKey()}`, "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
   });
@@ -45,7 +48,7 @@ async function addToList(email: string, segmentId: string, names: { first_name: 
 }
 
 export async function syncEmailContact(userId: string): Promise<Result> {
-  if (!process.env.RESEND_API_KEY) return "skipped";
+  if (!contactsKey()) return "skipped";
   const db = createAdminClient();
   const { data: p } = await db.from("profiles").select("email, full_name, marketing_opt_in").eq("id", userId).maybeSingle();
   if (!p?.email) return "skipped";
@@ -92,7 +95,7 @@ export async function syncEmailContact(userId: string): Promise<Result> {
 
 /** Daily: catch up anyone whose consent changed but isn't reflected in Resend yet (or failed earlier). */
 export async function syncPendingEmailContacts(limit = 60) {
-  if (!process.env.RESEND_API_KEY) return { synced: 0, failed: 0 };
+  if (!contactsKey()) return { synced: 0, failed: 0 };
   const db = createAdminClient();
   const { data: rows } = await db.from("profiles").select("id, marketing_opt_in, email_list_synced")
     .or("and(marketing_opt_in.eq.true,email_list_synced.is.null),and(marketing_opt_in.eq.true,email_list_synced.eq.false),and(marketing_opt_in.eq.false,email_list_synced.eq.true)")
