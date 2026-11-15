@@ -21,7 +21,7 @@ export function CourseDetailsForm({ course, categories, allTags = [] }: { course
           <label className="grid gap-1 text-sm font-medium">Description (shown on course cards and the course page)
             <textarea name="description" rows={5} defaultValue={course.description ?? ""} className="fc-input" />
           </label>
-          <label className="grid gap-1 text-sm font-medium">What&apos;s included <span className="text-xs font-normal text-muted">One per line, e.g. &ldquo;Live session + Q&amp;A&rdquo;, &ldquo;Recorded sessions on fincoursa.com&rdquo;. Start a line with &ldquo;Offer:&rdquo; to also show it as a benefit next to the price.</span>
+          <label className="grid gap-1 text-sm font-medium">What&apos;s included <span className="text-xs font-normal text-muted">One per line, e.g. &ldquo;Live session + Q&amp;A&rdquo;, &ldquo;Recorded sessions on fincoursa.com&rdquo;. Start a line with &ldquo;Offer:&rdquo; to also show it as a benefit next to the price, or &ldquo;Note:&rdquo; to show it only as a footnote under the price.</span>
             <textarea name="highlights" rows={4} defaultValue={(course.highlights ?? []).join("\n")} className="fc-input" />
           </label>
         </div>

@@ -97,6 +97,10 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
               <input name="validity_days" defaultValue={s.validity_days ?? ""} inputMode="numeric" placeholder="No expiry" className={field} />
               <span className="text-xs text-muted">From the day it is earned. Leave empty for no expiry.</span>
             </label>
+            <label className="grid gap-1">Cashback with feedback and a review (%)
+              <input name="review_bonus_pct" defaultValue={s.review_bonus_pct ?? ""} inputMode="numeric" placeholder="None" className={field} />
+              <span className="text-xs text-muted">Total cashback for a buyer who sends feedback and a review, e.g. 100. Give it from the order in Admin → Customers.</span>
+            </label>
             <label className="grid gap-1">Offer ends on (optional)
               <input type="date" name="ends_at" defaultValue={s.ends_at ?? ""} className={field} />
               <span className="text-xs text-muted">Orders paid after this day (UAE time) earn no cashback. Credit already earned stays valid.</span>

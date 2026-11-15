@@ -69,6 +69,12 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
   // "What's included" lines that start with "Offer:" are also shown as benefits in the price panel
   const isOffer = (h: string) => /^offer:\s*/i.test(h);
   const offerLines = !enrollment && !comingSoon ? course.highlights.filter(isOffer).map((h) => h.replace(/^offer:\s*/i, "")) : [];
+  // "Note:" lines are footnotes under the price panel (e.g. conditions of an offer), not part of "What's included"
+  const isNote = (h: string) => /^note:\s*/i.test(h);
+  const noteLines = !enrollment && !comingSoon ? course.highlights.filter(isNote).map((h) => h.replace(/^note:\s*/i, "")) : [];
+  // extra cashback for feedback and a review, shown when it's more than the standard rate
+  const cbPct = cbLabel?.endsWith("%") ? Number(cbLabel.replace("%", "")) : null;
+  const reviewPct = cbLabel && cbSettings.review_bonus_pct && (cbPct === null || cbSettings.review_bonus_pct > cbPct) ? cbSettings.review_bonus_pct : null;
   const cta = comingSoon ? (
     <NotifyMe courseId={course.id} />
   ) : enrollment ? (
@@ -118,10 +124,11 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                   <ul className="mt-5 grid gap-2.5 border-t border-white/15 pt-5 text-[15px]">
                     {cbLabel && (
                       <Benefit strong>
-                        {cbLabel === "100%" ? "Get your full fee back as FinCoursa credit" : `Earn ${cbLabel} back as FinCoursa credit`}
-                        {cbUntil && <span className="block text-sm font-normal text-white/70">Buy by {cbUntil}. Credit, not cash, for your next course.</span>}
+                        {cbLabel === "100%" ? "Get your full fee back as FinCoursa credit*" : `Earn ${cbLabel} back as FinCoursa credit*`}
+                        {cbUntil && <span className="block text-sm font-normal text-white/70">Offer ends {cbUntil}.{cbSettings.validity_days ? ` Credit stays usable for ${Math.round(cbSettings.validity_days / 30)} months after your purchase.` : ""}</span>}
                       </Benefit>
                     )}
+                    {reviewPct && <Benefit strong>Send us your feedback and a review: get {reviewPct}% back as credit*</Benefit>}
                     {memberSave && <Benefit strong>Founding member: {memberSave} off at checkout</Benefit>}
                     {joinOffer && <Benefit strong>Buy{fs.join_ends_at ? ` by ${formatDate(fs.join_ends_at)}` : " now"} to become a founding member: {joinOffer} off future courses{fs.benefit_ends_at ? "" : " for life"}</Benefit>}
                     {offerLines.map((t) => <Benefit key={t}>{t}</Benefit>)}
@@ -150,10 +157,15 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                 {!course.isFree && <a href={`/pages/institutions?course=${course.slug}#enquire`} className="mt-4 block text-center text-sm text-white/80 underline underline-offset-4 hover:text-white">Buying for a team? Get a quote</a>}
 
                 {!course.isFree && (
-                  <p className="mt-4 border-t border-white/15 pt-3 text-xs leading-relaxed text-white/55">
-                    Prices exclude taxes; any tax is added at checkout.{cbLabel ? ` Cashback is given only as FinCoursa credit, not cash. Credit can't be withdrawn, refunded or transferred${cbSettings.validity_days ? ` and expires after ${Math.round(cbSettings.validity_days / 30)} months` : ""}.` : ""}{" "}
-                    <Link href="/pages/terms-conditions" className="underline">Terms</Link>
-                  </p>
+                  <div className="mt-4 grid gap-2 border-t border-white/15 pt-3 text-xs leading-relaxed text-white/60">
+                    {cbLabel && (
+                      <p><span className="font-semibold text-white/80">* Credit, not cash.</span> Cashback is added to your FinCoursa account as credit. You can only use it
+                        to pay for future courses on fincoursa.com{cbSettings.max_redeem_pct < 100 ? ` (up to ${cbSettings.max_redeem_pct}% of an order)` : ""}. It can&apos;t be
+                        withdrawn, paid out to your bank or card, refunded or transferred.{cbUntil ? ` Buy by ${cbUntil} to earn it.` : ""}{cbSettings.validity_days ? ` Each credit can be used for ${Math.round(cbSettings.validity_days / 30)} months from the day you buy; after that it expires.` : ""}</p>
+                    )}
+                    {noteLines.map((n) => <p key={n}>{n}</p>)}
+                    <p>Prices exclude taxes; any tax is added at checkout. <Link href="/pages/terms-conditions" className="underline">Terms &amp; Conditions</Link></p>
+                  </div>
                 )}
               </div>
             )}
@@ -202,7 +214,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
               <div className="mb-16 rounded-2xl border border-accent bg-black p-6 text-white md:p-8">
                 <p className="text-sm font-medium uppercase tracking-[0.14em] text-accent">What&apos;s included</p>
                 <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {course.highlights.map((h) => h.replace(/^offer:\s*/i, "")).map((h) => (
+                  {course.highlights.filter((h) => !/^note:\s*/i.test(h)).map((h) => h.replace(/^offer:\s*/i, "")).map((h) => (
                     <li key={h} className="flex items-start gap-3 text-[15px]">
                       <span aria-hidden className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent">
                         <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5.2 4.1 7.2 8 3" fill="none" stroke="#101827" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
