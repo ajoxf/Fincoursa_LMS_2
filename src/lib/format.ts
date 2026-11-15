@@ -77,3 +77,9 @@ export function daysAgoIso(days: number) {
 export const nowMs = () => Date.now();
 
 export const nowIso = () => new Date().toISOString();
+
+/** "Tom Robson, FRM, CMT" → { name: "Tom Robson", credentials: "FRM · CMT" }: qualifications typed after the first comma. */
+export function splitCredentials(full: string) {
+  const [name, ...rest] = full.split(",").map((s) => s.trim()).filter(Boolean);
+  return { name: name ?? full, credentials: rest.length ? rest.join(" · ") : null };
+}

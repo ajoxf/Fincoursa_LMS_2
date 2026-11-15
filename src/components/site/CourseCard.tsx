@@ -1,6 +1,7 @@
 import { assetUrl } from "@/lib/assets";
 import Link from "next/link";
 import type { CourseCard as Course } from "@/lib/catalog";
+import { splitCredentials } from "@/lib/format";
 
 export function minsLabel(m: number) {
   if (!m) return null;
@@ -29,7 +30,8 @@ export function CourseImage({ course, className = "", maxTags = 3 }: { course: C
         </div>
         {ins && (
           <div className="mt-10 max-w-[80%] text-white">
-            <p className="text-2xl font-medium tracking-tight md:text-[28px]">{ins.name}</p>
+            <p className="text-2xl font-medium tracking-tight md:text-[28px]">{splitCredentials(ins.name).name}</p>
+            {splitCredentials(ins.name).credentials && <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-accent">{splitCredentials(ins.name).credentials}</p>}
             {ins.title && <p className="mt-1 text-sm">{ins.title}</p>}
           </div>
         )}
