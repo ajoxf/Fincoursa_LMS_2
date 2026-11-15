@@ -124,11 +124,12 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                   <ul className="mt-5 grid gap-2.5 border-t border-white/15 pt-5 text-[15px]">
                     {cbLabel && (
                       <Benefit strong>
-                        {cbLabel === "100%" ? "Get your full fee back as FinCoursa credit*" : `Earn ${cbLabel} back as FinCoursa credit*`}
+                        {reviewPct
+                          ? `${cbLabel} of your fee back as FinCoursa credit when you enroll, or ${reviewPct}% when you send us feedback and a review*`
+                          : cbLabel === "100%" ? "Get your full fee back as FinCoursa credit*" : `Earn ${cbLabel} back as FinCoursa credit*`}
                         {cbUntil && <span className="block text-sm font-normal text-white/70">Offer ends {cbUntil}.{cbSettings.validity_days ? ` Credit stays usable for ${cbSettings.validity_days} days after your purchase.` : ""}</span>}
                       </Benefit>
                     )}
-                    {reviewPct && <Benefit strong>Send us your feedback and a review: get {reviewPct}% back as credit*</Benefit>}
                     {memberSave && <Benefit strong>Founding member: {memberSave} off at checkout</Benefit>}
                     {joinOffer && <Benefit strong>Buy{fs.join_ends_at ? ` by ${formatDate(fs.join_ends_at)}` : " now"} to become a founding member: {joinOffer} off future courses{fs.benefit_ends_at ? "" : " for life"}</Benefit>}
                     {offerLines.map((t) => <Benefit key={t}>{t}</Benefit>)}
