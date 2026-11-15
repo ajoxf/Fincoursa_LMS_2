@@ -192,7 +192,8 @@ export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit, 
       {/* question */}
       <fieldset className="fc-card p-5 sm:p-6">
         <legend className="sr-only">Question {i + 1}</legend>
-        <div className="flex items-start justify-between gap-3">
+        {/* on phones the badge/flag sits under the question, so the question keeps the full width */}
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3">
           <p className="font-semibold leading-snug"><span className="whitespace-pre-line">{i + 1}. {q.prompt}</span></p>
           {!locked && (
             <button type="button" aria-pressed={Boolean(flagged[q.id])} onClick={() => setFlagged({ ...flagged, [q.id]: !flagged[q.id] })}
@@ -215,6 +216,7 @@ export function QuizLesson({ lessonId, courseId, questions, passPct, canSubmit, 
           <a href={q.image} target="_blank" rel="noopener noreferrer" className="mt-4 block" title="Open full size">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={q.image} alt={`Chart for question ${i + 1}`} className="max-h-[420px] w-full rounded-md border border-line bg-white object-contain" />
+            <span className="mt-1 block text-xs text-muted sm:hidden">Tap the chart to open it full size.</span>
           </a>
         )}
         <div className="mt-4 grid gap-2">

@@ -117,6 +117,23 @@ export function liveReminderEmail(o: { name?: string | null; course: string; ses
   };
 }
 
+/** Confirm a new account. Sent by FinCoursa (not Supabase's mailer), so it never hits Supabase's hourly email limit. */
+export function confirmSignupEmail(o: { name?: string | null; url: string; minutes: number }): Rendered {
+  return {
+    subject: "Confirm your email for FinCoursa",
+    ...layout({
+      preheader: "One click to finish creating your FinCoursa account.",
+      heading: "Confirm your email",
+      body: join(
+        p(`Hi ${first(o.name)}, thanks for signing up to FinCoursa Academy. Please confirm this is your email address, and your account is ready to use.`),
+        p(`The link works once and expires in ${o.minutes} minutes. If it has expired, sign in with your email and password and we'll send a new one.`),
+      ),
+      cta: { label: "Confirm my email", url: o.url },
+      footer: "If you didn't create a FinCoursa account, you can ignore this email.",
+    }),
+  };
+}
+
 export function signInLinkEmail(o: { url: string; minutes: number }): Rendered {
   return {
     subject: "Your FinCoursa sign-in link",
