@@ -8,7 +8,7 @@ const KEY = "fc_catalog_view";
 const listeners = new Set<() => void>();
 const memory: { view: View | null } = { view: null }; // used when the browser blocks storage
 const setView = (v: View) => { memory.view = v; try { localStorage.setItem(KEY, v); } catch { /* storage blocked */ } listeners.forEach((fn) => fn()); };
-const readView = (): View => { if (memory.view) return memory.view; try { return localStorage.getItem(KEY) === "grid" ? "grid" : "list"; } catch { return "list"; } };
+const readView = (): View => { if (memory.view) return memory.view; try { return localStorage.getItem(KEY) === "list" ? "list" : "grid"; } catch { return "grid"; } };
 const subscribe = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
 
 /** Course catalogue: filter pills, and a List / Grid switch. The grid groups courses under their category. */
@@ -18,8 +18,8 @@ export function CatalogFilter({ courses, filters = true }: { courses: Course[]; 
   const lower = new Set(categories.map((c) => c.toLowerCase()));
   const tags = Array.from(new Set(courses.flatMap((c) => c.tags ?? []))).filter((t) => !lower.has(t.toLowerCase())).sort();
   const [active, setActive] = useState<string | null>(null);
-  // each visitor's choice is remembered in their browser; the server renders the list
-  const view = useSyncExternalStore(subscribe, readView, () => "list" as View);
+  // grid by default; each visitor's choice is remembered in their browser
+  const view = useSyncExternalStore(subscribe, readView, () => "grid" as View);
   const choose = setView;
   const shown = active ? courses.filter((c) => c.category === active || (c.tags ?? []).includes(active)) : courses;
 
