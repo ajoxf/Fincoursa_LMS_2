@@ -1,13 +1,11 @@
 import { Logo } from "@/components/site/Logo";
 import Link from "next/link";
 import { brand } from "./brand";
-import { getBundles } from "@/lib/catalog";
+import { getBundles, getTopics } from "@/lib/catalog";
 
 const links = [
   { href: "/pages/programmes", label: "Programmes" },
   { href: "/pages/paid-courses", label: "Courses" },
-  { href: "/pages/live-courses", label: "Live Courses" },
-  { href: "/pages/free-courses", label: "Free Courses" },
   { href: "/pages/instructors", label: "Instructors" },
   { href: "/pages/institutions", label: "For Institutions" },
   { href: "/pages/contact-us", label: "Contact" },
@@ -15,8 +13,11 @@ const links = [
 
 export async function SiteFooter() {
   // "Programmes" only appears while at least one programme is published
-  const hasProgrammes = (await getBundles().catch(() => [])).length > 0;
-  const shown = hasProgrammes ? links : links.filter((l) => l.href !== "/pages/programmes");
+  const [bundles, topics] = await Promise.all([getBundles().catch(() => []), getTopics().catch(() => [])]);
+  const base = bundles.length > 0 ? links : links.filter((l) => l.href !== "/pages/programmes");
+  // topics sit right after "Courses"
+  const shown = [base[0], ...(base[0].href === "/pages/programmes" ? [base[1]] : []), ...topics.map((t) => ({ href: `/topics/${t.slug}`, label: t.name })),
+    ...base.slice(base[0].href === "/pages/programmes" ? 2 : 1)];
   return (
     <footer className="mt-auto bg-surface-dark text-white/85">
       <div className="fc-container">

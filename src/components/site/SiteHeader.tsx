@@ -1,13 +1,10 @@
 import { getSessionUser } from "@/lib/auth";
-import { getBundles } from "@/lib/catalog";
+import { getBundles, getTopics } from "@/lib/catalog";
 import { HeaderBar } from "./HeaderBar";
 
-export const learnLinks = [
-  { href: "/pages/programmes", label: "Programmes" },
-  { href: "/pages/live-courses", label: "Live Courses" },
-  { href: "/pages/free-courses", label: "Free Courses" },
-  { href: "/pages/paid-courses", label: "Paid Courses" },
-];
+// The Learn menu: one link per topic (course category with published courses), then all courses.
+const programmesLink = { href: "/pages/programmes", label: "Programmes" };
+const allCoursesLink = { href: "/pages/paid-courses", label: "All courses" };
 
 export const mainLinks = [
   { href: "/pages/instructors", label: "Instructors" },
@@ -16,9 +13,13 @@ export const mainLinks = [
 ];
 
 export async function SiteHeader() {
-  const [user, bundles] = await Promise.all([getSessionUser(), getBundles().catch(() => [])]);
+  const [user, bundles, topics] = await Promise.all([getSessionUser(), getBundles().catch(() => []), getTopics().catch(() => [])]);
   // "Programmes" only appears while at least one programme is published
-  const learn = bundles.length ? learnLinks : learnLinks.filter((l) => l.href !== "/pages/programmes");
+  const learn = [
+    ...topics.map((t) => ({ href: `/topics/${t.slug}`, label: t.name })),
+    ...(bundles.length ? [programmesLink] : []),
+    allCoursesLink,
+  ];
   const name = user ? (user.fullName?.trim() || user.email?.split("@")[0] || "Account") : null;
   return (
     <HeaderBar
