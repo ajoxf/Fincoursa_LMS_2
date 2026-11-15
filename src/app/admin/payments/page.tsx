@@ -7,6 +7,7 @@ import { ProviderKeys, type ProviderView } from "./ProviderKeys";
 import { env } from "@/lib/env";
 import { Card } from "@/components/dash/Stat";
 import { addRoute, deleteRoute, setRouteActive } from "./actions";
+import { testPaymentsAllowed } from "@/lib/payments/gateways/manual";
 
 export const metadata: Metadata = { title: "Payments" };
 
@@ -39,7 +40,8 @@ export default async function PaymentsPage({ searchParams }: PageProps<"/admin/p
       unreadable: saved ? !saved.readable : false, canEdit: me.roles.includes("admin"), isCustom: Boolean(g.custom),
     };
   }));
-  const testMode = process.env.ALLOW_TEST_PAYMENTS === "true";
+  const testMode = testPaymentsAllowed();
+  const testBlockedLive = process.env.ALLOW_TEST_PAYMENTS === "true" && !testMode;
 
   return (
     <div className="grid gap-6">
@@ -67,6 +69,11 @@ export default async function PaymentsPage({ searchParams }: PageProps<"/admin/p
         {testMode && (
           <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
             Test payments are on (ALLOW_TEST_PAYMENTS=true in Vercel), so buyers can &ldquo;pay&rdquo; without money moving. Set it to false before launch.
+          </p>
+        )}
+        {testBlockedLive && (
+          <p className="mt-4 rounded-lg bg-surface px-3 py-2 text-sm text-muted">
+            ALLOW_TEST_PAYMENTS is true in Vercel, but test payments are always blocked on the live site. You can set it to false.
           </p>
         )}
       </Card>
