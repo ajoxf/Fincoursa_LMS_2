@@ -5,7 +5,7 @@ import { computeTax } from "@/lib/money";
 import { env, partnerCodesEnabled } from "@/lib/env";
 import { currencyForCountry } from "@/lib/currency";
 import { benefitLive, foundingDiscount, getFoundingSettings, getMembership } from "@/lib/founding";
-import { cashbackAmount, cashbackLabel, cashbackRule, creditBalance, getCashbackSettings, type ItemCashback } from "@/lib/cashback";
+import { cashbackAmount, cashbackLabel, cashbackRule, creditBalance, creditValidDays, getCashbackSettings, type ItemCashback } from "@/lib/cashback";
 
 export type QuoteInput = {
   courseSlug?: string;
@@ -49,6 +49,8 @@ export type Quote = {
   /** "10%" or "$10.00", for the summary; null when no cashback */
   cashbackLabel: string | null;
   cashbackValidDays: number | null;
+  /** fixed last day the credit can be used, when the admin set one */
+  cashbackRedeemBy: string | null;
   /** the access option bought: access ends on this date (YYYY-MM-DD) and its name; null for the standard price */
   accessUntil: string | null;
   optionLabel: string | null;
@@ -156,7 +158,7 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
     taxName: tax?.name ?? null, taxLabel: tax?.label ?? "Tax", pricesIncludeTax: includes, reverseCharge,
     coupon, couponError, foundingMinor: founding, foundingNote,
     creditAvailableMinor: creditAvailable, creditMinor: credit, creditNote,
-    cashbackMinor, cashbackLabel: cashbackMinor > 0 ? cashbackLabel(rule, price.currency) : null, cashbackValidDays: cb.validity_days ?? null,
+    cashbackMinor, cashbackLabel: cashbackMinor > 0 ? cashbackLabel(rule, price.currency) : null, cashbackValidDays: creditValidDays(cb), cashbackRedeemBy: cb.redeem_by ?? null,
     accessUntil: (price as { access_until?: string | null }).access_until ?? null, optionLabel: (price as { label?: string | null }).label ?? null,
   };
 }

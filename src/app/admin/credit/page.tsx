@@ -95,7 +95,11 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-1">Credit valid for (days)
               <input name="validity_days" defaultValue={s.validity_days ?? ""} inputMode="numeric" placeholder="No expiry" className={field} />
-              <span className="text-xs text-muted">From the day it is earned. Leave empty for no expiry.</span>
+              <span className="text-xs text-muted">From the day it is earned. Leave empty for no expiry. Ignored when a &quot;use credit by&quot; date is set.</span>
+            </label>
+            <label className="grid gap-1">Use credit by (optional)
+              <input type="date" name="redeem_by" defaultValue={s.redeem_by ?? ""} className={field} />
+              <span className="text-xs text-muted">A fixed last day (UAE time) for all new credit, e.g. the end of a launch offer. Replaces the days above.</span>
             </label>
             <label className="grid gap-1">Cashback with feedback and a review (%)
               <input name="review_bonus_pct" defaultValue={s.review_bonus_pct ?? ""} inputMode="numeric" placeholder="None" className={field} />
