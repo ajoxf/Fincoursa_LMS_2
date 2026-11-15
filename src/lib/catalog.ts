@@ -187,7 +187,9 @@ export const getCourse = cache(async (slug: string): Promise<CourseDetail | null
     chapters: (data.chapters ?? [])
       .sort((a, b) => a.position - b.position)
       // hidden lessons (Admin → Courses → lesson → "Hidden from students") are left out everywhere students see the course
-      .map((ch) => ({ ...ch, lessons: (ch.lessons ?? []).filter((l) => !l.is_hidden).sort((a, b) => a.position - b.position) })),
+      .map((ch) => ({ ...ch, lessons: (ch.lessons ?? []).filter((l) => !l.is_hidden).sort((a, b) => a.position - b.position) }))
+      // a section whose lessons are all hidden (or that has none yet) isn't shown
+      .filter((ch) => ch.lessons.length > 0),
   };
 });
 
