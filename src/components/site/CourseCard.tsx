@@ -38,6 +38,21 @@ export function CourseImage({ course, className = "", maxTags = 3 }: { course: C
   );
 }
 
+/** Compact card for the grid view: picture on top, then the title and a short description. */
+export function CourseGridCard({ course }: { course: Course }) {
+  return (
+    <Link href={`/courses/${course.slug}`}
+      className="group flex flex-col overflow-hidden rounded-2xl bg-white p-3 transition hover:shadow-[0_10px_30px_rgba(16,24,39,.08)]">
+      <CourseImage course={course} className="aspect-[16/11]" maxTags={2} />
+      <div className="flex flex-1 flex-col px-2 pb-3 pt-5">
+        <h3 className="text-xl font-normal leading-snug tracking-tight text-ink">{course.title}</h3>
+        {course.description && <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink/80">{course.description}</p>}
+        <span className="mt-auto pt-5 text-sm font-medium text-ink underline-offset-4 group-hover:underline">{course.comingSoon ? "Get notified" : "View course"} →</span>
+      </div>
+    </Link>
+  );
+}
+
 export function CourseCard({ course, tone = "white" }: { course: Course; tone?: "white" | "grey" }) {
   return (
     <Link href={`/courses/${course.slug}`}
