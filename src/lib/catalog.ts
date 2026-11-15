@@ -32,6 +32,10 @@ export type Price = {
   compare_at_minor: number | null;
   interval: string | null;
   installments: number | null;
+  /** access option: access runs until the end of this day (e.g. "2027-06-30") instead of the course's access period */
+  access_until?: string | null;
+  /** access option's name shown to buyers, e.g. "Through June 2027 exam" */
+  label?: string | null;
 };
 
 export type LessonSummary = {
@@ -69,6 +73,8 @@ export type CourseCard = {
   liveSessions: string[];
   instructors: Instructor[];
   price: Price | null;
+  /** extra access options in the same currency as price (e.g. "through June 2027"), cheapest first */
+  options?: Price[];
   isFree: boolean;
   /** Shown on the site but can't be bought or enrolled in yet (set per course in the admin) */
   comingSoon?: boolean;
@@ -96,7 +102,7 @@ const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, du
   sort_order, is_featured, coming_soon, launch_note, cashback_mode, cashback_percent, cashback_fixed, live_lessons:lessons(starts_at),
   category:categories(name, sort_order),
   course_instructors(is_primary, instructor:instructors(id, slug, name, title, bio, photo_url, org_logo_url, coming_soon)),
-  prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active, created_at)`;
+  prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active, created_at, access_until, label)`;
 
 /** What buyers get, for one course or all the courses in a bundle: "90 days of access" or "Full lifetime access". */
 export function accessLabel(days: (number | null | undefined)[]): string {
@@ -113,10 +119,18 @@ export function accessLabel(days: (number | null | undefined)[]): string {
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function pickPrice(prices: any[] | null | undefined, preferred?: string | null): Price | null {
-  const active = (prices ?? []).filter((p) => p.is_active !== false)
+  // the standard price; access options (access_until set) are offered separately, see priceOptions
+  const active = (prices ?? []).filter((p) => p.is_active !== false && !p.access_until)
     .sort((a, b) => String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")) || String(a.id).localeCompare(String(b.id)));
   const inCur = (c: string | null | undefined) => (c ? active.find((p) => p.currency === c && p.type === "one_time") ?? active.find((p) => p.currency === c) : undefined);
   return inCur(preferred?.toUpperCase()) ?? inCur(env.defaultCurrency) ?? active[0] ?? null;
+}
+
+/** Access options for an item in the currency of its standard price, cheapest first. */
+export function priceOptions(prices: any[] | null | undefined, base: Price | null): Price[] {
+  if (!base) return [];
+  return (prices ?? []).filter((p) => p.is_active !== false && p.access_until && p.currency === base.currency)
+    .sort((a, b) => a.amount_minor - b.amount_minor) as Price[];
 }
 
 /** The visitor's preferred currency, from their country (Vercel geo header); null when unknown. */
@@ -150,6 +164,7 @@ function toCourseCard(row: any, currency: string | null = null): CourseCard {
       .map((ci: any) => cleanInstructor(ci.instructor))
       .filter(Boolean),
     price,
+    options: priceOptions(row.prices, price),
     isFree: !price || price.amount_minor === 0,
     comingSoon: row.coming_soon === true,
     launchNote: row.launch_note ?? null,

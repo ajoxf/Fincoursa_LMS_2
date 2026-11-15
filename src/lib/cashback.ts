@@ -22,11 +22,18 @@ export type CashbackSettings = {
   allow_with_coupon: boolean;
   /** cashback is also earned on the part of an order paid with credit */
   earn_on_credit: boolean;
+  /** last day to earn cashback (end of that day, UAE time), e.g. a launch offer; null = no end date */
+  ends_at?: string | null;
 };
 
 export const CASHBACK_DEFAULTS: CashbackSettings = {
-  enabled: false, mode: "percent", percent: 10, fixed: {}, validity_days: 365, max_redeem_pct: 100, allow_with_coupon: true, earn_on_credit: false,
+  enabled: false, mode: "percent", percent: 10, fixed: {}, validity_days: 365, max_redeem_pct: 100, allow_with_coupon: true, earn_on_credit: false, ends_at: null,
 };
+
+/** Cashback is on and its end date (if any) hasn't passed. */
+export function cashbackLive(s: CashbackSettings) {
+  return s.enabled && (!s.ends_at || Date.now() <= new Date(`${s.ends_at}T23:59:59+04:00`).getTime());
+}
 
 export const getCashbackSettings = cache(async (): Promise<CashbackSettings> =>
   ({ ...CASHBACK_DEFAULTS, ...((await getSetting<Partial<CashbackSettings>>("cashback")) ?? {}) }));
@@ -42,7 +49,7 @@ export type CashbackRule = { mode: "percent"; percent: number } | { mode: "fixed
 
 /** The rule that applies to an item, or null when there is no cashback. */
 export function cashbackRule(s: CashbackSettings, item?: ItemCashback | null): CashbackRule | null {
-  if (!s.enabled) return null;
+  if (!cashbackLive(s)) return null;
   const mode = item?.mode ?? s.mode;
   if (mode === "none") return null;
   if (mode === "fixed") {

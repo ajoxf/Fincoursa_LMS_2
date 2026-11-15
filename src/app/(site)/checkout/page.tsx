@@ -7,7 +7,7 @@ import { buildQuote } from "@/lib/checkout";
 import { gatewaysFor } from "@/lib/payments/registry";
 import { formatMoney } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
-import { ALL_COUNTRIES, countryName, nowIso } from "@/lib/format";
+import { ALL_COUNTRIES, countryName, formatDate, nowIso } from "@/lib/format";
 import { PayButton } from "./PayButton";
 import { startCheckout } from "./actions";
 import { accessLabel, getBundle, getCourse } from "@/lib/catalog";
@@ -36,19 +36,25 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   const company = one("company") ?? "";
   const taxId = one("tax_id") ?? "";
   const useCredit = one("use_credit") !== "0";
-  const quote = await buildQuote({ courseSlug, bundleSlug, couponCode: one("coupon"), country, businessTaxId: taxId || undefined, userId: user.id, useCredit });
+  const priceId = one("price") || undefined;
+  const quote = await buildQuote({ courseSlug, bundleSlug, couponCode: one("coupon"), country, businessTaxId: taxId || undefined, userId: user.id, useCredit, priceId });
   // what the buyer gets: live sessions, a fixed access period, or lifetime access
   const detail = courseSlug ? await getCourse(courseSlug) : null;
   const bundle = !courseSlug && bundleSlug ? await getBundle(bundleSlug) : null;
-  const accessText = detail?.liveSessions.length ? `${detail.liveSessions.length} live sessions + recordings`
-    : accessLabel(detail ? [detail.access_days] : bundle ? bundle.courses.map((c) => c.accessDays) : []);
   if (!quote) notFound();
+  const accessText = quote.accessUntil ? `Access until ${formatDate(quote.accessUntil, "long")}`
+    : detail?.liveSessions.length ? `${detail.liveSessions.length} live sessions + recordings`
+    : accessLabel(detail ? [detail.access_days] : bundle ? bundle.courses.map((c) => c.accessDays) : []);
+  // the standard price and any access options (e.g. "through June 2027"), for the chooser
+  const choices = detail?.price && detail.options?.length ? [detail.price, ...detail.options] : [];
 
   // Already own everything in this item? Go straight to learning.
   const { data: owned } = await (await createClient())
     .from("enrollments").select("course_id, expires_at").eq("user_id", user.id).is("revoked_at", null).in("course_id", quote.item.courseIds);
   // expired access can be bought again (renewal)
-  const activeOwned = (owned ?? []).filter((e) => !e.expires_at || e.expires_at > nowIso());
+  // an access option that runs longer than current access counts as an extension, so it can be bought
+  const until = quote.accessUntil ? `${quote.accessUntil}T23:59:59+04:00` : null;
+  const activeOwned = (owned ?? []).filter((e) => (!e.expires_at || e.expires_at > nowIso()) && !(until && e.expires_at && e.expires_at < until));
   if (quote.item.courseIds.length && activeOwned.length >= quote.item.courseIds.length) {
     redirect(quote.item.kind === "course" ? `/learn/${quote.item.slug}` : "/dashboard");
   }
@@ -71,6 +77,25 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             <p className="text-sm font-medium uppercase tracking-[0.14em] text-ink">1 · Billing details</p>
             {courseSlug && <input type="hidden" name="course" value={courseSlug} />}
             {bundleSlug && <input type="hidden" name="bundle" value={bundleSlug} />}
+            {choices.length > 0 && (
+              <fieldset className="grid gap-2">
+                <legend className="mb-1.5 text-sm text-ink/80">Access</legend>
+                {choices.map((c) => {
+                  const picked = (quote.item.priceId === c.id);
+                  return (
+                    <label key={c.id} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-line p-4 text-[15px] text-ink has-[:checked]:border-ink">
+                      <span className="flex items-center gap-3">
+                        <input type="radio" name="price" value={c.access_until ? c.id : ""} defaultChecked={picked} className="accent-black" />
+                        <span>{c.access_until ? (c.label || `Access until ${formatDate(c.access_until, "long")}`) : accessLabel([detail!.access_days])}
+                          {c.access_until && <span className="block text-xs text-muted">Access until {formatDate(c.access_until, "long")}</span>}</span>
+                      </span>
+                      <span className="font-semibold">{formatMoney(c.amount_minor, c.currency)}</span>
+                    </label>
+                  );
+                })}
+                <p className="text-xs text-muted">Choose an option, then press Update total.</p>
+              </fieldset>
+            )}
             <label className="grid gap-1.5 text-sm text-ink/80">Billing country
               <select name="country" defaultValue={country} className={field}>
                 {COUNTRIES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
@@ -115,6 +140,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             <input type="hidden" name="company" value={company} />
             <input type="hidden" name="tax_id" value={taxId} />
             <input type="hidden" name="use_credit" value={useCredit ? "1" : "0"} />
+            <input type="hidden" name="price" value={quote.accessUntil ? quote.item.priceId : ""} />
             {quote.totalMinor === 0 ? (
               <PayButton>Complete enrollment</PayButton>
             ) : gateways.length === 0 ? (

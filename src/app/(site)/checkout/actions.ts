@@ -21,7 +21,7 @@ export async function startCheckout(form: FormData) {
   const company = s("company")?.slice(0, 200) ?? null;
   const taxId = s("tax_id")?.replace(/\s+/g, "").slice(0, 40) ?? null;
   const quote = await buildQuote({ courseSlug: s("course"), bundleSlug: s("bundle"), couponCode: s("coupon"), country, businessTaxId: taxId ?? undefined,
-    userId: user.id, useCredit: s("use_credit") !== "0" });
+    userId: user.id, useCredit: s("use_credit") !== "0", priceId: s("price") || undefined });
   if (!quote) throw new Error("Item not found");
 
   const db = createAdminClient();
@@ -29,7 +29,10 @@ export async function startCheckout(form: FormData) {
   // Already has (unexpired) access to everything in this item: never charge again
   const { data: owned } = await db.from("enrollments").select("course_id, expires_at")
     .eq("user_id", user.id).is("revoked_at", null).in("course_id", quote.item.courseIds);
-  const active = (owned ?? []).filter((e) => !e.expires_at || new Date(e.expires_at).getTime() > Date.now());
+  // an access option that runs longer than current access counts as an extension, so it can be bought
+  const until = quote.accessUntil ? new Date(`${quote.accessUntil}T23:59:59+04:00`).getTime() : null;
+  const active = (owned ?? []).filter((e) => (!e.expires_at || new Date(e.expires_at).getTime() > Date.now())
+    && !(until && e.expires_at && new Date(e.expires_at).getTime() < until));
   if (quote.item.courseIds.length && active.length >= quote.item.courseIds.length) {
     redirect(quote.item.kind === "course" ? `/learn/${quote.item.slug}` : "/dashboard");
   }

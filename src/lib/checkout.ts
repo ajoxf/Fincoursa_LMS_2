@@ -19,6 +19,8 @@ export type QuoteInput = {
   userId?: string;
   /** pay part of the price with store credit (default true when the buyer has some) */
   useCredit?: boolean;
+  /** an access option the buyer chose (a price with access_until); otherwise the standard price */
+  priceId?: string;
 };
 
 export type Quote = {
@@ -47,6 +49,9 @@ export type Quote = {
   /** "10%" or "$10.00", for the summary; null when no cashback */
   cashbackLabel: string | null;
   cashbackValidDays: number | null;
+  /** the access option bought: access ends on this date (YYYY-MM-DD) and its name; null for the standard price */
+  accessUntil: string | null;
+  optionLabel: string | null;
 };
 
 /** Server-side price calculation. Never trust amounts sent from the browser. */
@@ -54,7 +59,10 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
   const db = createAdminClient();
   // The buyer's country picks the currency when the item has a price in it; otherwise the default currency.
   const currency = (input.currency ?? currencyForCountry(input.country) ?? env.defaultCurrency).toUpperCase();
-  const priceCols = "id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active, created_at";
+  const priceCols = "id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active, created_at, access_until, label";
+  // the chosen access option, if it belongs to the item and is on sale
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chosen = (prices: any[] | null | undefined) => (input.priceId ? (prices ?? []).find((p) => p.id === input.priceId && p.is_active !== false && p.access_until) ?? null : null);
 
   let item: Quote["item"] | null = null;
   let price: ReturnType<typeof pickPrice> = null;
@@ -64,13 +72,13 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
     const { data } = await db.from("courses").select(`id, slug, title, status, coming_soon, cashback_mode, cashback_percent, cashback_fixed, prices(${priceCols})`).eq("slug", input.courseSlug).maybeSingle();
     // "Coming soon" courses are visible but can't be bought yet
     if (!data || data.status !== "published" || data.coming_soon) return null;
-    price = pickPrice(data.prices, currency);
+    price = chosen(data.prices) ?? pickPrice(data.prices, currency);
     itemCashback = { mode: data.cashback_mode, percent: data.cashback_percent, fixed: data.cashback_fixed };
     if (price) item = { kind: "course", id: data.id, slug: data.slug, title: data.title, priceId: price.id, courseIds: [data.id] };
   } else if (input.bundleSlug) {
     const { data } = await db.from("bundles").select(`id, slug, title, status, cashback_mode, cashback_percent, cashback_fixed, prices(${priceCols}), bundle_courses(course_id)`).eq("slug", input.bundleSlug).maybeSingle();
     if (!data || data.status !== "published") return null;
-    price = pickPrice(data.prices, currency);
+    price = chosen(data.prices) ?? pickPrice(data.prices, currency);
     itemCashback = { mode: data.cashback_mode, percent: data.cashback_percent, fixed: data.cashback_fixed };
     if (price) item = { kind: "bundle", id: data.id, slug: data.slug, title: data.title, priceId: price.id,
       courseIds: (data.bundle_courses ?? []).map((b) => b.course_id) };
@@ -149,6 +157,7 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
     coupon, couponError, foundingMinor: founding, foundingNote,
     creditAvailableMinor: creditAvailable, creditMinor: credit, creditNote,
     cashbackMinor, cashbackLabel: cashbackMinor > 0 ? cashbackLabel(rule, price.currency) : null, cashbackValidDays: cb.validity_days ?? null,
+    accessUntil: (price as { access_until?: string | null }).access_until ?? null, optionLabel: (price as { label?: string | null }).label ?? null,
   };
 }
 
