@@ -63,6 +63,8 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
   const cbLabel = !course.isFree && !enrollment && course.price
     ? cashbackLabel(cashbackRule(cbSettings, course.cashback), course.price.currency) : null;
   const cbUntil = cbSettings.ends_at ? formatDate(cbSettings.ends_at, "long") : null;
+  const useBy = cbSettings.redeem_by ? formatDate(cbSettings.redeem_by, "long") : null;
+  const usableLine = useBy ? ` Credit can be used until ${useBy}.` : cbSettings.validity_days ? ` Credit stays usable for ${cbSettings.validity_days} days after your purchase.` : "";
   // a free preview lesson to try before buying (e.g. the Question Bank's free sample)
   const sample = !enrollment && !comingSoon ? course.chapters.flatMap((c) => c.lessons).find((l) => l.is_preview) : undefined;
   const options = !enrollment && !comingSoon && !course.isFree ? course.options ?? [] : [];
@@ -127,7 +129,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                         {reviewPct
                           ? `${cbLabel} of your fee back as FinCoursa credit when you enroll, or ${reviewPct}% when you send us feedback and a review*`
                           : cbLabel === "100%" ? "Get your full fee back as FinCoursa credit*" : `Earn ${cbLabel} back as FinCoursa credit*`}
-                        {cbUntil && <span className="block text-sm font-normal text-white/70">Offer ends {cbUntil}.{cbSettings.validity_days ? ` Credit stays usable for ${cbSettings.validity_days} days after your purchase.` : ""}</span>}
+                        {cbUntil && <span className="block text-sm font-normal text-white/70">Offer ends {cbUntil}.{usableLine}</span>}
                       </Benefit>
                     )}
                     {memberSave && <Benefit strong>Founding member: {memberSave} off at checkout</Benefit>}
@@ -162,7 +164,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                     {cbLabel && (
                       <p><span className="font-semibold text-white/80">* Credit, not cash.</span> Cashback is added to your FinCoursa account as credit. You can only use it
                         to pay for future courses on fincoursa.com{cbSettings.max_redeem_pct < 100 ? ` (up to ${cbSettings.max_redeem_pct}% of an order)` : ""}. It can&apos;t be
-                        withdrawn, paid out to your bank or card, refunded or transferred.{cbUntil ? ` Buy by ${cbUntil} to earn it.` : ""}{cbSettings.validity_days ? ` Each credit can be used for ${cbSettings.validity_days} days from the day you buy; after that it expires.` : ""}</p>
+                        withdrawn, paid out to your bank or card, refunded or transferred.{cbUntil ? ` Buy by ${cbUntil} to earn it.` : ""}{useBy ? ` Credit can be used until ${useBy}; after that it expires.` : cbSettings.validity_days ? ` Each credit can be used for ${cbSettings.validity_days} days from the day you buy; after that it expires.` : ""}</p>
                     )}
                     {noteLines.map((n) => <p key={n}>{n}</p>)}
                     <p>Prices exclude taxes; any tax is added at checkout. <Link href="/pages/terms-conditions" className="underline">Terms &amp; Conditions</Link></p>

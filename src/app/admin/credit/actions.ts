@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { setSetting } from "@/lib/site-settings";
-import { CASHBACK_DEFAULTS, type CashbackSettings } from "@/lib/cashback";
+import { CASHBACK_DEFAULTS, creditExpiry, type CashbackSettings } from "@/lib/cashback";
 import { minorUnitsFactor } from "@/lib/money";
 
 const back = (k: "ok" | "err", msg: string): never => redirect(`/admin/credit?${k}=${encodeURIComponent(msg)}`);
@@ -39,10 +39,13 @@ export async function saveCashbackSettings(form: FormData) {
   const validity = String(form.get("validity_days") ?? "").trim();
   const days = validity === "" ? null : num(validity);
   const endsAt = String(form.get("ends_at") ?? "").trim();
+  const redeemBy = String(form.get("redeem_by") ?? "").trim();
   const bonusRaw = String(form.get("review_bonus_pct") ?? "").trim();
   const bonus = bonusRaw === "" ? null : num(bonusRaw);
   if (bonus !== null && !(bonus > 0 && bonus <= 100)) back("err", "Cashback with a review must be between 1 and 100%, or empty for none.");
   if (endsAt && !/^\d{4}-\d{2}-\d{2}$/.test(endsAt)) back("err", "Use a valid end date, or leave it empty.");
+  if (redeemBy && !/^\d{4}-\d{2}-\d{2}$/.test(redeemBy)) back("err", "Use a valid 'use credit by' date, or leave it empty.");
+  if (redeemBy && endsAt && redeemBy < endsAt) back("err", "The 'use credit by' date can't be before the offer ends.");
   if (!(percent >= 0 && percent <= 100)) back("err", "Cashback must be between 0 and 100%.");
   if (!(maxRedeem >= 1 && maxRedeem <= 100)) back("err", "Credit per order must be between 1 and 100%.");
   if (days !== null && !(Number.isInteger(days) && days >= 1 && days <= 3650)) back("err", "Validity must be 1–3650 days, or empty for no expiry.");
@@ -59,6 +62,7 @@ export async function saveCashbackSettings(form: FormData) {
     earn_on_credit: form.get("earn_on_credit") === "on",
     ends_at: endsAt || null,
     review_bonus_pct: bonus,
+    redeem_by: redeemBy || null,
   };
   await setSetting("cashback", value, admin.id);
   await audit(admin.id, "cashback.settings", "site_settings", "cashback", value);
@@ -138,7 +142,7 @@ export async function grantReviewBonus(orderId: string, back2: string) {
   const target = Math.round((Number(o!.total_minor) - Number(o!.tax_minor ?? 0)) * s.review_bonus_pct! / 100);
   const top = target - have;
   if (top <= 0) go("err", `Order #${o!.number} already has ${s.review_bonus_pct}% or more back as credit.`);
-  const expires = s.validity_days ? new Date(Date.now() + s.validity_days * 864e5).toISOString() : null;
+  const expires = creditExpiry(s)?.toISOString() ?? null;
   const { error } = await db.rpc("adjust_credit", { p_user: o!.user_id, p_currency: o!.currency, p_amount: top, p_note: note, p_expires_at: expires, p_actor: admin.id });
   if (error) go("err", error.message);
   await db.from("audit_log").insert({ actor_id: admin.id, action: "credit.review_bonus", entity: "order", entity_id: orderId, data: { amount_minor: top, currency: o!.currency } });

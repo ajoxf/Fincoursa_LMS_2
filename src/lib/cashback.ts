@@ -27,15 +27,31 @@ export type CashbackSettings = {
   review_bonus_pct?: number | null;
   /** last day to earn cashback (end of that day, UAE time), e.g. a launch offer; null = no end date */
   ends_at?: string | null;
+  /** last day credit can be used (end of that day, UAE time); when set it replaces validity_days. null = use validity_days */
+  redeem_by?: string | null;
 };
 
 export const CASHBACK_DEFAULTS: CashbackSettings = {
-  enabled: false, mode: "percent", percent: 10, fixed: {}, validity_days: 365, max_redeem_pct: 100, allow_with_coupon: true, earn_on_credit: false, ends_at: null, review_bonus_pct: null,
+  enabled: false, mode: "percent", percent: 10, fixed: {}, validity_days: 365, max_redeem_pct: 100, allow_with_coupon: true, earn_on_credit: false, ends_at: null, review_bonus_pct: null, redeem_by: null,
 };
 
 /** Cashback is on and its end date (if any) hasn't passed. */
 export function cashbackLive(s: CashbackSettings) {
   return s.enabled && (!s.ends_at || Date.now() <= new Date(`${s.ends_at}T23:59:59+04:00`).getTime());
+}
+
+const endOfDayUae = (d: string) => new Date(`${d}T23:59:59+04:00`);
+
+/** When new credit expires: the fixed "use by" date if set, else validity_days from now; null = never. */
+export function creditExpiry(s: CashbackSettings, from = Date.now()): Date | null {
+  if (s.redeem_by) return endOfDayUae(s.redeem_by);
+  return s.validity_days ? new Date(from + s.validity_days * 864e5) : null;
+}
+
+/** Days the credit on a new order stays usable (stored on the order and applied when it is paid). */
+export function creditValidDays(s: CashbackSettings): number | null {
+  if (s.redeem_by) return Math.max(1, Math.ceil((endOfDayUae(s.redeem_by).getTime() - Date.now()) / 864e5));
+  return s.validity_days ?? null;
 }
 
 export const getCashbackSettings = cache(async (): Promise<CashbackSettings> =>
