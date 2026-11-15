@@ -187,6 +187,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             <p className="mt-4 rounded-lg bg-accent/30 px-4 py-3 text-sm text-ink">
               You&apos;ll earn <strong>{m(quote.cashbackMinor)}</strong> credit{quote.cashbackLabel?.endsWith("%") ? ` (${quote.cashbackLabel} cashback)` : ""} to use on a future purchase
               {quote.cashbackValidDays ? `, valid for ${quote.cashbackValidDays} days` : ""}.
+              <span className="mt-1 block text-xs text-ink/70">Cashback is FinCoursa credit only, not cash. It can&apos;t be withdrawn, refunded or transferred.</span>
             </p>
           )}
           <p className="mt-4 text-xs text-muted">A receipt and tax invoice are emailed after payment.</p>
