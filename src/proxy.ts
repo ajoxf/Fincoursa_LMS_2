@@ -15,7 +15,7 @@ function rememberTouch(request: NextRequest, response: NextResponse) {
   const code = (sp.get("c") ?? sp.get("utm_campaign") ?? "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 60);
   const source = (sp.get("utm_source") ?? "").slice(0, 40);
   if (!code && !source) return;
-  const touch = encodeURIComponent(JSON.stringify({ c: code || undefined, s: source || undefined, m: (sp.get("utm_medium") ?? "").slice(0, 40) || undefined, l: request.nextUrl.pathname.slice(0, 120), t: Date.now() }));
+  const touch = encodeURIComponent(JSON.stringify({ c: code || undefined, v: (sp.get("utm_content") ?? "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 30) || undefined, s: source || undefined, m: (sp.get("utm_medium") ?? "").slice(0, 40) || undefined, l: request.nextUrl.pathname.slice(0, 120), t: Date.now() }));
   const opts = { sameSite: "lax" as const, httpOnly: true, secure: true, path: "/" };
   response.cookies.set("fc_touch", touch, { ...opts, maxAge: 30 * 86400 });
   if (!request.cookies.get("fc_first")) response.cookies.set("fc_first", touch, { ...opts, maxAge: 365 * 86400 });
