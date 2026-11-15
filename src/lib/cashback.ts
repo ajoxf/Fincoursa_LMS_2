@@ -22,12 +22,15 @@ export type CashbackSettings = {
   allow_with_coupon: boolean;
   /** cashback is also earned on the part of an order paid with credit */
   earn_on_credit: boolean;
+  /** total cashback (% of the amount paid, before tax) for a buyer who gives feedback and a review; the admin tops it up
+   *  from the order in Admin → Customers. null = no review bonus */
+  review_bonus_pct?: number | null;
   /** last day to earn cashback (end of that day, UAE time), e.g. a launch offer; null = no end date */
   ends_at?: string | null;
 };
 
 export const CASHBACK_DEFAULTS: CashbackSettings = {
-  enabled: false, mode: "percent", percent: 10, fixed: {}, validity_days: 365, max_redeem_pct: 100, allow_with_coupon: true, earn_on_credit: false, ends_at: null,
+  enabled: false, mode: "percent", percent: 10, fixed: {}, validity_days: 365, max_redeem_pct: 100, allow_with_coupon: true, earn_on_credit: false, ends_at: null, review_bonus_pct: null,
 };
 
 /** Cashback is on and its end date (if any) hasn't passed. */

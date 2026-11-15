@@ -7,6 +7,8 @@ import { formatMoney } from "@/lib/money";
 import { ALL_COUNTRIES, countryName, formatDate, nowMs } from "@/lib/format";
 import { Card, Progress, Stat } from "@/components/dash/Stat";
 import { grantCourse, removeAccess, restoreAccess, setAccessUntil, updateStudentProfile } from "../actions";
+import { grantReviewBonus } from "../../credit/actions";
+import { getCashbackSettings } from "@/lib/cashback";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -14,10 +16,12 @@ const statusLabel: Record<string, string> = { paid: "Paid", pending: "Pending", 
 const sourceLabel: Record<string, string> = { purchase: "Bought", bundle: "Programme", free: "Free", admin: "Given by staff", organization: "Organisation", migration: "From Thinkific" };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export default async function CustomerPage({ params }: PageProps<"/admin/customers/[id]">) {
+export default async function CustomerPage({ params, searchParams }: PageProps<"/admin/customers/[id]">) {
   const me = await requireRole(["admin", "finance", "support"], "/admin/customers");
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  const sp = await searchParams;
+  const cb = await getCashbackSettings();
   const db = createAdminClient();
   const [{ data: s }, { data: enr }, { data: orders }, { data: certs }, { data: courses }] = await Promise.all([
     db.from("admin_students").select("*").eq("id", id).maybeSingle(),
@@ -128,6 +132,8 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
         </Card>
       )}
 
+      {typeof sp.ok === "string" && <p className="rounded-lg bg-success/10 p-3 text-sm text-success">{sp.ok}</p>}
+      {typeof sp.err === "string" && <p className="rounded-lg bg-danger/10 p-3 text-sm text-danger">{sp.err}</p>}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="Orders">
           {!(orders ?? []).length ? <p className="text-sm text-muted">No orders.</p> : (
@@ -139,6 +145,13 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
                     <span className="block text-xs text-muted">{formatDate(o.paid_at ?? o.created_at)} · {statusLabel[o.status] ?? o.status} · {o.gateway}</span>
                   </span>
                   <span className="tabular-nums">{formatMoney(o.total_minor, o.currency)}</span>
+                  {o.status === "paid" && cb.review_bonus_pct && me.roles.some((r: string) => r === "admin" || r === "finance") && (
+                    <form className="w-full">
+                      <button formAction={grantReviewBonus.bind(null, o.id, `/admin/customers/${id}`)} className="text-xs underline">
+                        Feedback and review received: top up cashback to {cb.review_bonus_pct}%
+                      </button>
+                    </form>
+                  )}
                 </li>
               ))}
             </ul>
