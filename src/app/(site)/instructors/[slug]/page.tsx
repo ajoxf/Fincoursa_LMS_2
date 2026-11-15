@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getInstructor } from "@/lib/catalog";
 import { CourseCard } from "@/components/site/CourseCard";
 import { SectionHeading } from "@/components/site/SectionHeading";
+import { splitCredentials } from "@/lib/format";
 
 export async function generateMetadata({ params }: PageProps<"/instructors/[slug]">): Promise<Metadata> {
   const d = await getInstructor((await params).slug);
@@ -31,7 +32,8 @@ export default async function InstructorPage({ params }: PageProps<"/instructors
               <span className="fc-pill fc-pill-dark">The Faculty</span>
               <span className="fc-pill fc-pill-dark">{person.coming_soon ? "Coming soon" : "Verified"}</span>
             </div>
-            <h1 className="fc-display mt-4 text-5xl md:text-[56px]">{person.name}</h1>
+            <h1 className="fc-display mt-4 text-5xl md:text-[56px]">{splitCredentials(person.name).name}</h1>
+            {splitCredentials(person.name).credentials && <p className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] text-accent">{splitCredentials(person.name).credentials}</p>}
             {person.title && <p className="mt-3 text-[15px]">{person.title}</p>}
             <dl className="mt-6 flex gap-9">
               <div><dt className="sr-only">Courses</dt><dd className="text-[40px] font-light leading-none">{courses.length}</dd><p className="mt-2 text-[15px]">Courses</p></div>

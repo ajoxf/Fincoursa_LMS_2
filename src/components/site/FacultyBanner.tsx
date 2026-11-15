@@ -1,6 +1,7 @@
 import { assetUrl } from "@/lib/assets";
 import Link from "next/link";
 import type { Instructor } from "@/lib/catalog";
+import { splitCredentials } from "@/lib/format";
 
 /** Wide photo banner for the course's instructor, with a "Know More" link to their page. */
 export function FacultyBanner({ person }: { person: Instructor }) {
@@ -16,7 +17,8 @@ export function FacultyBanner({ person }: { person: Instructor }) {
           <span className="fc-pill fc-pill-dark !py-0.5 text-xs">The Faculty</span>
           <span className="fc-pill fc-pill-dark !py-0.5 text-xs">Verified</span>
         </div>
-        <h2 className="fc-display mt-5 text-5xl md:text-[72px]">{person.name}</h2>
+        <h2 className="fc-display mt-5 text-5xl md:text-[72px]">{splitCredentials(person.name).name}</h2>
+        {splitCredentials(person.name).credentials && <p className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] text-accent">{splitCredentials(person.name).credentials}</p>}
         {person.title && <p className="mt-3 text-[15px]">{person.title}</p>}
         <Link href={`/instructors/${person.slug}`} className="fc-btn fc-btn-primary mt-5 !min-w-0 !px-10 !py-4">Know More</Link>
       </div>

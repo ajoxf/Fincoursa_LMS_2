@@ -2,6 +2,7 @@ import { Logo } from "@/components/site/Logo";
 import { assetUrl } from "@/lib/assets";
 import Link from "next/link";
 import type { Instructor } from "@/lib/catalog";
+import { splitCredentials } from "@/lib/format";
 
 /** Tall portrait card with a thin lime edge, organisation logo, name and title over the photo. */
 export function FacultyCard({ person }: { person: Instructor }) {
@@ -25,7 +26,8 @@ export function FacultyCard({ person }: { person: Instructor }) {
           <img src={assetUrl(person.org_logo_url)} alt="" className="mb-4 h-6 w-auto max-w-[70%] object-contain object-left" />
         )}
         <hr className="mb-4 w-2/3 border-white/80" />
-        <h3 className="text-xl font-medium tracking-tight">{person.name}</h3>
+        <h3 className="text-xl font-medium tracking-tight">{splitCredentials(person.name).name}</h3>
+        {splitCredentials(person.name).credentials && <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-accent">{splitCredentials(person.name).credentials}</p>}
         {person.title && <p className="mt-1 text-sm leading-relaxed">{person.title}</p>}
       </div>
     </Link>
