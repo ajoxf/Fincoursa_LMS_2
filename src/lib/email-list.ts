@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getSetting } from "@/lib/site-settings";
+import { getSetting, setSetting } from "@/lib/site-settings";
 
 /**
  * Keeps the Resend contact list in step with marketing consent on the site.
@@ -23,6 +23,10 @@ async function api(method: string, path: string, body?: object) {
   });
   let json: unknown = null;
   try { json = await res.json(); } catch { /* empty body */ }
+  if (!res.ok && res.status !== 404 && res.status !== 409) {
+    // remember the last failure so it can be seen in Admin (site_settings "email_list_status")
+    await setSetting("email_list_status", { at: new Date().toISOString(), method, path: path.replace(/\/contacts\/[^/]+/, "/contacts/:email"), status: res.status, error: JSON.stringify(json).slice(0, 300) }).catch(() => {});
+  }
   return { ok: res.ok, status: res.status, json: json as Record<string, unknown> | null };
 }
 
@@ -81,6 +85,7 @@ export async function syncEmailContact(userId: string): Promise<Result> {
     return "synced";
   } catch (err) {
     console.error("[email-list] sync", err);
+    await setSetting("email_list_status", { at: new Date().toISOString(), error: String(err).slice(0, 300) }).catch(() => {});
     return "failed";
   }
 }
