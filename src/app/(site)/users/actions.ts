@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { allow, clientIp, LIMITS, TOO_MANY } from "@/lib/rate-limit";
-import { sendPasswordReset, sendSignInLink, sendWelcome } from "@/lib/email/events";
+import { sendPasswordReset, sendSignInLink, sendSignupConfirmation, sendWelcome } from "@/lib/email/events";
 
 export type AuthState = { error?: string; message?: string; done?: boolean; email?: string; resend?: boolean } | null;
 
@@ -68,26 +68,51 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (!(await allow("signup", await clientIp(), LIMITS.signUp.limit, LIMITS.signUp.window))) return { error: TOO_MANY };
   const next = safeNext(form.get("next"));
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email: parsed.data.email.toLowerCase(),
-    password: parsed.data.password,
-    options: {
-      data: { full_name: parsed.data.full_name },
-      emailRedirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent(next)}`,
-    },
-  });
-  if (error) {
-    const email = parsed.data.email.toLowerCase();
-    // pressed twice, or asked again too soon: the first email is already on its way
-    if (error.code === "over_email_send_rate_limit" || error.status === 429) return { done: true, email, message: CHECK_EMAIL(email), resend: true };
-    if (error.code === "user_already_exists") return { error: "There's already an account with this email. Sign in instead, or use Forgot password." };
-    if (error.code === "weak_password") return { error: "Please choose a stronger password (at least 8 characters, not a common one)." };
-    return { error: "We couldn't create your account just now. Please try again in a minute." };
+  const email = parsed.data.email.toLowerCase();
+  let data: { user: { id: string; identities?: unknown[] | null } | null; session: unknown };
+
+  if (ownEmail()) {
+    // Create the account ourselves and send our own confirmation email (Resend), so sign-ups never depend on
+    // Supabase's built-in mailer and its few-emails-an-hour limit.
+    const admin = createAdminClient();
+    const { data: made, error } = await admin.auth.admin.createUser({
+      email, password: parsed.data.password, email_confirm: false, user_metadata: { full_name: parsed.data.full_name },
+    });
+    if (error) {
+      if (error.code === "email_exists" || error.code === "user_already_exists" || error.status === 422) {
+        const { data: p } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
+        const { data: u } = p ? await admin.auth.admin.getUserById(p.id) : { data: null };
+        if (u?.user && !u.user.email_confirmed_at) {
+          await sendSignupConfirmation(email, next, parsed.data.full_name);
+          return { done: true, email, message: CHECK_EMAIL(email), resend: true };
+        }
+        if (error.code === "weak_password") return { error: "Please choose a stronger password (at least 8 characters, not a common one)." };
+        return { error: "There's already an account with this email. Sign in instead, or use Forgot password." };
+      }
+      if (error.code === "weak_password") return { error: "Please choose a stronger password (at least 8 characters, not a common one)." };
+      console.error("[auth] createUser failed", error);
+      return { error: "We couldn't create your account just now. Please try again in a minute." };
+    }
+    const sent = await sendSignupConfirmation(email, next, parsed.data.full_name);
+    if (!sent) console.error("[auth] confirmation email not sent", email);
+    data = { user: made.user ? { id: made.user.id, identities: [{}] } : null, session: null };
+  } else {
+    const supabase = await createClient();
+    const r = await supabase.auth.signUp({
+      email, password: parsed.data.password,
+      options: { data: { full_name: parsed.data.full_name }, emailRedirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent(next)}` },
+    });
+    if (r.error) {
+      // Supabase's built-in mailer is limited to a few emails an hour; the account is NOT created when it refuses
+      if (r.error.code === "over_email_send_rate_limit" || r.error.status === 429) return { error: "We couldn't send the confirmation email just now. Please try again in a few minutes." };
+      if (r.error.code === "user_already_exists") return { error: "There's already an account with this email. Sign in instead, or use Forgot password." };
+      if (r.error.code === "weak_password") return { error: "Please choose a stronger password (at least 8 characters, not a common one)." };
+      return { error: "We couldn't create your account just now. Please try again in a minute." };
+    }
+    data = r.data;
   }
   // an existing, unconfirmed account comes back with no identities: just point them to their inbox
   if (data.user && !data.user.identities?.length) {
-    const email = parsed.data.email.toLowerCase();
     return { done: true, email, message: CHECK_EMAIL(email), resend: true };
   }
   if (data.user && hasServiceKey()) {
@@ -100,7 +125,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     after(() => sendWelcome(userId)); // after the response, so sign-up stays fast
     await attributeSignup(userId).catch(() => {}); // which campaign brought them (Admin → Marketing)
   }
-  if (!data.session) return { done: true, email: parsed.data.email.toLowerCase(), message: CHECK_EMAIL(parsed.data.email.toLowerCase()), resend: true };
+  if (!data.session) return { done: true, email, message: CHECK_EMAIL(email), resend: true };
   redirect(next);
 }
 
@@ -122,6 +147,13 @@ export async function resendConfirmation(email: string, nextRaw?: string): Promi
   if (!z.email().safeParse(addr).success) return { error: "Please enter a valid email." };
   if (!(await allow("signup-resend", addr, 5, 60 * 60))) return { error: TOO_MANY };
   const next = safeNext(nextRaw ?? null);
+  if (ownEmail()) {
+    const admin = createAdminClient();
+    const { data: p } = await admin.from("profiles").select("id, full_name").eq("email", addr).maybeSingle();
+    const { data: u } = p ? await admin.auth.admin.getUserById(p.id) : { data: null };
+    if (u?.user && !u.user.email_confirmed_at) await sendSignupConfirmation(addr, next, p?.full_name);
+    return { message: `Sent. A new confirmation link is on its way to ${addr}.` };
+  }
   const { error } = await (await createClient()).auth.resend({
     type: "signup", email: addr, options: { emailRedirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent(next)}` },
   });

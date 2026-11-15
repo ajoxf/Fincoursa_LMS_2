@@ -96,7 +96,7 @@ export default async function StudentDashboard({ searchParams }: PageProps<"/das
         {enrollments.length === 0 ? (
           <div className="fc-card mt-4 p-8 text-center">
             <p className="text-muted">You haven&apos;t enrolled in a course yet.</p>
-            <Link href="/pages/paid-courses" className="fc-btn fc-btn-primary mt-4">Browse Course</Link>
+            <Link href="/pages/paid-courses" className="fc-btn fc-btn-primary mt-4">Browse courses</Link>
           </div>
         ) : (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

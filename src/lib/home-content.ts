@@ -7,7 +7,7 @@ export type FaqItem = { q: string; a: string };
 export const HOME_DEFAULTS = {
   hero_title: "Real-World Expertise for the Future of Business",
   hero_sub: "Learn from industry practitioners. Build skills that work in the real world.",
-  hero_button: "Browse Course",
+  hero_button: "Browse courses",
   hero_button2: "Meet the faculty",
   experts_label: "Industry experts",
   growth_label: "Built for growth",
@@ -21,7 +21,7 @@ export const HOME_DEFAULTS = {
   paths_button: "View all programmes",
   catalog_label: "Catalog",
   catalog_title: "Featured Courses",
-  catalog_sub: "A hand-picked place to start — pay per course, own it for life.",
+  catalog_sub: "A hand-picked place to start. Pay per course, no subscription.",
   catalog_button: "View all courses",
   faculty_label: "The Faculty",
   faculty_title: "Learn from practitioners.",

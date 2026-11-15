@@ -58,7 +58,11 @@ export const ALL_COUNTRIES: [string, string][] = (() => {
   const codes: string[] = [];
   for (let a = 65; a <= 90; a++) for (let b = 65; b <= 90; b++) {
     const c = String.fromCharCode(a, b);
-    try { const n = regionNames.of(c); if (n && n !== c && !/Unknown/.test(n)) codes.push(c); } catch { /* not a region */ }
+    try {
+      const n = regionNames.of(c);
+      // skip retired codes that map to a current one (DD → DE, FX → FR, ZR → CD …), so no country is listed twice
+      if (n && n !== c && !/Unknown/.test(n) && new Intl.Locale(`und-${c}`).region === c) codes.push(c);
+    } catch { /* not a region */ }
   }
   const skip = new Set(["EU", "EZ", "UN", "QO", "XA", "XB", "ZZ"]);
   return codes.filter((c) => !skip.has(c)).map((c) => [c, regionNames.of(c)!] as [string, string]).sort((x, y) => x[1].localeCompare(y[1]));

@@ -261,6 +261,19 @@ export async function sendMigrationInvite(userId: string) {
   return sendEmail({ ...t, to: p.email, template: "migration_invite", ref: userId });
 }
 
+/**
+ * Confirmation email for a new (or not yet confirmed) account. A one-time sign-in token: opening it confirms the
+ * email and signs the person in. Sent through our provider, so sign-ups never depend on Supabase's email limit.
+ */
+export async function sendSignupConfirmation(email: string, next: string, name?: string | null) {
+  const db = createAdminClient();
+  const { data, error } = await db.auth.admin.generateLink({ type: "magiclink", email });
+  if (error || !data?.properties?.hashed_token) { console.error("[auth] signup link failed", error); return false; }
+  const url = `${site()}/auth/confirm?token_hash=${encodeURIComponent(data.properties.hashed_token)}&type=magiclink&next=${encodeURIComponent(next)}`;
+  const t = T.confirmSignupEmail({ name: name ?? data.user?.user_metadata?.full_name, url, minutes: LINK_MINUTES });
+  return sendEmail({ ...t, to: email, template: "signup_confirm", ref: `${data.user?.id ?? email}:${Date.now()}` });
+}
+
 export async function sendPasswordReset(email: string) {
   const db = createAdminClient();
   const { data: p } = await db.from("profiles").select("id").eq("email", email.toLowerCase()).maybeSingle();
