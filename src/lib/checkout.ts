@@ -51,6 +51,8 @@ export type Quote = {
   cashbackValidDays: number | null;
   /** fixed last day the credit can be used, when the admin set one */
   cashbackRedeemBy: string | null;
+  /** higher cashback % a buyer gets for feedback and a review, when it applies */
+  cashbackReviewPct: number | null;
   /** the access option bought: access ends on this date (YYYY-MM-DD) and its name; null for the standard price */
   accessUntil: string | null;
   optionLabel: string | null;
@@ -159,6 +161,7 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
     coupon, couponError, foundingMinor: founding, foundingNote,
     creditAvailableMinor: creditAvailable, creditMinor: credit, creditNote,
     cashbackMinor, cashbackLabel: cashbackMinor > 0 ? cashbackLabel(rule, price.currency) : null, cashbackValidDays: creditValidDays(cb), cashbackRedeemBy: cb.redeem_by ?? null,
+    cashbackReviewPct: cashbackMinor > 0 && rule?.mode === "percent" && cb.review_bonus_pct && cb.review_bonus_pct > rule.percent ? cb.review_bonus_pct : null,
     accessUntil: (price as { access_until?: string | null }).access_until ?? null, optionLabel: (price as { label?: string | null }).label ?? null,
   };
 }

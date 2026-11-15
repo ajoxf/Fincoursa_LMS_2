@@ -7,7 +7,7 @@ import { formatMoney } from "@/lib/money";
 import { ALL_COUNTRIES, countryName, formatDate, nowMs } from "@/lib/format";
 import { Card, Progress, Stat } from "@/components/dash/Stat";
 import { grantCourse, removeAccess, restoreAccess, setAccessUntil, updateStudentProfile } from "../actions";
-import { grantReviewBonus } from "../../credit/actions";
+import { grantReviewBonus, hideReview, rejectReview } from "../../credit/actions";
 import { getCashbackSettings } from "@/lib/cashback";
 
 export const metadata: Metadata = { title: "Customer" };
@@ -33,6 +33,8 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
     db.from("courses").select("id, title, status").neq("status", "archived").order("sort_order"),
   ]);
   if (!s) notFound();
+  const { data: reviews } = await db.from("course_reviews").select("id, order_id, rating, feedback, review, can_publish, status, created_at").eq("user_id", id);
+  const reviewFor = new Map((reviews ?? []).map((r) => [r.order_id, r]));
   const canEdit = me.roles.includes("admin") || me.roles.includes("support");
   const now = nowMs();
   const active = (enr ?? []).filter((e: any) => !e.revoked_at && (!e.expires_at || new Date(e.expires_at).getTime() > now));
@@ -145,13 +147,35 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
                     <span className="block text-xs text-muted">{formatDate(o.paid_at ?? o.created_at)} · {statusLabel[o.status] ?? o.status} · {o.gateway}</span>
                   </span>
                   <span className="tabular-nums">{formatMoney(o.total_minor, o.currency)}</span>
-                  {o.status === "paid" && cb.review_bonus_pct && me.roles.some((r: string) => r === "admin" || r === "finance") && (
-                    <form className="w-full">
-                      <button formAction={grantReviewBonus.bind(null, o.id, `/admin/customers/${id}`)} className="text-xs underline">
-                        Feedback and review received: top up cashback to {cb.review_bonus_pct}%
-                      </button>
-                    </form>
-                  )}
+                  {o.status === "paid" && cb.review_bonus_pct && me.roles.some((r: string) => r === "admin" || r === "finance") && (() => {
+                    const r = reviewFor.get(o.id);
+                    const here = `/admin/customers/${id}`;
+                    return (
+                      <div className="w-full">
+                        {r && (
+                          <div className="mt-1 grid gap-2 rounded-lg bg-surface p-3 text-xs">
+                            <p className="font-semibold">
+                              Review {"★".repeat(r.rating)}<span className="text-muted">{"★".repeat(5 - r.rating)}</span> · {formatDate(r.created_at)} ·{" "}
+                              <span className={r.status === "approved" ? "text-success" : r.status === "rejected" ? "text-danger" : "text-warning"}>
+                                {r.status === "approved" ? "Approved, credit added" : r.status === "rejected" ? "Rejected" : "Waiting for you"}
+                              </span>
+                            </p>
+                            <p className="whitespace-pre-line"><span className="text-muted">Feedback (private): </span>{r.feedback}</p>
+                            <p className="whitespace-pre-line"><span className="text-muted">Review{r.can_publish ? " (OK to publish)" : " (not published)"}: </span>{r.review}</p>
+                          </div>
+                        )}
+                        <form className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                          {(!r || r.status === "pending") && (
+                            <button formAction={grantReviewBonus.bind(null, o.id, here)} className="text-xs font-semibold underline">
+                              {r ? "Approve and" : "Feedback and review received:"} top up cashback to {cb.review_bonus_pct}%
+                            </button>
+                          )}
+                          {r?.status === "pending" && <button formAction={rejectReview.bind(null, o.id, here)} className="text-xs text-danger underline">Reject</button>}
+                          {r?.status === "approved" && r.can_publish && <button formAction={hideReview.bind(null, r.id, here)} className="text-xs underline">Hide from course page</button>}
+                        </form>
+                      </div>
+                    );
+                  })()}
                 </li>
               ))}
             </ul>

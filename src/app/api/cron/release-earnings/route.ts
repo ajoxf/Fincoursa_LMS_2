@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendLiveReminders, sendMissedCompletionEmails } from "@/lib/email/events";
+import { sendLiveReminders, sendMissedCompletionEmails, sendReviewInvites } from "@/lib/email/events";
 import { processScheduledCampaigns } from "@/lib/campaigns";
 import { runAutomations } from "@/lib/automations";
 import { runGrowth } from "@/lib/growth";
@@ -25,5 +25,7 @@ export async function GET(request: NextRequest) {
   const growth = await runGrowth().catch((e) => { console.error("[cron] growth", e); return null; });
   // Mondays: last week's numbers and the campaign to-dos to the team
   const weekly = await sendWeeklyReview().catch((e) => { console.error("[cron] weekly review", e); return null; });
-  return NextResponse.json({ ok: true, completionEmails, liveReminders, campaignEmails, automations, growth, weekly });
+  // about two weeks after a purchase with cashback: ask for feedback and a review (tops the cashback up)
+  const reviewInvites = await sendReviewInvites().catch((e) => { console.error("[cron] review invites", e); return null; });
+  return NextResponse.json({ ok: true, completionEmails, liveReminders, campaignEmails, automations, growth, weekly, reviewInvites });
 }

@@ -6,6 +6,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getEnrollment } from "@/lib/learning";
 import { formatMoney } from "@/lib/money";
 import { cashbackLabel, cashbackRule, getCashbackSettings } from "@/lib/cashback";
+import { publishedReviews } from "@/lib/reviews";
 import { benefitLive, foundingLabel, getFoundingSettings, getMembership, joiningOpen } from "@/lib/founding";
 import { enrollFree } from "@/app/actions/enroll";
 import { NotifyMe } from "@/components/site/NotifyMe";
@@ -60,6 +61,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
   const joinOffer = paidCourse && !member && joiningOpen(fs) && fs.qualifying_course_ids.includes(course.id)
     ? foundingLabel(fs, course.price!.currency) : null;
   const cbSettings = await getCashbackSettings();
+  const reviews = await publishedReviews(course.id);
   const cbLabel = !course.isFree && !enrollment && course.price
     ? cashbackLabel(cashbackRule(cbSettings, course.cashback), course.price.currency) : null;
   const cbUntil = cbSettings.ends_at ? formatDate(cbSettings.ends_at, "long") : null;
@@ -164,7 +166,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                     {cbLabel && (
                       <p><span className="font-semibold text-white/80">* Credit, not cash.</span> Cashback is added to your FinCoursa account as credit. You can only use it
                         to pay for future courses on fincoursa.com{cbSettings.max_redeem_pct < 100 ? ` (up to ${cbSettings.max_redeem_pct}% of an order)` : ""}. It can&apos;t be
-                        withdrawn, paid out to your bank or card, refunded or transferred.{cbUntil ? ` Buy by ${cbUntil} to earn it.` : ""}{useBy ? ` Credit can be used until ${useBy}; after that it expires.` : cbSettings.validity_days ? ` Each credit can be used for ${cbSettings.validity_days} days from the day you buy; after that it expires.` : ""}</p>
+                        withdrawn, paid out to your bank or card, refunded or transferred.{cbUntil ? ` Buy by ${cbUntil} to earn it.` : ""}{useBy ? ` Credit can be used until ${useBy}; after that it expires.` : cbSettings.validity_days ? ` Each credit can be used for ${cbSettings.validity_days} days from the day you buy; after that it expires.` : ""}{reviewPct ? ` To get ${reviewPct}%, share feedback and a review from your dashboard after you've used it; we add the extra credit once we've read it.` : ""}</p>
                     )}
                     {noteLines.map((n) => <p key={n}>{n}</p>)}
                     <p>Prices exclude taxes; any tax is added at checkout. <Link href="/pages/terms-conditions" className="underline">Terms &amp; Conditions</Link></p>
@@ -229,6 +231,20 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
             )}
             {(course.subtitle || course.description) && (
               <p className="text-2xl font-light leading-snug tracking-tight text-ink md:text-[26px]">{course.subtitle || course.description}</p>
+            )}
+            {reviews.length > 0 && (
+              <div className="mt-20">
+                <p className="text-sm font-medium uppercase tracking-[0.14em] text-ink">What candidates say</p>
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  {reviews.map((r) => (
+                    <figure key={r.id} className="rounded-2xl bg-white p-6">
+                      <p className="text-[#9cb800]" aria-label={`${r.rating} out of 5`}>{"★".repeat(r.rating)}<span className="text-line">{"★".repeat(5 - r.rating)}</span></p>
+                      <blockquote className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-ink/85">{r.review}</blockquote>
+                      <figcaption className="mt-4 text-sm font-medium text-ink">{r.name}</figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </div>
             )}
             <p className="mt-24 text-sm font-medium uppercase tracking-[0.14em] text-ink">
               Course content · {plural(course.chapters.length, "module")} · {plural(lessonCount, "lesson")}
