@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyUnsubscribe } from "@/lib/email/unsubscribe";
+import { syncEmailContact } from "@/lib/email-list";
 
 export const metadata: Metadata = { title: "Email preferences", robots: { index: false } };
 
@@ -10,6 +11,7 @@ async function unsubscribe(form: FormData) {
   const u = String(form.get("u") ?? ""), t = String(form.get("t") ?? "");
   if (!verifyUnsubscribe(u, t)) redirect("/unsubscribe?error=1");
   await createAdminClient().from("profiles").update({ marketing_opt_in: false }).eq("id", u);
+  await syncEmailContact(u).catch(() => "failed");
   redirect(`/unsubscribe?u=${u}&t=${t}&done=1`);
 }
 

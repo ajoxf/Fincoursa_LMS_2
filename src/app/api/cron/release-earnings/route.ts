@@ -5,6 +5,7 @@ import { processScheduledCampaigns } from "@/lib/campaigns";
 import { runAutomations } from "@/lib/automations";
 import { runGrowth } from "@/lib/growth";
 import { sendWeeklyReview } from "@/lib/campaign-process";
+import { syncPendingEmailContacts } from "@/lib/email-list";
 
 export const maxDuration = 300;
 
@@ -27,5 +28,7 @@ export async function GET(request: NextRequest) {
   const weekly = await sendWeeklyReview().catch((e) => { console.error("[cron] weekly review", e); return null; });
   // about two weeks after a purchase with cashback: ask for feedback and a review (tops the cashback up)
   const reviewInvites = await sendReviewInvites().catch((e) => { console.error("[cron] review invites", e); return null; });
-  return NextResponse.json({ ok: true, completionEmails, liveReminders, campaignEmails, automations, growth, weekly, reviewInvites });
+  // marketing consent -> Resend contact list (catches anything the instant sync missed)
+  const emailList = await syncPendingEmailContacts().catch((e) => { console.error("[cron] email list", e); return null; });
+  return NextResponse.json({ ok: true, completionEmails, liveReminders, campaignEmails, automations, growth, weekly, reviewInvites, emailList });
 }
