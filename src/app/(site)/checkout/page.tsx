@@ -118,7 +118,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
             {quote.totalMinor === 0 ? (
               <PayButton>Complete enrollment</PayButton>
             ) : gateways.length === 0 ? (
-              <p className="rounded-lg bg-danger/10 p-4 text-sm text-danger">Online payment isn&apos;t available for this country yet. Please contact us to enroll.</p>
+              <p className="rounded-lg bg-danger/10 p-4 text-sm text-danger">Online payment isn&apos;t available yet. Please <a href="/pages/contact-us" className="underline">contact us</a> to enroll.</p>
             ) : (
               <>
                 <fieldset className="grid gap-2">

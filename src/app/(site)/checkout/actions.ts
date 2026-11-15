@@ -11,6 +11,7 @@ import { allow, LIMITS, TOO_MANY } from "@/lib/rate-limit";
 import { sendEnrolledForOrder, sendPaymentPending, sendReceipt } from "@/lib/email/events";
 import { applyGatewayEvents } from "@/lib/payments/apply";
 import { attributionFor } from "@/lib/attribution";
+import { testPaymentsAllowed } from "@/lib/payments/gateways/manual";
 
 export async function startCheckout(form: FormData) {
   const s = (k: string) => (String(form.get(k) ?? "").trim() || undefined);
@@ -128,7 +129,7 @@ async function reusePendingOrder(userId: string, quote: NonNullable<Awaited<Retu
 /** Test gateway only: simulate a successful payment. */
 export async function simulatePayment(orderId: string) {
   const user = await requireUser();
-  if (process.env.ALLOW_TEST_PAYMENTS !== "true") throw new Error("Test payments are disabled");
+  if (!testPaymentsAllowed()) throw new Error("Test payments are disabled");
   const db = createAdminClient();
   const { data: order } = await db.from("orders").select("user_id, gateway").eq("id", orderId).single();
   if (!order || order.user_id !== user.id || order.gateway !== "manual") throw new Error("Not allowed");

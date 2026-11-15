@@ -9,6 +9,7 @@ import { AutoRefresh } from "./AutoRefresh";
 import { TrackConversion } from "@/components/site/Tracking";
 import { connect } from "@/lib/payments/registry";
 import { applyGatewayEvents } from "@/lib/payments/apply";
+import { testPaymentsAllowed } from "@/lib/payments/gateways/manual";
 
 /** Buyer is back from the provider: ask the provider directly instead of waiting for the webhook. */
 async function confirmWithProvider(order: { id: string; gateway: string | null; gateway_session_id: string | null }) {
@@ -67,7 +68,7 @@ export default async function SuccessPage({ searchParams }: PageProps<"/checkout
               )}
               {/* card/wallet providers: keep checking until the provider confirms (not for manual or payment-link orders) */}
               {order.gateway !== "manual" && !order.gateway?.startsWith("custom-") && <AutoRefresh />}
-              {order.gateway === "manual" && process.env.ALLOW_TEST_PAYMENTS === "true" && (
+              {order.gateway === "manual" && testPaymentsAllowed() && (
                 <form action={simulatePayment.bind(null, order.id)} className="mt-8">
                   <button className="fc-btn fc-btn-dark fc-btn-lg">Simulate successful payment (test mode)</button>
                 </form>
