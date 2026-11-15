@@ -404,3 +404,56 @@ export function automationEmail(o: { subject: string; body: string; cta: { label
     ...layout({ preheader: paras[1]?.slice(0, 120) ?? o.subject, heading: o.subject, body: { html, text: paras.join("\n\n") }, cta: o.cta, unsubscribeUrl: o.unsubscribeUrl }),
   };
 }
+
+/** About two weeks after a purchase with cashback: share feedback and a review to top the cashback up. */
+export function reviewInviteEmail(o: { name?: string | null; course: string; pct: number; topUp: string; useBy?: string | null; url: string }): Rendered {
+  return {
+    subject: `How is ${o.course} going? Get ${o.pct}% back`,
+    ...layout({
+      preheader: `Share feedback and a review, and we'll add ${o.topUp} more credit.`,
+      heading: `How is it going, ${first(o.name)}?`,
+      body: join(
+        p(`You've had ${o.course} for a couple of weeks now. We'd like to hear what's working for you and what we should improve.`),
+        p(`Share your feedback and a short review, and we'll top up your cashback to ${o.pct}% of what you paid: ${o.topUp} more FinCoursa credit${o.useBy ? `, usable until ${o.useBy}` : ""}.`),
+        p("It takes about two minutes. Your feedback stays private; the review is published only if you say so."),
+      ),
+      cta: { label: "Share feedback and a review", url: o.url },
+      footer: "Credit is not cash. It can be used on future FinCoursa courses and can't be withdrawn, refunded or transferred.",
+    }),
+  };
+}
+
+/** To the team: a buyer sent feedback and a review. */
+export function reviewReceivedEmail(o: { name?: string | null; email: string; course: string; orderNumber: number; rating: number; feedback: string; review: string; canPublish: boolean; adminUrl: string }): Rendered {
+  return {
+    subject: `New review (${o.rating}/5) for ${o.course}, order #${o.orderNumber}`,
+    ...layout({
+      preheader: `${o.name || o.email} sent feedback and a review.`,
+      heading: "New feedback and review",
+      body: join(
+        p(`${o.name || "A buyer"} (${o.email}) reviewed ${o.course}, order #${o.orderNumber}. Rating: ${o.rating} out of 5.`),
+        { html: `<p style="margin:0 0 4px"><strong>Feedback (private)</strong></p><p style="margin:0 0 12px;white-space:pre-line">${esc(o.feedback)}</p>`, text: `Feedback (private):\n${o.feedback}` },
+        { html: `<p style="margin:0 0 4px"><strong>Review${o.canPublish ? " (OK to publish)" : " (not for publishing)"}</strong></p><p style="margin:0 0 12px;white-space:pre-line">${esc(o.review)}</p>`, text: `Review${o.canPublish ? " (OK to publish)" : " (not for publishing)"}:\n${o.review}` },
+        p("Approve it to top up their cashback, or reject it, from their customer page."),
+      ),
+      cta: { label: "Open the customer", url: o.adminUrl },
+    }),
+  };
+}
+
+/** To the buyer, once their review is approved and the cashback topped up. */
+export function reviewThanksEmail(o: { name?: string | null; amount: string; pct: number; useBy?: string | null; coursesUrl: string }): Rendered {
+  return {
+    subject: `Thank you: ${o.amount} credit added to your account`,
+    ...layout({
+      preheader: `Your cashback is now ${o.pct}% of what you paid.`,
+      heading: `Thank you, ${first(o.name)}`,
+      body: join(
+        p(`Thanks for your feedback and review. We've added ${o.amount} credit to your FinCoursa account, so your cashback is now ${o.pct}% of what you paid.`),
+        p(`Use it at checkout on a future course${o.useBy ? ` until ${o.useBy}` : ""}.`),
+      ),
+      cta: { label: "Browse courses", url: o.coursesUrl },
+      footer: "Credit is not cash. It can't be withdrawn, refunded or transferred.",
+    }),
+  };
+}

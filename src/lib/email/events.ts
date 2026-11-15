@@ -284,3 +284,66 @@ export async function sendPasswordReset(email: string) {
   const t = T.passwordResetEmail({ url, minutes: LINK_MINUTES });
   return sendEmail({ ...t, to: email, template: "password_reset", ref: `${p.id}:${Date.now()}` });
 }
+
+/**
+ * Daily: about two weeks after a purchase that earned cashback, invite the buyer to share feedback and a review
+ * (which tops the cashback up to the review rate). One email per order.
+ */
+export async function sendReviewInvites(afterDays = 14) {
+  const { getCashbackSettings } = await import("@/lib/cashback");
+  const { reviewBonusLive, reviewOffers } = await import("@/lib/reviews");
+  const s = await getCashbackSettings();
+  if (!reviewBonusLive(s)) return 0;
+  const db = createAdminClient();
+  const due = new Date(Date.now() - afterDays * 864e5).toISOString();
+  const { data: orders } = await db.from("orders").select("id, user_id")
+    .eq("status", "paid").gt("cashback_minor", 0).is("review_invite_sent_at", null).lte("paid_at", due).limit(200);
+  let sent = 0;
+  for (const o of orders ?? []) {
+    await db.from("orders").update({ review_invite_sent_at: new Date().toISOString() }).eq("id", o.id);
+    const offer = (await reviewOffers(o.user_id, s)).find((x) => x.orderId === o.id);
+    if (!offer) continue;
+    const p = await profile(o.user_id);
+    if (!p?.email) continue;
+    const t = T.reviewInviteEmail({
+      name: p.full_name, course: offer.courseTitle, pct: offer.pct, topUp: formatMoney(offer.topUpMinor, offer.currency),
+      useBy: s.redeem_by ? formatDate(s.redeem_by, "long") : null, url: `${site()}/review/${offer.orderId}`,
+    });
+    if (await sendEmail({ ...t, to: p.email, template: "review_invite", ref: o.id })) sent++;
+  }
+  return sent;
+}
+
+/** To the team when a buyer sends feedback and a review. */
+export async function sendReviewReceived(reviewId: string) {
+  const db = createAdminClient();
+  const { data: r } = await db.from("course_reviews")
+    .select("id, user_id, rating, feedback, review, can_publish, order:orders(number), course:courses(title)").eq("id", reviewId).maybeSingle();
+  if (!r) return;
+  const p = await profile(r.user_id);
+  const { getGrowthSettings } = await import("@/lib/growth");
+  const team = (await getGrowthSettings()).team_email;
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const t = T.reviewReceivedEmail({
+    name: p?.full_name, email: p?.email ?? "", course: (r.course as any)?.title ?? "", orderNumber: (r.order as any)?.number ?? 0,
+    rating: r.rating, feedback: r.feedback, review: r.review, canPublish: r.can_publish, adminUrl: `${site()}/admin/customers/${r.user_id}`,
+  });
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+  await sendEmail({ ...t, to: team, template: "review_received", ref: r.id });
+}
+
+/** To the buyer once their review cashback has been added. */
+export async function sendReviewThanks(orderId: string, amountMinor: number) {
+  const db = createAdminClient();
+  const { data: o } = await db.from("orders").select("id, user_id, currency").eq("id", orderId).maybeSingle();
+  if (!o) return;
+  const p = await profile(o.user_id);
+  if (!p?.email) return;
+  const { getCashbackSettings } = await import("@/lib/cashback");
+  const s = await getCashbackSettings();
+  const t = T.reviewThanksEmail({
+    name: p.full_name, amount: formatMoney(amountMinor, o.currency), pct: s.review_bonus_pct ?? 100,
+    useBy: s.redeem_by ? formatDate(s.redeem_by, "long") : null, coursesUrl: `${site()}/pages/paid-courses`,
+  });
+  await sendEmail({ ...t, to: p.email, template: "review_thanks", ref: o.id });
+}

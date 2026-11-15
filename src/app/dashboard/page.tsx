@@ -9,6 +9,8 @@ import { env } from "@/lib/env";
 import { announcementsFor } from "@/lib/announcements";
 import { CourseUpdatesList } from "@/components/player/CourseUpdates";
 import { assetUrl, isThinkificAsset } from "@/lib/assets";
+import { reviewOffers } from "@/lib/reviews";
+import { formatMoney } from "@/lib/money";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /** Course artwork, or the lead instructor's photo when a course has none (old Thinkific links don't load). */
@@ -57,6 +59,7 @@ export default async function StudentDashboard({ searchParams }: PageProps<"/das
   const updates = await announcementsFor(enrollments.map((e) => e.course_id), 5);
   const [member, fs] = await Promise.all([getMembership(user.id), getFoundingSettings()]);
   const perk = member && benefitLive(fs) ? foundingLabel(fs, env.defaultCurrency) : null;
+  const offers = await reviewOffers(user.id);
 
   return (
     <div className="grid gap-8">
@@ -81,6 +84,16 @@ export default async function StudentDashboard({ searchParams }: PageProps<"/das
           </div>
         )}
       </div>
+
+      {offers.map((o) => (
+        <div key={o.orderId} className="flex flex-col gap-4 rounded-card bg-accent p-6 text-ink md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-lg font-semibold">Get {o.pct}% of your fee back</p>
+            <p className="mt-1 text-sm">Share feedback and a short review of {o.courseTitle}, and we&apos;ll add {formatMoney(o.topUpMinor, o.currency)} more FinCoursa credit.</p>
+          </div>
+          <Link href={`/review/${o.orderId}`} className="fc-btn shrink-0 bg-ink text-white hover:bg-black">Share feedback</Link>
+        </div>
+      ))}
 
       <div className={`grid gap-4 ${certs ? "grid-cols-2 md:grid-cols-4" : "grid-cols-3"}`}>
         <Stat label="Enrolled" value={enrollments.length} />

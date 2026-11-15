@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
@@ -38,6 +39,9 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
     db.from("prices").select("currency").eq("is_active", true),
     db.from("credit_redemptions").select("amount_minor, grant:credit_grants(currency)").is("reversed_at", null),
   ]);
+  const { data: pending } = await db.from("course_reviews")
+    .select("id, user_id, rating, review, created_at, course:courses(title), order:orders(number), profile:profiles!course_reviews_user_id_fkey(email, full_name)")
+    .eq("status", "pending").order("created_at");
   const list = (grants ?? []) as unknown as Grant[];
   const now = new Date(nowIso()).getTime();
   const live = (g: Grant) => !g.revoked_at && g.remaining_minor > 0 && (!g.expires_at || new Date(g.expires_at).getTime() > now);
@@ -69,6 +73,24 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
       </div>
       {ok && <p className="rounded-lg bg-success/10 p-3 text-sm text-success">{ok}</p>}
       {err && <p className="rounded-lg bg-danger/10 p-3 text-sm text-danger">{err}</p>}
+
+      {(pending ?? []).length > 0 && (
+        <Card title={`Reviews waiting for you (${pending!.length})`}>
+          <p className="mb-3 text-sm text-muted">Open the customer to read the feedback, then approve (adds the {s.review_bonus_pct ?? 100}% top-up and emails them) or reject.</p>
+          <ul className="divide-y divide-line text-sm">
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(pending as any[]).map((r) => (
+              <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
+                <span className="min-w-0">
+                  <span className="font-medium">{r.profile?.full_name || r.profile?.email}</span> · {r.course?.title} · order #{r.order?.number} · {"★".repeat(r.rating)}
+                  <span className="block truncate text-xs text-muted">{r.review}</span>
+                </span>
+                <Link href={`/admin/customers/${r.user_id}`} className="text-xs font-semibold underline">Review it</Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card title="Cashback rules">
         <form action={saveCashbackSettings} className="grid gap-4 text-sm">

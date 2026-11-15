@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { setSetting } from "@/lib/site-settings";
 import { CASHBACK_DEFAULTS, creditExpiry, type CashbackSettings } from "@/lib/cashback";
 import { minorUnitsFactor } from "@/lib/money";
+import { sendReviewThanks } from "@/lib/email/events";
 
 const back = (k: "ok" | "err", msg: string): never => redirect(`/admin/credit?${k}=${encodeURIComponent(msg)}`);
 const num = (v: FormDataEntryValue | null) => Number(String(v ?? "").replace(/[%,\s]/g, ""));
@@ -146,6 +147,26 @@ export async function grantReviewBonus(orderId: string, back2: string) {
   const { error } = await db.rpc("adjust_credit", { p_user: o!.user_id, p_currency: o!.currency, p_amount: top, p_note: note, p_expires_at: expires, p_actor: admin.id });
   if (error) go("err", error.message);
   await db.from("audit_log").insert({ actor_id: admin.id, action: "credit.review_bonus", entity: "order", entity_id: orderId, data: { amount_minor: top, currency: o!.currency } });
+  await db.from("course_reviews").update({ status: "approved", decided_at: new Date().toISOString(), decided_by: admin.id }).eq("order_id", orderId);
+  await sendReviewThanks(orderId, top).catch((e) => console.error("[review] thanks email", e));
   revalidatePath(back2.split("?")[0]);
+  revalidatePath("/admin/credit");
   go("ok", `Added ${(top / minorUnitsFactor(o!.currency)).toFixed(2)} ${o!.currency} credit for order #${o!.number} (now ${s.review_bonus_pct}% back).`);
+}
+
+/** The review doesn't qualify (e.g. too thin): no top-up. The buyer can't send another for that order. */
+export async function rejectReview(orderId: string, back2: string) {
+  const admin = await requireRole(["admin", "finance"]);
+  await createAdminClient().from("course_reviews").update({ status: "rejected", decided_at: new Date().toISOString(), decided_by: admin.id }).eq("order_id", orderId);
+  revalidatePath(back2.split("?")[0]);
+  revalidatePath("/admin/credit");
+  redirect(`${back2}${back2.includes("?") ? "&" : "?"}ok=${encodeURIComponent("Review rejected. No credit was added.")}`);
+}
+
+/** Take a review off the course page. Publishing needs the buyer's consent, so it can't be switched back on here. */
+export async function hideReview(reviewId: string, back2: string) {
+  await requireRole(["admin", "finance"]);
+  await createAdminClient().from("course_reviews").update({ can_publish: false }).eq("id", reviewId);
+  revalidatePath(back2.split("?")[0]);
+  revalidatePath("/", "layout");
 }
