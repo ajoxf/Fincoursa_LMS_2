@@ -11,7 +11,7 @@ import { parseQuizJson, QUIZ_JSON_EXAMPLE } from "@/lib/quiz-import";
 import { TIME_ZONE } from "@/lib/format";
 
 export type BuilderLesson = {
-  id: string; title: string; type: string; position: number; is_preview: boolean; is_required: boolean;
+  id: string; title: string; type: string; position: number; is_preview: boolean; is_required: boolean; is_hidden?: boolean;
   drip_days: number | null; duration_seconds: number; video_asset_id: string | null;
   starts_at: string | null; live_minutes: number | null; zoom_meeting_id: string | null;
   video: { status: string } | null;
@@ -176,6 +176,7 @@ function LessonRow({ courseId, chapterId, lesson, first, last, run }: {
         <span className="w-16 text-center text-[11px] font-semibold uppercase tracking-wide text-muted">{lesson.type}</span>
         <span className="min-w-0 flex-1 truncate font-medium">{lesson.title}</span>
         {lesson.is_preview && <span className="rounded-button bg-accent/15 px-2 py-0.5 text-[11px] font-semibold">Free preview</span>}
+        {lesson.is_hidden && <span className="rounded-button bg-ink/10 px-2 py-0.5 text-[11px] font-semibold">Hidden</span>}
         {lesson.drip_days ? <span className="text-[11px] text-muted">Unlocks day {lesson.drip_days}</span> : null}
         <span className={`text-xs ${s.ok ? "text-success" : "text-warning"}`}>{s.t}</span>
         <button onClick={() => setOpen(!open)} className="rounded-md border border-line px-2 py-1 text-xs font-medium">{open ? "Close" : "Edit"}</button>
@@ -194,6 +195,7 @@ function LessonEditor({ courseId, lesson, onClose }: { courseId: string; lesson:
   const [type, setType] = useState(lesson.type);
   const [preview, setPreview] = useState(lesson.is_preview);
   const [required, setRequired] = useState(lesson.is_required);
+  const [hidden, setHidden] = useState(Boolean(lesson.is_hidden));
   const [drip, setDrip] = useState(lesson.drip_days?.toString() ?? "");
   const [minutes, setMinutes] = useState(lesson.duration_seconds ? String(Math.round(lesson.duration_seconds / 60)) : "");
   const [text, setText] = useState(b.text ?? "");
@@ -213,7 +215,7 @@ function LessonEditor({ courseId, lesson, onClose }: { courseId: string; lesson:
     if (type === "quiz" && bad) { setMsg({ ok: false, t: "Each question needs text, at least two answers and a correct answer." }); return; }
     try {
       await updateLesson(courseId, lesson.id, {
-        title: title.trim() || "Untitled lesson", type, is_preview: preview, is_required: required,
+        title: title.trim() || "Untitled lesson", type, is_preview: preview, is_required: required, is_hidden: hidden,
         drip_days: drip === "" ? null : Math.max(0, Math.round(Number(drip))),
         ...(type !== "video" && type !== "live" ? { duration_seconds: Math.max(0, Math.round(Number(minutes || 0) * 60)) } : {}),
         ...(type === "live" ? {
@@ -321,6 +323,7 @@ function LessonEditor({ courseId, lesson, onClose }: { courseId: string; lesson:
       <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <label className="flex items-center gap-2"><input type="checkbox" checked={preview} onChange={(e) => setPreview(e.target.checked)} />Free preview (visible before purchase)</label>
         <label className="flex items-center gap-2"><input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />Counts toward completion</label>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} />Hidden from students (not on the course page or in the course)</label>
         <label className="flex items-center gap-2">Unlock after
           <input type="number" min={0} value={drip} onChange={(e) => setDrip(e.target.value)} placeholder="0" className="fc-input w-20 !py-1" />days</label>
         {type !== "video" && (

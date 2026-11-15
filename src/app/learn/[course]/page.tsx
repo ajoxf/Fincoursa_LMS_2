@@ -10,11 +10,13 @@ export default async function LearnIndex({ params }: PageProps<"/learn/[course]"
   const course = await getCourse(slug);
   if (!course) notFound();
   const enrollment = await getEnrollment(course.id);
-  const first = course.chapters.flatMap((c) => c.lessons)[0];
+  const visible = course.chapters.flatMap((c) => c.lessons);
+  const first = visible[0];
   // Admins and instructors can preview every lesson without enrolling
   if (!enrollment && first && (user.roles.includes("admin") || user.roles.includes("instructor"))) redirect(`/learn/${slug}/${first.id}`);
   if (!enrollment) redirect(`/courses/${slug}`);
-  const target = enrollment.last_lesson_id ?? first?.id;
+  // the last lesson may since have been hidden: then start from the first one
+  const target = visible.some((l) => l.id === enrollment.last_lesson_id) ? enrollment.last_lesson_id : first?.id;
   if (!target) redirect(`/courses/${slug}`);
   redirect(`/learn/${slug}/${target}`);
 }

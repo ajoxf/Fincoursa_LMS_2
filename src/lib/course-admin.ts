@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { BuilderChapter } from "@/components/dash/CourseBuilder";
 
 // Quiz answers are stored apart from the lesson body (quiz_answer_keys, admin-only), so students can't read them.
-const LESSON_COLS = "id, title, type, position, is_preview, is_required, drip_days, duration_seconds, video_asset_id, starts_at, live_minutes, zoom_meeting_id, video:video_assets(status), body:lesson_bodies(body), quiz_key:quiz_answer_keys(answers, explanations)";
+const LESSON_COLS = "id, title, type, position, is_preview, is_required, is_hidden, drip_days, duration_seconds, video_asset_id, starts_at, live_minutes, zoom_meeting_id, video:video_assets(status), body:lesson_bodies(body), quiz_key:quiz_answer_keys(answers, explanations)";
 
 type RawLesson = BuilderChapter["lessons"][number] & { quiz_key?: { answers: Record<string, string> | null; explanations?: Record<string, string> | null } | null };
 
