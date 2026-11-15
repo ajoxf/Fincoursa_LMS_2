@@ -56,6 +56,8 @@ export type CourseCard = {
   thumbnail_url: string | null;
   duration_minutes: number;
   category: string | null;
+  /** the category's place in the catalogue (Admin → categories); uncategorised courses come last */
+  categoryOrder?: number;
   level: string | null;
   /** Extra labels shown as chips and catalog filters */
   tags: string[];
@@ -92,7 +94,7 @@ export type BundleCard = {
 
 const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, duration_minutes, access_days, certificate_enabled, level, tags,
   sort_order, is_featured, coming_soon, launch_note, cashback_mode, cashback_percent, cashback_fixed, live_lessons:lessons(starts_at),
-  category:categories(name),
+  category:categories(name, sort_order),
   course_instructors(is_primary, instructor:instructors(id, slug, name, title, bio, photo_url, org_logo_url, coming_soon)),
   prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active, created_at)`;
 
@@ -137,6 +139,7 @@ function toCourseCard(row: any, currency: string | null = null): CourseCard {
     thumbnail_url: img(row.thumbnail_url),
     duration_minutes: row.duration_minutes ?? 0,
     category: row.category?.name ?? null,
+    categoryOrder: row.category?.sort_order ?? 999,
     level: row.level ?? null,
     tags: row.tags ?? [],
     certificate: row.certificate_enabled === true,
