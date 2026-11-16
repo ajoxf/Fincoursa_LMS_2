@@ -4,19 +4,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDate } from "@/lib/format";
 import { Card } from "@/components/dash/Stat";
 import { KIND_LABEL, campaignTag, type Audience, type CampaignKind } from "@/lib/campaigns";
-import { LAUNCH_DESIGNS } from "@/lib/email/launch-design";
+import { listDesigns } from "@/lib/email/designs";
+import { DesignsTab } from "./DesignsTab";
 import { ContactsTab } from "./ContactsTab";
 import { Composer } from "./Composer";
 import { HistoryActions } from "./HistoryActions";
 import { AutomaticEmails, InstitutionEmails } from "./AutomaticEmails";
 
-const TABS = [["send", "Send an email"], ["contacts", "Contacts"], ["automatic", "Automatic emails"], ["institutions", "Institution emails"]] as const;
-const TEAM_TABS = ["send", "contacts"];
+const TABS = [["send", "Send an email"], ["contacts", "Contacts"], ["designs", "Designs"], ["automatic", "Automatic emails"], ["institutions", "Institution emails"]] as const;
+const TEAM_TABS = ["send", "contacts", "designs"];
 
 export const metadata: Metadata = { title: "Emails & updates" };
 
 const STATUS: Record<string, string> = { draft: "Draft", awaiting_approval: "Waiting for approval", scheduled: "Scheduled", sending: "Sending", sent: "Sent", cancelled: "Stopped" };
-const DESIGN_LABEL = new Map<string, string>(LAUNCH_DESIGNS.map((d) => [d.id, d.label]));
 
 export default async function EmailsPage({ searchParams }: PageProps<"/admin/emails">) {
   const me = await requireRole(["admin", "support"], "/admin/emails");
@@ -26,7 +26,7 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
   const tabs = TABS.filter(([v]) => isAdmin || TEAM_TABS.includes(v));
   const tab = tabs.some(([v]) => v === sp.tab) ? (sp.tab as string) : "send";
   const db = createAdminClient();
-  const [{ data: courses }, { data: history }, consenting, { data: reuse }, contactCount] = await Promise.all([
+  const [{ data: courses }, { data: history }, consenting, { data: reuse }, contactCount, allDesigns] = await Promise.all([
     db.from("courses").select("id, title").neq("status", "archived").order("sort_order"),
     db.from("email_campaigns").select("id, kind, design, subject, audience, include_contacts, exclude_buyers_of, status, send_mode, scheduled_for, total, sent, failed, skipped, created_at, finished_at, submitted_by, approved_by").order("created_at", { ascending: false }).limit(50),
     db.from("profiles").select("id", { count: "exact", head: true }).eq("marketing_opt_in", true),
@@ -34,7 +34,10 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
       ? db.from("email_campaigns").select("kind, design, subject, heading, body, cta_label, cta_url, audience, include_contacts, exclude_buyers_of").eq("id", from).maybeSingle()
       : Promise.resolve({ data: null }),
     db.from("email_contacts").select("id", { count: "exact", head: true }).is("unsubscribed_at", null),
+    listDesigns(),
   ]);
+  const DESIGN_LABEL = new Map<string, string>(allDesigns.map((d) => [d.id, d.name]));
+  const draftDesigns = allDesigns.filter((d) => d.status === "draft").length;
   // clicks per email (links carry ?v=<tag>) and who submitted / approved
   const tags = (history ?? []).map((c) => campaignTag(c.id));
   const { data: clickRows } = tags.length ? await db.from("campaign_clicks").select("variant").in("variant", tags) : { data: [] as { variant: string }[] };
@@ -51,7 +54,7 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
     a.buyers_only ? "buyers only" : null,
   ].filter(Boolean).join(" · ");
   const draft = reuse ? { ...reuse, kind: (reuse.kind === "update" ? "update" : "promotion") as "promotion" | "update", ...(reuse.audience as Audience) } : undefined;
-  const designs = LAUNCH_DESIGNS.map((d) => ({ id: d.id, label: d.label }));
+  const designs = allDesigns.filter((d) => d.status === "approved").map((d) => ({ id: d.id, label: d.name, description: d.description, defaultSubject: d.default_subject }));
 
   return (
     <div className="grid gap-6">
@@ -64,11 +67,12 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
       </div>
       <nav className="flex flex-wrap gap-2">
         {tabs.map(([v, l]) => (
-          <a key={v} href={`/admin/emails?tab=${v}`} className={`rounded-full px-4 py-1.5 text-sm ${tab === v ? "bg-ink text-white" : "bg-surface"}`}>{l}</a>
+          <a key={v} href={`/admin/emails?tab=${v}`} className={`rounded-full px-4 py-1.5 text-sm ${tab === v ? "bg-ink text-white" : "bg-surface"}`}>{l}{v === "designs" && isAdmin && draftDesigns > 0 ? ` (${draftDesigns} new)` : ""}</a>
         ))}
       </nav>
       {typeof sp.ok === "string" && <p className="rounded-lg bg-success/10 p-3 text-sm text-success">{sp.ok}</p>}
       {typeof sp.err === "string" && <p className="rounded-lg bg-danger/10 p-3 text-sm text-danger">{sp.err}</p>}
+      {tab === "designs" && <DesignsTab isAdmin={isAdmin} open={typeof sp.design === "string" ? sp.design : undefined} />}
       {tab === "contacts" && <ContactsTab q={typeof sp.q === "string" ? sp.q : ""} />}
       {tab === "automatic" && <AutomaticEmails />}
       {tab === "institutions" && <InstitutionEmails />}

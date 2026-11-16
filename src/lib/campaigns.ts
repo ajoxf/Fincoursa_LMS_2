@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmailBatch, type BatchEmail } from "@/lib/email/send";
 import { messageEmail } from "@/lib/email/templates";
 import { contactUnsubscribeUrl, unsubscribeUrl } from "@/lib/email/unsubscribe";
-import { isLaunchDesign, launchEmail } from "@/lib/email/launch-design";
+import { getDesign, renderDesign, type EmailDesign } from "@/lib/email/designs";
 import { env } from "@/lib/env";
 
 export type CampaignKind = "promotion" | "update" | "announcement";
@@ -44,13 +44,14 @@ export const campaignTag = (id: string) => `e-${id.slice(0, 8)}`;
 
 export type Recipient = { userId?: string | null; contactId?: string | null; name?: string | null };
 
-/** Render one person's copy of a campaign. */
-export function renderCampaign(c: Pick<CampaignRow, "kind" | "subject" | "heading" | "body" | "cta_label" | "cta_url"> & { id?: string; design?: string | null }, to: Recipient) {
+/** Render one person's copy of a campaign. A designed campaign needs its design passed in (see getDesign). */
+export function renderCampaign(c: Pick<CampaignRow, "kind" | "subject" | "heading" | "body" | "cta_label" | "cta_url"> & { id?: string; design?: string | null }, to: Recipient, design?: Pick<EmailDesign, "html" | "text_body"> | null) {
   const unsub = to.contactId ? contactUnsubscribeUrl(to.contactId) : unsubscribeUrl(to.userId!);
   const oneClickUrl = unsub.replace("/unsubscribe?", "/api/unsubscribe?");
   const listHeaders = { "List-Unsubscribe": `<${oneClickUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };
-  if (isLaunchDesign(c.design)) {
-    const d = launchEmail({ design: c.design, tag: c.id ? campaignTag(c.id) : "email", unsubscribeUrl: unsub, note: c.body, firstName: to.name });
+  if (c.design && c.design !== "message") {
+    if (!design) throw new Error("This email's design could not be found");
+    const d = renderDesign(design, { tag: c.id ? campaignTag(c.id) : "email", unsubscribeUrl: unsub, note: c.body, firstName: to.name });
     return { subject: c.subject, html: d.html, text: d.text, headers: listHeaders };
   }
   const m = messageEmail({
@@ -88,8 +89,9 @@ export async function sendCampaignBatch(id: string, size = 50) {
 
   const { data: batch } = await db.from("email_campaign_recipients").select("id, user_id, contact_id, email, name").eq("campaign_id", id).eq("status", "pending").limit(size);
   if (batch?.length) {
+    const design = await getDesign(c.design);
     const emails: BatchEmail[] = batch.map((r) => ({
-      to: r.email, ...renderCampaign(c as CampaignRow, { userId: r.user_id, contactId: r.contact_id, name: r.name }),
+      to: r.email, ...renderCampaign(c as CampaignRow, { userId: r.user_id, contactId: r.contact_id, name: r.name }, design),
       template: "campaign", ref: `${id}:${r.user_id ?? `c:${r.contact_id}`}`,
     }));
     const results = await sendEmailBatch(emails);

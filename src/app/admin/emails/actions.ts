@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanUrl, renderCampaign, sendCampaignBatch, type Audience, type CampaignKind } from "@/lib/campaigns";
-import { isLaunchDesign } from "@/lib/email/launch-design";
+import { getDesign, type EmailDesign } from "@/lib/email/designs";
 import { sendEmail } from "@/lib/email/send";
 
 /** Admins send and approve. The team (support role) drafts, sends themselves tests and submits for approval. */
@@ -36,15 +36,17 @@ function readOptions(form: FormData): Options {
   return { include_contacts: form.get("include_contacts") === "on", exclude_buyers_of: /^[0-9a-f-]{36}$/i.test(ex) ? ex : null };
 }
 
-function readMessage(form: FormData) {
+async function readMessage(form: FormData) {
   const r = schema.safeParse(Object.fromEntries(form));
   if (!r.success) return { error: r.error.issues[0].message } as const;
   const d = r.data;
-  const design = isLaunchDesign(d.design) ? d.design : "message";
-  if (design !== "message") {
+  if (d.design && d.design !== "message") {
     // a designed email: the body is an optional personal note above the design; always a promotion
-    return { msg: { kind: "promotion" as CampaignKind, design, subject: d.subject, heading: d.subject, body: d.body ?? "", cta_label: null, cta_url: null } } as const;
+    const found = await getDesign(d.design);
+    if (!found || found.status !== "approved") return { error: "That design isn't approved for sending. Pick another one." } as const;
+    return { template: found as EmailDesign, msg: { kind: "promotion" as CampaignKind, design: found.id, subject: d.subject, heading: d.subject, body: d.body ?? "", cta_label: null, cta_url: null } } as const;
   }
+  const design = "message";
   if (!d.body) return { error: "Write the message" } as const;
   const url = cleanUrl(d.cta_url);
   if (d.cta_label && !url) return { error: "The button link must start with https:// (or /, for a page on this site)" } as const;
@@ -69,21 +71,21 @@ export async function countAudience(kind: CampaignKind, audience: Audience, opti
 /** The email exactly as people see it, for the preview pane. */
 export async function previewEmail(form: FormData): Promise<{ html?: string; subject?: string; error?: string }> {
   const me = await requireRole([...STAFF]);
-  const m = readMessage(form);
+  const m = await readMessage(form);
   if ("error" in m) return { error: m.error };
-  const r = renderCampaign(m.msg, { userId: me.id, name: me.fullName });
+  const r = renderCampaign(m.msg, { userId: me.id, name: me.fullName }, "template" in m ? m.template : null);
   return { html: r.html, subject: r.subject };
 }
 
 /** Send the email to yourself, or to one address you type (e.g. team@fincoursa.com). */
 export async function sendTestEmail(form: FormData): Promise<ComposeState> {
   const me = await requireRole([...STAFF]);
-  const m = readMessage(form);
+  const m = await readMessage(form);
   if ("error" in m) return { ok: false, message: m.error! };
   const typed = String(form.get("test_to") ?? "").trim().toLowerCase();
   const to = typed || me.email;
   if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { ok: false, message: "Enter a valid email address for the test" };
-  const r = renderCampaign(m.msg, { userId: me.id, name: me.fullName });
+  const r = renderCampaign(m.msg, { userId: me.id, name: me.fullName }, "template" in m ? m.template : null);
   await sendEmail({ to, subject: `[Test] ${r.subject}`, html: r.html, text: r.text, template: "campaign_test", ref: `${me.id}:${Date.now()}` });
   return { ok: true, message: process.env.RESEND_API_KEY ? `Test sent to ${to}.` : `Test prepared for ${to}, but no email provider is connected yet (RESEND_API_KEY), so nothing was delivered.` };
 }
@@ -94,7 +96,7 @@ export async function sendTestEmail(form: FormData): Promise<ComposeState> {
  */
 export async function createCampaign(_: ComposeState, form: FormData): Promise<ComposeState> {
   const me = await requireRole([...STAFF]);
-  const m = readMessage(form);
+  const m = await readMessage(form);
   if ("error" in m) return { ok: false, message: m.error! };
   const audience = readAudience(form);
   const options = readOptions(form);
@@ -254,4 +256,19 @@ export async function updateContact(id: string, action: "unsubscribe" | "delete"
   else await db.from("email_contacts").update({ unsubscribed_at: new Date().toISOString() }).eq("id", id).is("unsubscribed_at", null);
   await db.from("audit_log").insert({ actor_id: me.id, action: `contact.${action}`, entity: "email_contacts", entity_id: id });
   revalidatePath("/admin/emails");
+}
+
+/** Admin: approve a design (it appears in the Design list), move it back to draft, or retire it. */
+export async function setDesignStatus(id: string, status: "approved" | "draft" | "retired") {
+  const me = await requireRole(["admin"]);
+  const db = createAdminClient();
+  const { error } = await db.from("email_designs").update({
+    status, updated_at: new Date().toISOString(),
+    ...(status === "approved" ? { approved_by: me.id, approved_at: new Date().toISOString() } : {}),
+  }).eq("id", id);
+  if (error) redirect(`/admin/emails?tab=designs&err=${encodeURIComponent(error.message)}`);
+  await db.from("audit_log").insert({ actor_id: me.id, action: `email_design.${status}`, entity: "email_designs", entity_id: id });
+  revalidatePath("/admin/emails");
+  const said = { approved: "Approved. It now appears in the Design list.", draft: "Moved back to draft.", retired: "Retired. It no longer appears in the Design list." }[status];
+  redirect(`/admin/emails?tab=designs&ok=${encodeURIComponent(said)}`);
 }
