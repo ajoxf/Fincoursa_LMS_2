@@ -156,16 +156,30 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                 <div className="mt-6">{cta}</div>
 
                 {/* other ways in */}
-                {options.map((o) => (
-                  <Link key={o.id} href={`/checkout?course=${course.slug}&price=${o.id}`}
-                    className="group mt-3 flex items-center justify-between gap-4 rounded-xl border border-white/30 px-4 py-3.5 transition hover:border-accent">
-                    <span>
-                      <span className="block font-semibold">{o.label || "Longer access"}</span>
-                      <span className="block text-sm text-white/70">Access until {formatDate(o.access_until!, "long")}</span>
-                    </span>
-                    <span className="whitespace-nowrap text-lg font-semibold">{formatMoney(o.amount_minor, o.currency)} <span className="text-accent transition group-hover:translate-x-0.5">→</span></span>
-                  </Link>
-                ))}
+                {options.map((o) => {
+                  // the option's own "was" price, else the standard price it's discounted from (same currency)
+                  const base = o.compare_at_minor ?? (course.price?.currency === o.currency ? course.price?.compare_at_minor : null);
+                  const was = base && base > o.amount_minor ? base : null;
+                  const pct = was ? Math.round(((was - o.amount_minor) / was) * 100) : 0;
+                  return (
+                    <Link key={o.id} href={`/checkout?course=${course.slug}&price=${o.id}`}
+                      className="group mt-3 flex items-center justify-between gap-4 rounded-xl border border-white/30 px-4 py-3.5 transition hover:border-accent">
+                      <span>
+                        <span className="block font-semibold">{o.label || "Longer access"}</span>
+                        <span className="block text-sm text-white/70">Access until {formatDate(o.access_until!, "long")}</span>
+                      </span>
+                      <span className="text-right">
+                        <span className="block whitespace-nowrap text-lg font-semibold">{formatMoney(o.amount_minor, o.currency)} <span className="text-accent transition group-hover:translate-x-0.5">→</span></span>
+                        {was && (
+                          <span className="block whitespace-nowrap text-sm">
+                            <span className="text-white/55 line-through">{formatMoney(was, o.currency)}</span>
+                            {pct > 0 && <span className="ml-2 font-semibold text-accent">{pct}% off</span>}
+                          </span>
+                        )}
+                      </span>
+                    </Link>
+                  );
+                })}
                 {sample && (
                   <Link href={`/learn/${course.slug}/${sample.id}`}
                     className="mt-3 flex w-full items-center justify-center rounded-xl border-2 border-accent px-4 py-3 text-[15px] font-semibold text-accent transition hover:bg-accent hover:text-ink">

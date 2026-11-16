@@ -34,10 +34,10 @@ function layout(opts: { preheader: string; heading: string; body: Block; cta?: {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden">
 <tr><td style="background:${T.primary};padding:24px 28px;border-bottom:4px solid ${T.accent}"><a href="${site}" style="text-decoration:none"><img src="${T.logo}" width="143" height="28" alt="FinCoursa" style="display:block;border:0;width:143px;height:28px"></a></td></tr>
 <tr><td style="padding:28px">
-<h1 style="margin:0 0 16px;font-size:28px;line-height:1.15;font-weight:400;letter-spacing:-0.5px;color:${T.text}">${esc(opts.heading)}</h1>
-<div style="font-size:15px;line-height:1.6">${opts.body.html}</div>
-${opts.cta ? `<p style="margin:28px 0 8px"><a href="${esc(opts.cta.url)}" style="display:inline-block;background:${T.accent};color:${T.accentText};text-decoration:none;font-weight:600;padding:14px 28px;border-radius:8px">${esc(opts.cta.label)}</a></p>
-<p style="margin:0;font-size:12px;color:${T.muted}">Or paste this link into your browser:<br><span style="word-break:break-all">${esc(opts.cta.url)}</span></p>` : ""}
+<h1 style="margin:0 0 18px;font-size:26px;line-height:1.2;font-weight:700;letter-spacing:-0.4px;color:${T.text}">${esc(opts.heading)}</h1>
+<div style="font-size:16px;line-height:1.6;color:${T.text}">${opts.body.html}</div>
+${opts.cta ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 0"><tr><td style="background:${T.accent};border-radius:999px"><a href="${esc(opts.cta.url)}" style="display:inline-block;color:${T.accentText};text-decoration:none;font-weight:700;font-size:16px;padding:14px 30px">${esc(opts.cta.label)} &rarr;</a></td></tr></table>
+<p style="margin:22px 0 0;padding-top:16px;border-top:1px solid ${T.border};font-size:12px;line-height:1.5;color:${T.muted}">Button not working? Copy this link into your browser:<br><a href="${esc(opts.cta.url)}" style="color:${T.muted};text-decoration:none;word-break:break-all">${esc(opts.cta.url)}</a></p>` : ""}
 </td></tr>
 <tr><td style="background:${T.primary};padding:20px 28px;font-size:12px;line-height:1.6;color:#d1d5db">${opts.footer ? esc(opts.footer) + "<br>" : ""}FinCoursa Academy · <a href="${site}" style="color:${T.accent};text-decoration:none">${site.replace(/^https?:\/\//, "")}</a>${opts.unsubscribeUrl ? `<br><a href="${esc(opts.unsubscribeUrl)}" style="color:#d1d5db">Unsubscribe from marketing emails</a>` : ""}</td></tr>
 </table></td></tr></table></body></html>`;
@@ -345,17 +345,27 @@ export function courseAccessEmail(o: { name?: string | null; course: string; url
 }
 
 export function staffInviteEmail(o: { name?: string | null; role: "instructor" | "partner"; url: string }): Rendered {
-  const what = o.role === "instructor"
-    ? "Your instructor dashboard shows your courses, your students' progress, and your earnings and payouts."
-    : "Your partner dashboard shows your referral link, the clients you've referred, and your commission and payouts.";
+  const instructor = o.role === "instructor";
+  const what = instructor
+    ? ["Your courses and lessons", "Your students' progress", "Your earnings and payouts"]
+    : ["Your referral link", "The clients you've referred", "Your commission and payouts"];
+  const steps = [
+    "Click <b>Set up my account</b> below.",
+    "We email you a one-click sign-in link. No password needed.",
+    `You land on your ${instructor ? "instructor" : "partner"} dashboard. You can set a password later in Settings.`,
+  ];
+  const stepRows = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 4px">${steps.map((t, i) =>
+    `<tr><td valign="top" style="padding:0 12px 10px 0"><span style="display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;border-radius:999px;background:${T.primary};color:${T.accent};font-size:13px;font-weight:700">${i + 1}</span></td><td style="padding:1px 0 10px">${t}</td></tr>`).join("")}</table>`;
   return {
-    subject: o.role === "instructor" ? "You've been added as a FinCoursa instructor" : "Your FinCoursa partner account is ready",
+    subject: instructor ? "You've been added as a FinCoursa instructor" : "Your FinCoursa partner account is ready",
     ...layout({
       preheader: "Set up your account in one click.",
-      heading: `Hi ${first(o.name)}, welcome to FinCoursa`,
+      heading: instructor ? "Welcome to the FinCoursa faculty" : "Welcome to FinCoursa",
       body: join(
-        p(`FinCoursa Academy has set up ${o.role === "instructor" ? "an instructor" : "a partner"} account for you. ${what}`),
-        p("Click the button and we'll email you a one-click sign-in link. No password needed; you can set one later in Settings."),
+        p(`Hi ${first(o.name)},`),
+        p(`FinCoursa Academy has set up ${instructor ? "an instructor" : "a partner"} account for you. Your dashboard shows:`),
+        { html: bullets(what.map(esc)), text: what.map((w) => `- ${w}`).join("\n") },
+        { html: `<p style="margin:16px 0 10px;font-weight:700">Getting started</p>${stepRows}`, text: `Getting started\n${steps.map((t, i) => `${i + 1}. ${t.replace(/<[^>]+>/g, "")}`).join("\n")}` },
       ),
       cta: { label: "Set up my account", url: o.url },
       footer: "You're receiving this because FinCoursa added you to its team.",
