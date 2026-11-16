@@ -61,7 +61,8 @@ async function recipientCount(kind: CampaignKind, a: Audience, o: Options) {
   const args: Record<string, unknown> = {
     p_kind: kind, p_buyers_only: Boolean(a.buyers_only), p_include_contacts: o.include_contacts, p_exclude_buyers_of: o.exclude_buyers_of,
     p_courses: a.courses?.length ? a.courses : null, p_countries: a.countries?.length ? a.countries : null,
-    p_groups: a.groups?.length ? a.groups : null, p_pick: a.pick?.length ? a.pick : null,
+    // only sent when used, so plain emails also work against the older database function
+    ...(a.groups?.length ? { p_groups: a.groups } : {}), ...(a.pick?.length ? { p_pick: a.pick } : {}),
   };
   const { data, error } = await createAdminClient().rpc("campaign_recipient_count", args);
   if (error) throw new Error(error.message);
