@@ -310,7 +310,12 @@ export type AudiencePerson = {
   /** after sending: what the person did (dates are ISO strings) */
   opened_at?: string | null; clicked_at?: string | null; opens?: number; clicks?: number;
   signed_up_at?: string | null; sample_at?: string | null; bought_at?: string | null; revenue_minor?: number; currency?: string | null;
+  /** clicks that look like a company email scanner checking every link at once (not the person) */
+  scanner_clicks?: number;
 };
+
+/** Per-person opens and clicks are recorded for emails sent from this time on. */
+const TRACKING_SINCE = "2026-11-16T12:00:00Z";
 
 /** The people an email would reach right now, using the same rules as enqueue_campaign. */
 async function audienceList(kind: CampaignKind, a: Audience, o: Options): Promise<AudiencePerson[]> {
@@ -359,14 +364,16 @@ export async function listAudience(kind: CampaignKind, audience: Audience, optio
 }
 
 /** Who a saved email went to (with each person's status), or for one not sent yet, who it would go to today. */
-export async function campaignRecipients(id: string): Promise<{ people: AudiencePerson[]; frozen: boolean }> {
+export async function campaignRecipients(id: string): Promise<{ people: AudiencePerson[]; frozen: boolean; tracked?: boolean }> {
   await requireRole([...STAFF]);
   const db = createAdminClient();
   const { data: rows } = await db.rpc("campaign_recipient_journey", { p_campaign: id });
   if (rows?.length) {
     type J = { email: string; name: string | null; is_contact: boolean; status: string; opened_at: string | null; clicked_at: string | null; opens: number; clicks: number;
-      signed_up_at: string | null; sample_at: string | null; bought_at: string | null; revenue_minor: number; currency: string | null };
-    return { frozen: true, people: (rows as J[]).map((r) => ({ ...r, type: r.is_contact ? "Contact" : "Student", revenue_minor: Number(r.revenue_minor) })) };
+      signed_up_at: string | null; sample_at: string | null; bought_at: string | null; revenue_minor: number; currency: string | null; scanner_clicks: number };
+    const { data: camp } = await db.from("email_campaigns").select("started_at, created_at").eq("id", id).maybeSingle();
+    const tracked = !camp || new Date(camp.started_at ?? camp.created_at).getTime() >= new Date(TRACKING_SINCE).getTime();
+    return { frozen: true, tracked, people: (rows as J[]).map((r) => ({ ...r, type: r.is_contact ? "Contact" : "Student", revenue_minor: Number(r.revenue_minor) })) };
   }
   const { data: c } = await db.from("email_campaigns").select("kind, audience, include_contacts, exclude_buyers_of").eq("id", id).maybeSingle();
   if (!c) return { frozen: false, people: [] };
