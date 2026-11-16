@@ -45,15 +45,17 @@ export type BusinessCourseRow = {
   revenue: number; fee: number; partner: number; cashback: number; instructor: number; kept: number;
 };
 
-export async function instructorBusiness(db: SupabaseClient, instructorId: string, opts: { month?: string | null; currency: string }) {
-  const all = (await loadEarnings(db, { instructorId })).filter((e) => e.currency === opts.currency);
+export async function instructorBusiness(db: SupabaseClient, instructorId: string, opts: { month?: string | null; currency: string; courseId?: string | null }) {
+  const everything = (await loadEarnings(db, { instructorId })).filter((e) => e.currency === opts.currency);
+  const all = opts.courseId ? everything.filter((e) => e.course_id === opts.courseId) : everything;
   const rows = opts.month ? all.filter((e) => monthKey(e.created_at) === opts.month) : all;
   const months = [...new Set(all.map((e) => monthKey(e.created_at)))].sort().reverse();
   const by = new Map<string, Earning[]>();
   for (const e of rows) by.set(e.course_id, [...(by.get(e.course_id) ?? []), e]);
   const { data: links } = await db.from("course_instructors").select("course_id, course:courses(title)").eq("instructor_id", instructorId);
   const titles = new Map(((links ?? []) as unknown as { course_id: string; course: { title: string } | null }[]).map((l) => [l.course_id, l.course?.title ?? "Course"]));
-  for (const id of titles.keys()) if (!by.has(id)) by.set(id, []);
+  const courseOptions = [...titles.entries()].map(([id, title]) => ({ id, title })).sort((a, b) => a.title.localeCompare(b.title));
+  for (const id of titles.keys()) if (!by.has(id) && (!opts.courseId || id === opts.courseId)) by.set(id, []);
 
   const calc = (list: Earning[]) => {
     const live = list.filter((e) => e.status !== "reversed");
@@ -75,5 +77,23 @@ export async function instructorBusiness(db: SupabaseClient, instructorId: strin
     .sort((a, b) => b.revenue - a.revenue || a.title.localeCompare(b.title));
   const owed = all.filter((e) => e.status === "pending" || e.status === "approved").reduce((a, e) => a + Number(e.amount_minor), 0);
   const paidOut = all.filter((e) => e.status === "paid").reduce((a, e) => a + Number(e.amount_minor), 0);
-  return { total: calc(rows), courses, months, owed, paidOut };
+  // chart: each day of the chosen month, or each of the last 12 months (UAE time, like the statement)
+  const buckets: { key: string; label: string }[] = [];
+  if (opts.month) {
+    const [y, mo] = opts.month.split("-").map(Number);
+    const daysIn = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    for (let d = 1; d <= daysIn; d++) buckets.push({ key: `${opts.month}-${String(d).padStart(2, "0")}`, label: `${d} ${new Date(Date.UTC(y, mo - 1, 1)).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" })}` });
+  } else {
+    const now = new Date(Date.now() + 4 * 3600e3);
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      buckets.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleDateString("en-GB", { month: "short", year: "2-digit", timeZone: "UTC" }) });
+    }
+  }
+  const keyOf = (e: Earning) => (opts.month ? new Date(new Date(e.created_at).getTime() + 4 * 3600e3).toISOString().slice(0, 10) : monthKey(e.created_at));
+  const series = buckets.map((b) => {
+    const t = calc(rows.filter((e) => keyOf(e) === b.key));
+    return { label: b.label, revenue: t.revenue, kept: t.kept, instructor: t.instructor };
+  });
+  return { total: calc(rows), courses, months, owed, paidOut, series, courseOptions };
 }
