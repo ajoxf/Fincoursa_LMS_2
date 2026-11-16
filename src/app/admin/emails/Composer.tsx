@@ -147,6 +147,12 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
                 {picked.size > 0 && <button type="button" onClick={() => setPicked(new Set())} className="text-xs underline">Clear</button>}
               </div>
               {pool === null && <p className="text-xs text-muted">Loading…</p>}
+              {Array.isArray(pool) && [...picked].filter((e) => !pool.some((p) => p.email.toLowerCase() === e)).map((e) => (
+                <p key={e} className="flex flex-wrap items-baseline gap-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+                  <span><b>{e}</b> won&apos;t get this email: they have a FinCoursa account and said no to marketing emails, or they unsubscribed.</span>
+                  <button type="button" onClick={() => togglePick(e)} className="underline">Remove</button>
+                </p>
+              ))}
               {Array.isArray(pool) && (
                 <ul className="max-h-72 divide-y divide-line overflow-y-auto rounded-lg border border-line px-3">
                   {pool.filter((p) => !poolQ || `${p.name ?? ""} ${p.email}`.toLowerCase().includes(poolQ.toLowerCase())).slice(0, 500).map((p) => {
