@@ -99,3 +99,17 @@ export async function deleteInstructor(id: string): Promise<{ ok: boolean; error
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/** The payment processing fee % taken off a sale before the instructor's share (new sales; unpaid earnings are recalculated). */
+export async function saveInstructorDeductions(form: FormData) {
+  const admin = await requireRole(["admin"]);
+  const pct = Number(String(form.get("payment_fee_pct") ?? "").replace(/[%\s]/g, ""));
+  if (!(pct >= 0 && pct <= 20)) redirect(`/admin/instructors?err=${encodeURIComponent("Enter a fee between 0 and 20%.")}`);
+  const db = createAdminClient();
+  await db.from("site_settings").upsert({ key: "instructor_deductions", value: { payment_fee_pct: pct }, updated_by: admin.id }, { onConflict: "key" });
+  const { data: open } = await db.from("instructor_earnings").select("order_id").in("status", ["pending", "approved"]).is("payout_id", null);
+  for (const o of [...new Set((open ?? []).map((r) => r.order_id))]) await db.rpc("recalc_instructor_earnings", { p_order: o });
+  await db.from("audit_log").insert({ actor_id: admin.id, action: "instructor.deductions", entity: "site_settings", entity_id: "instructor_deductions", data: { payment_fee_pct: pct } });
+  revalidatePath("/admin/instructors");
+  redirect(`/admin/instructors?ok=${encodeURIComponent(`Payment fee set to ${pct}%. Unpaid earnings were recalculated.`)}`);
+}

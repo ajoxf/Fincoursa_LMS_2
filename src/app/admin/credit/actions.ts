@@ -148,6 +148,8 @@ export async function grantReviewBonus(orderId: string, back2: string) {
   if (error) go("err", error.message);
   await db.from("audit_log").insert({ actor_id: admin.id, action: "credit.review_bonus", entity: "order", entity_id: orderId, data: { amount_minor: top, currency: o!.currency } });
   await db.from("course_reviews").update({ status: "approved", decided_at: new Date().toISOString(), decided_by: admin.id }).eq("order_id", orderId);
+  // the extra cashback is a cost of the sale: the instructor's unpaid earning on it is recalculated
+  await db.rpc("recalc_instructor_earnings", { p_order: orderId }).then(() => null, (e) => console.error("[review] recalc instructor earnings", e));
   await sendReviewThanks(orderId, top).catch((e) => console.error("[review] thanks email", e));
   revalidatePath(back2.split("?")[0]);
   revalidatePath("/admin/credit");
