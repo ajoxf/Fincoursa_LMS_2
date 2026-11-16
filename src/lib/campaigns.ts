@@ -8,7 +8,8 @@ import { env } from "@/lib/env";
 import { addTracking } from "@/lib/email/tracking";
 
 export type CampaignKind = "promotion" | "update" | "announcement";
-export type Audience = { courses?: string[]; countries?: string[]; buyers_only?: boolean };
+/** groups: only contacts in these contact groups; pick: only these email addresses (hand-picked people) */
+export type Audience = { courses?: string[]; countries?: string[]; buyers_only?: boolean; groups?: string[]; pick?: string[] };
 
 export const KIND_LABEL: Record<CampaignKind, string> = {
   promotion: "Newsletter / promotion",

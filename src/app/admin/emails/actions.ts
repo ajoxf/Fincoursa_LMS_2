@@ -28,7 +28,11 @@ type Options = { include_contacts: boolean; exclude_buyers_of: string | null };
 function readAudience(form: FormData): Audience {
   const courses = form.getAll("courses").map(String).filter((c) => /^[0-9a-f-]{36}$/i.test(c));
   const countries = String(form.get("countries") ?? "").toUpperCase().split(/[^A-Z]+/).filter((c) => /^[A-Z]{2}$/.test(c));
-  return { courses, countries: [...new Set(countries)], buyers_only: form.get("buyers_only") === "on" };
+  const pick = [...new Set(form.getAll("pick").map((e) => String(e).trim().toLowerCase()).filter((e) => EMAIL_RE.test(e)))].slice(0, 5000);
+  // hand-picked people: only them, so the other filters don't apply
+  if (pick.length) return { pick };
+  const groups = [...new Set(form.getAll("groups").map((g) => String(g).trim()).filter(Boolean))];
+  return { courses, countries: [...new Set(countries)], buyers_only: form.get("buyers_only") === "on", ...(groups.length ? { groups } : {}) };
 }
 
 function readOptions(form: FormData): Options {
@@ -57,6 +61,7 @@ async function recipientCount(kind: CampaignKind, a: Audience, o: Options) {
   const args: Record<string, unknown> = {
     p_kind: kind, p_buyers_only: Boolean(a.buyers_only), p_include_contacts: o.include_contacts, p_exclude_buyers_of: o.exclude_buyers_of,
     p_courses: a.courses?.length ? a.courses : null, p_countries: a.countries?.length ? a.countries : null,
+    p_groups: a.groups?.length ? a.groups : null, p_pick: a.pick?.length ? a.pick : null,
   };
   const { data, error } = await createAdminClient().rpc("campaign_recipient_count", args);
   if (error) throw new Error(error.message);
@@ -100,6 +105,7 @@ export async function createCampaign(_: ComposeState, form: FormData): Promise<C
   if ("error" in m) return { ok: false, message: m.error! };
   const audience = readAudience(form);
   const options = readOptions(form);
+  if (audience.pick?.length) options.include_contacts = true;
   const when = String(form.get("send_on") ?? "").trim();
   const schedule = form.get("mode") === "schedule";
   if (schedule && !/^\d{4}-\d{2}-\d{2}$/.test(when)) return { ok: false, message: "Pick a date to schedule it for" };
@@ -219,24 +225,29 @@ async function importContactsInner(form: FormData): Promise<string> {
     lines.shift();
   }
   const seen = new Set<string>(); let bad = 0;
-  const rows: { email: string; first_name: string | null; last_name: string | null; source: string; created_by: string }[] = [];
-  const source = String(form.get("source") ?? "").trim().slice(0, 80) || `Imported ${new Date().toISOString().slice(0, 10)}`;
+  const rows: { email: string; first_name: string | null; last_name: string | null; source: string; groups: string[]; created_by: string }[] = [];
+  const group = String(form.get("group") ?? "").trim().replace(/\s+/g, " ").slice(0, 60);
+  const source = group || `Imported ${new Date().toISOString().slice(0, 10)}`;
   for (const l of lines) {
     const cells = csvCells(l);
     const email = (cells[cols.email] ?? "").replace(/^mailto:/i, "").toLowerCase();
     if (!EMAIL_RE.test(email)) { bad++; continue; }
     if (seen.has(email)) continue;
     seen.add(email);
-    rows.push({ email, first_name: (cols.first >= 0 ? cells[cols.first] : "")?.slice(0, 80) || null, last_name: (cols.last >= 0 ? cells[cols.last] : "")?.slice(0, 80) || null, source, created_by: me.id });
+    rows.push({ email, first_name: (cols.first >= 0 ? cells[cols.first] : "")?.slice(0, 80) || null, last_name: (cols.last >= 0 ? cells[cols.last] : "")?.slice(0, 80) || null, source, groups: group ? [group] : [], created_by: me.id });
   }
   if (!rows.length) return back("err", `No valid email addresses found${bad ? ` (${bad} lines skipped)` : ""}.`);
   const db = createAdminClient();
-  const { data: existing } = await db.from("email_contacts").select("email, unsubscribed_at").in("email", rows.map((r) => r.email));
+  const { data: existing } = await db.from("email_contacts").select("id, email, unsubscribed_at, groups").in("email", rows.map((r) => r.email));
   const known = new Map((existing ?? []).map((e) => [e.email.toLowerCase(), e]));
   const fresh = rows.filter((r) => !known.has(r.email));
   if (fresh.length) {
     const { error } = await db.from("email_contacts").insert(fresh);
     if (error) return back("err", error.message);
+  }
+  // existing contacts: add them to the group too
+  if (group) for (const e of existing ?? []) {
+    if (!(e.groups ?? []).includes(group)) await db.from("email_contacts").update({ groups: [...(e.groups ?? []), group] }).eq("id", e.id);
   }
   // existing contacts: fill in names; never re-subscribe someone who unsubscribed
   for (const r of rows.filter((x) => known.has(x.email) && (x.first_name || x.last_name))) {
@@ -249,6 +260,26 @@ async function importContactsInner(form: FormData): Promise<string> {
 }
 
 /** Mark a contact unsubscribed (on request) or remove them completely. */
+/** Edit a contact: name, email address and groups (comma-separated). */
+export async function editContact(form: FormData): Promise<void> {
+  const me = await requireRole([...STAFF]);
+  const id = String(form.get("id") ?? "");
+  const back2 = (k: "ok" | "err", m: string): never => redirect(`/admin/emails?tab=contacts&${k}=${encodeURIComponent(m)}`);
+  if (!/^[0-9a-f-]{36}$/i.test(id)) back2("err", "Contact not found.");
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) back2("err", "Enter a valid email address.");
+  const clean = (k: string) => String(form.get(k) ?? "").trim().slice(0, 80) || null;
+  const groups = [...new Set(String(form.get("groups") ?? "").split(",").map((g) => g.trim().replace(/\s+/g, " ").slice(0, 60)).filter(Boolean))];
+  const db = createAdminClient();
+  const { data: clash } = await db.from("email_contacts").select("id").ilike("email", email).neq("id", id).maybeSingle();
+  if (clash) back2("err", `${email} is already in the contact list.`);
+  const { error } = await db.from("email_contacts").update({ email, first_name: clean("first_name"), last_name: clean("last_name"), groups }).eq("id", id);
+  if (error) back2("err", error.message);
+  await db.from("audit_log").insert({ actor_id: me.id, action: "contact.edited", entity: "email_contacts", entity_id: id, data: { email, groups } });
+  revalidatePath("/admin/emails");
+  back2("ok", `Saved ${email}.`);
+}
+
 export async function updateContact(id: string, action: "unsubscribe" | "delete"): Promise<void> {
   const me = await requireRole([...STAFF]);
   const db = createAdminClient();
@@ -293,22 +324,26 @@ async function audienceList(kind: CampaignKind, a: Audience, o: Options): Promis
     const { data } = await db.from("enrollments").select("user_id").eq("course_id", o.exclude_buyers_of).is("revoked_at", null).neq("source", "free");
     buyers = new Set((data ?? []).map((e) => e.user_id as string));
   }
+  const pick = a.pick?.length ? new Set(a.pick.map((e) => e.toLowerCase())) : null;
   const out = new Map<string, AudiencePerson>();
   for (const s of (students ?? []) as { user_id: string; email: string; full_name: string | null }[]) {
-    if (buyers.has(s.user_id)) continue;
+    if (buyers.has(s.user_id) || (pick && !pick.has(s.email.toLowerCase()))) continue;
     const key = s.email.toLowerCase();
     if (!out.has(key)) out.set(key, { email: s.email, name: s.full_name, type: "Student" });
   }
-  if (o.include_contacts) {
-    const { data: contacts } = await db.from("email_contacts").select("email, first_name, last_name").is("unsubscribed_at", null).limit(20000);
-    const emails = (contacts ?? []).map((c) => c.email.toLowerCase());
+  if (o.include_contacts || pick) {
+    let cq = db.from("email_contacts").select("email, first_name, last_name, groups").is("unsubscribed_at", null).limit(20000);
+    if (!pick && a.groups?.length) cq = cq.overlaps("groups", a.groups);
+    const { data: all } = await cq;
+    const contacts = (all ?? []).filter((c) => !pick || pick.has(c.email.toLowerCase()));
+    const emails = contacts.map((c) => c.email.toLowerCase());
     // contacts who also have an account: leave out if they opted out of marketing, or already bought
     const blocked = new Set<string>();
     for (let i = 0; i < emails.length; i += 200) {
       const { data: profs } = await db.from("profiles").select("id, email, marketing_opt_in").in("email", emails.slice(i, i + 200));
       for (const p of profs ?? []) if (p.marketing_opt_in === false || buyers.has(p.id)) blocked.add(String(p.email).toLowerCase());
     }
-    for (const c of contacts ?? []) {
+    for (const c of contacts) {
       const key = c.email.toLowerCase();
       if (blocked.has(key) || out.has(key)) continue;
       out.set(key, { email: key, name: [c.first_name, c.last_name].filter(Boolean).join(" ") || null, type: "Contact" });
