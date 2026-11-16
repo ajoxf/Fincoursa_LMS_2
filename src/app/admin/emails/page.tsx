@@ -17,6 +17,9 @@ const TEAM_TABS = ["send", "contacts", "designs"];
 
 export const metadata: Metadata = { title: "Emails & updates" };
 
+/** per-person opens and clicks were recorded from this time (tracking went live 16 Nov 2026, 04:57 UTC) */
+const TRACKED_FROM = new Date("2026-11-16T05:00:00Z").getTime();
+
 const STATUS: Record<string, string> = { draft: "Draft", awaiting_approval: "Waiting for approval", scheduled: "Scheduled", sending: "Sending", sent: "Sent", cancelled: "Stopped" };
 
 export default async function EmailsPage({ searchParams }: PageProps<"/admin/emails">) {
@@ -125,7 +128,7 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
                     if (!f) return null;
                     return (
                       <p className="text-xs text-muted">
-                        {f.tracked === false
+                        {new Date(c.created_at).getTime() < TRACKED_FROM
                           ? <>Sent before per-person tracking · {clicks.get(campaignTag(c.id)) ?? 0} link visits in total</>
                           : <><b className="text-ink">{f.opened}</b> opened · <b className="text-ink">{f.clicked}</b> clicked{f.scanned ? ` (+${f.scanned} checked by email scanners)` : ""}</>}
                         {f.signed_up ? <> · <b className="text-ink">{f.signed_up}</b> signed up</> : null}
