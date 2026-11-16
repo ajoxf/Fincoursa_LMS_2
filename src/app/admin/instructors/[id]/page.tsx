@@ -11,17 +11,21 @@ import { AgreementsPanel } from "@/components/dash/AgreementsPanel";
 import { agreementsFor } from "@/lib/agreements";
 import { assetUrl } from "@/lib/assets";
 import { InstructorDashboardView } from "@/components/dash/InstructorDashboardView";
-import { loadInstructorDashboard } from "@/lib/instructor-statement";
+import { loadInstructorDashboard, monthLabel } from "@/lib/instructor-statement";
+import { instructorAccess, instructorBusiness, type InstructorAccess } from "@/lib/instructor-admin";
+import { resendInstructorInvite } from "../actions";
+import { formatDate } from "@/lib/format";
+import { formatMoney } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Instructor" };
 
-const TABS = [["dashboard", "Dashboard (what they see)"], ["profile", "Edit profile"]] as const;
+const TABS = [["dashboard", "Their dashboard (what they see)"], ["business", "FinCoursa view (revenue from their courses)"], ["profile", "Edit profile"]] as const;
 
 export default async function AdminInstructor({ params, searchParams }: PageProps<"/admin/instructors/[id]">) {
   const { id } = await params;
   const sp = await searchParams;
   await requireRole(["admin"], `/admin/instructors/${id}`);
-  const tab = sp.tab === "profile" ? "profile" : "dashboard";
+  const tab = sp.tab === "profile" || sp.tab === "business" ? sp.tab : "dashboard";
   const db = createAdminClient();
   const { data: ins } = await db.from("instructors").select("*, course_instructors(revenue_share_pct, course:courses(id, title))").eq("id", id).maybeSingle();
   if (!ins) notFound();
@@ -31,6 +35,7 @@ export default async function AdminInstructor({ params, searchParams }: PageProp
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const links = (ins.course_instructors ?? []) as any[];
   const photo = ins.photo_url ? assetUrl(ins.photo_url) : null;
+  const access = await instructorAccess(db, ins.user_id);
 
   return (
     <div className="grid gap-6">
@@ -49,6 +54,7 @@ export default async function AdminInstructor({ params, searchParams }: PageProp
           <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
             <span>{ins.is_published ? <span className="text-success">Shown on the Instructors page</span> : <span className="text-muted">Hidden from the site</span>}{ins.coming_soon ? " · Coming soon" : ""}</span>
             <span>Login: {login?.email ?? <span className="text-warning">not linked to an account</span>}</span>
+            <AccessBadge a={access} />
             <span>Default share: {Number(ins.default_revenue_share_pct)}%</span>
           </p>
           <p className="mt-1 text-sm text-muted">
@@ -56,8 +62,15 @@ export default async function AdminInstructor({ params, searchParams }: PageProp
           </p>
           {ins.bio && <p className="mt-3 line-clamp-3 max-w-3xl text-sm text-ink/80">{ins.bio}</p>}
         </div>
+        <div className="flex flex-col items-end gap-2">
+        {access.state === "invited" && (
+          <form action={resendInstructorInvite.bind(null, id)}><button className="fc-btn fc-btn-primary !min-w-0 !px-4 !py-2 text-sm">Send invitation again</button></form>
+        )}
         {ins.slug && <a href={`/instructors/${ins.slug}`} target="_blank" rel="noreferrer" className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2 text-sm text-ink">View public profile ↗</a>}
+        </div>
       </div>
+      {typeof sp.ok === "string" && <p className="rounded-lg bg-success/10 p-3 text-sm text-success">{sp.ok}</p>}
+      {typeof sp.err === "string" && <p className="rounded-lg bg-danger/10 p-3 text-sm text-danger">{sp.err}</p>}
 
       <nav className="flex flex-wrap gap-2">
         {TABS.map(([v, l]) => (
@@ -65,7 +78,9 @@ export default async function AdminInstructor({ params, searchParams }: PageProp
         ))}
       </nav>
 
-      {tab === "dashboard" ? (
+      {tab === "business" ? (
+        <BusinessTab id={id} base={base} month={typeof sp.month === "string" ? sp.month : null} />
+      ) : tab === "dashboard" ? (
         <>
           <p className="rounded-lg bg-surface p-3 text-sm text-muted">
             This is exactly what {ins.name} sees on their instructor dashboard{login?.email ? "" : " (once their profile is linked to a login)"}. Course reports open the same pages they use.
@@ -105,5 +120,71 @@ async function ProfileTab({ id, ins, loginEmail, links }: { id: string; ins: any
         <DeleteInstructor id={id} name={ins.name} courses={links.length} blocked={(earnings ?? 0) + (payouts ?? 0) > 0} />
       </Card>
     </>
+  );
+}
+
+/** Invited / accepted / last seen, for the profile header and the list. */
+function AccessBadge({ a }: { a: InstructorAccess }) {
+  if (a.state === "no_login") return <span className="text-muted">Not invited (no login email)</span>;
+  if (a.state === "invited") return <span className="text-warning">Invited{a.invitedAt ? ` ${formatDate(a.invitedAt)}` : ""} · hasn&apos;t signed in yet</span>;
+  return <span className="text-success">Accepted · last signed in {formatDate(a.lastSignIn, "datetime")}</span>;
+}
+
+/** FinCoursa's side: what this instructor's courses made, what they cost, what the instructor earns and what we keep. */
+async function BusinessTab({ id, base, month }: { id: string; base: string; month: string | null }) {
+  const cur = env.defaultCurrency;
+  const b = await instructorBusiness(createAdminClient(), id, { month, currency: cur });
+  const m = (n: number) => formatMoney(n, cur);
+  const t = b.total;
+  const neg = (n: number) => (n ? `−${m(n)}` : "–");
+  return (
+    <div className="grid gap-6">
+      <form action={base} className="flex flex-wrap items-end gap-3">
+        <input type="hidden" name="tab" value="business" />
+        <label className="grid gap-1 text-xs font-medium">Period
+          <select name="month" defaultValue={month ?? ""} className="fc-input !py-2 text-sm">
+            <option value="">All time</option>
+            {b.months.map((k) => <option key={k} value={k}>{monthLabel(k)}</option>)}
+          </select></label>
+        <button className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2 text-sm text-ink">Show</button>
+      </form>
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <div className="fc-card p-4"><p className="text-sm text-muted">Revenue from their courses</p><p className="mt-1 text-2xl font-bold">{m(t.revenue)}</p><p className="text-xs text-muted">{t.sales} paid · {t.free} free with a code{t.refunded ? ` · ${t.refunded} refunded` : ""}</p></div>
+        <div className="fc-card p-4"><p className="text-sm text-muted">Costs (fees, partners, cashback)</p><p className="mt-1 text-2xl font-bold">{m(t.fee + t.partner + t.cashback)}</p></div>
+        <div className="fc-card p-4"><p className="text-sm text-muted">Instructor&apos;s earnings</p><p className="mt-1 text-2xl font-bold">{m(t.instructor)}</p><p className="text-xs text-muted">Owed now {m(b.owed)} · paid out {m(b.paidOut)} (all time)</p></div>
+        <div className="fc-card p-4"><p className="text-sm text-muted">FinCoursa keeps</p><p className={`mt-1 text-2xl font-bold ${t.kept < 0 ? "text-danger" : "text-success"}`}>{m(t.kept)}</p><p className="text-xs text-muted">{t.revenue ? `${Math.round((t.kept / t.revenue) * 100)}% of revenue` : "no revenue yet"}</p></div>
+      </div>
+      <Card title={`By course${month ? `, ${monthLabel(month)}` : ""}`}>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-sm tabular-nums">
+            <thead className="text-left text-muted"><tr>
+              <th className="py-2 font-medium">Course</th><th className="py-2 text-right font-medium">Paid sales</th><th className="py-2 text-right font-medium">Free</th>
+              <th className="py-2 text-right font-medium">Revenue (excl. tax)</th><th className="py-2 text-right font-medium">Payment fees</th>
+              <th className="py-2 text-right font-medium">Partners</th><th className="py-2 text-right font-medium">Cashback given</th>
+              <th className="py-2 text-right font-medium">Instructor</th><th className="py-2 text-right font-medium">FinCoursa keeps</th>
+            </tr></thead>
+            <tbody>
+              {b.courses.map((c) => (
+                <tr key={c.course_id} className="border-t border-line">
+                  <td className="py-2.5">{c.title}</td><td className="py-2.5 text-right">{c.sales}</td><td className="py-2.5 text-right">{c.free}</td>
+                  <td className="py-2.5 text-right">{m(c.revenue)}</td><td className="py-2.5 text-right text-muted">{neg(c.fee)}</td>
+                  <td className="py-2.5 text-right text-muted">{neg(c.partner)}</td><td className="py-2.5 text-right text-muted">{neg(c.cashback)}</td>
+                  <td className="py-2.5 text-right text-muted">{neg(c.instructor)}</td>
+                  <td className={`py-2.5 text-right font-semibold ${c.kept < 0 ? "text-danger" : ""}`}>{m(c.kept)}</td>
+                </tr>
+              ))}
+              {!b.courses.length && <tr><td colSpan={9} className="py-6 text-center text-muted">No courses assigned yet.</td></tr>}
+            </tbody>
+            <tfoot><tr className="border-t-2 border-ink font-semibold">
+              <td className="py-2.5">Total</td><td className="py-2.5 text-right">{t.sales}</td><td className="py-2.5 text-right">{t.free}</td>
+              <td className="py-2.5 text-right">{m(t.revenue)}</td><td className="py-2.5 text-right">{neg(t.fee)}</td><td className="py-2.5 text-right">{neg(t.partner)}</td>
+              <td className="py-2.5 text-right">{neg(t.cashback)}</td><td className="py-2.5 text-right">{neg(t.instructor)}</td>
+              <td className={`py-2.5 text-right ${t.kept < 0 ? "text-danger" : ""}`}>{m(t.kept)}</td>
+            </tr></tfoot>
+          </table>
+        </div>
+        <p className="mt-3 text-xs text-muted">Revenue is what students paid for these courses after codes and credit, excluding tax; refunded sales are left out. Cashback here is the full credit given to students (FinCoursa&apos;s cost), not only the part taken off before the instructor&apos;s share. Payment fees use the rate set in Admin &rarr; Instructors.</p>
+      </Card>
+    </div>
   );
 }
