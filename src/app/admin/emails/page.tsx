@@ -37,6 +37,10 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
     db.from("email_contacts").select("id", { count: "exact", head: true }).is("unsubscribed_at", null),
     listDesigns(),
   ]);
+  const { data: groupRows } = await db.from("email_contacts").select("groups").is("unsubscribed_at", null).limit(20000);
+  const groupCount = new Map<string, number>();
+  for (const r of groupRows ?? []) for (const g of (r.groups ?? []) as string[]) groupCount.set(g, (groupCount.get(g) ?? 0) + 1);
+  const groups = [...groupCount].map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
   const DESIGN_LABEL = new Map<string, string>(allDesigns.map((d) => [d.id, d.name]));
   const draftDesigns = allDesigns.filter((d) => d.status === "draft").length;
   // clicks per email (links carry ?v=<tag>) and who submitted / approved
@@ -53,12 +57,16 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
   const who = new Map((staff ?? []).map((p) => [p.id, p.full_name || p.email]));
   const waiting = (history ?? []).filter((c) => c.status === "awaiting_approval").length;
   const title = new Map((courses ?? []).map((c) => [c.id, c.title]));
-  const audienceText = (a: Audience) => [
+  const audienceText = (a: Audience) => a.pick?.length ? `${a.pick.length} hand-picked ${a.pick.length === 1 ? "person" : "people"}` : [
     a.courses?.length ? a.courses.map((c) => title.get(c) ?? "a course").join(", ") : "Everyone",
     a.countries?.length ? a.countries.join(", ") : null,
     a.buyers_only ? "buyers only" : null,
-  ].filter(Boolean).join(" · ");
-  const draft = reuse ? { ...reuse, kind: (reuse.kind === "update" ? "update" : "promotion") as "promotion" | "update", ...(reuse.audience as Audience) } : undefined;
+  ].filter(Boolean).join(" · ") + (a.groups?.length ? ` · contact groups: ${a.groups.join(", ")}` : "");
+  const reused = reuse ? { ...reuse, kind: (reuse.kind === "update" ? "update" : "promotion") as "promotion" | "update", ...(reuse.audience as Audience) } : undefined;
+  // from the Contacts tab: "Email selected people" (?pick=) or "Email this group" (?group=)
+  const pickParam = ([] as string[]).concat(sp.pick ?? []).flatMap((v) => String(v).split(",")).map((e) => e.trim().toLowerCase()).filter((e) => e.includes("@"));
+  const groupParam = typeof sp.group === "string" && sp.group.trim() ? sp.group.trim() : null;
+  const draft = pickParam.length ? { ...(reused ?? {}), pick: pickParam } : groupParam ? { ...(reused ?? {}), include_contacts: true, groups: [groupParam] } : reused;
   const designs = allDesigns.filter((d) => d.status === "approved").map((d) => ({ id: d.id, label: d.name, description: d.description, defaultSubject: d.default_subject }));
 
   return (
@@ -78,14 +86,14 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
       {typeof sp.ok === "string" && <p className="rounded-lg bg-success/10 p-3 text-sm text-success">{sp.ok}</p>}
       {typeof sp.err === "string" && <p className="rounded-lg bg-danger/10 p-3 text-sm text-danger">{sp.err}</p>}
       {tab === "designs" && <DesignsTab isAdmin={isAdmin} open={typeof sp.design === "string" ? sp.design : undefined} />}
-      {tab === "contacts" && <ContactsTab q={typeof sp.q === "string" ? sp.q : ""} />}
+      {tab === "contacts" && <ContactsTab q={typeof sp.q === "string" ? sp.q : ""} group={typeof sp.group === "string" ? sp.group : ""} />}
       {tab === "automatic" && <AutomaticEmails />}
       {tab === "institutions" && <InstitutionEmails />}
       {tab === "send" && <>
 
       <section id="compose" className="scroll-mt-24">
         <Card title={draft ? "New email (copied from an earlier one)" : "New email"}>
-          <Composer courses={courses ?? []} draft={draft} consenting={consenting.count ?? 0} contacts={contactCount.count ?? 0} designs={designs} isAdmin={isAdmin} />
+          <Composer courses={courses ?? []} draft={draft} consenting={consenting.count ?? 0} contacts={contactCount.count ?? 0} designs={designs} isAdmin={isAdmin} groups={groups} key={pickParam.join(",") + (groupParam ?? "")} />
         </Card>
       </section>
 

@@ -15,6 +15,7 @@ export function HistoryActions({ id, status, total, sent, failed, skipped, isAdm
   const [list, setList] = useState<{ people: AudiencePerson[]; frozen: boolean } | "loading" | null>(null);
   const left = total - sent - failed - skipped;
   return (
+    <>
     <div className="grid justify-items-start gap-2 text-xs md:justify-items-end">
       <div className="flex flex-wrap gap-3">
         {status === "awaiting_approval" && isAdmin && !approved && (
@@ -37,10 +38,13 @@ export function HistoryActions({ id, status, total, sent, failed, skipped, isAdm
         <Link href={`/admin/emails?from=${id}#compose`} className="underline">Reuse</Link>
       </div>
       {msg && <p className="text-success">{msg}</p>}
-      {list === "loading" && <p className="text-muted">Loading…</p>}
-      {list && list !== "loading" && <div className="w-full min-w-64 md:min-w-96"><PeopleList people={list.people} note={list.frozen ? undefined : "Not sent yet: these are the people it would go to today. The final list is fixed when it sends."} /></div>}
+
       {approved && <div className="w-full min-w-64"><SendProgress id={approved.id} total={approved.total} onDone={() => router.refresh()} /></div>}
       {resume && <div className="w-full min-w-64"><SendProgress id={id} total={total} onDone={() => router.refresh()} /></div>}
     </div>
+    {/* the list gets its own full-width row under the email, so the subject and status columns keep their width */}
+    {list === "loading" && <p className="text-xs text-muted md:col-span-3">Loading…</p>}
+    {list && list !== "loading" && <div className="md:col-span-3"><PeopleList people={list.people} note={list.frozen ? undefined : "Not sent yet: these are the people it would go to today. The final list is fixed when it sends."} /></div>}
+    </>
   );
 }

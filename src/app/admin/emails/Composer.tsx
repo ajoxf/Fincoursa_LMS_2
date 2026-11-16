@@ -6,7 +6,7 @@ import type { AudiencePerson } from "./actions";
 import { countAudience, listAudience, createCampaign, previewEmail, sendNextBatch, sendTestEmail, type ComposeState } from "./actions";
 
 type Course = { id: string; title: string };
-type Draft = { kind?: "promotion" | "update"; design?: string; include_contacts?: boolean; exclude_buyers_of?: string | null; subject?: string; heading?: string; body?: string; cta_label?: string | null; cta_url?: string | null; courses?: string[]; countries?: string[]; buyers_only?: boolean };
+type Draft = { kind?: "promotion" | "update"; design?: string; include_contacts?: boolean; exclude_buyers_of?: string | null; subject?: string; heading?: string; body?: string; cta_label?: string | null; cta_url?: string | null; courses?: string[]; countries?: string[]; buyers_only?: boolean; groups?: string[]; pick?: string[] };
 
 /** Sends the remaining batches one after another and shows progress. */
 export function SendProgress({ id, total, onDone }: { id: string; total: number; onDone?: () => void }) {
@@ -41,7 +41,7 @@ export function SendProgress({ id, total, onDone }: { id: string; total: number;
 
 export type DesignOption = { id: string; label: string; description?: string | null; defaultSubject?: string | null };
 
-export function Composer({ courses, draft, consenting, contacts, designs, isAdmin }: { courses: Course[]; draft?: Draft; consenting: number; contacts: number; designs: DesignOption[]; isAdmin: boolean }) {
+export function Composer({ courses, draft, consenting, contacts, designs, isAdmin, groups = [] }: { courses: Course[]; draft?: Draft; consenting: number; contacts: number; designs: DesignOption[]; isAdmin: boolean; groups?: { name: string; count: number }[] }) {
   const [design, setDesign] = useState<string>(draft?.design ?? "message");
   const designed = design !== "message";
   const router = useRouter();
@@ -55,6 +55,12 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
   const [mode, setMode] = useState<"now" | "schedule">("now");
 
   const [people, setPeople] = useState<AudiencePerson[] | "loading" | null>(null);
+  // "match": everyone matching the filters; "pick": only the people ticked in the list
+  const [who, setWho] = useState<"match" | "pick">(draft?.pick?.length ? "pick" : "match");
+  const [picked, setPicked] = useState<Set<string>>(new Set((draft?.pick ?? []).map((e) => e.toLowerCase())));
+  const [pool, setPool] = useState<AudiencePerson[] | null>(null);
+  const [poolQ, setPoolQ] = useState("");
+  const [withContacts, setWithContacts] = useState(Boolean(draft?.include_contacts));
 
   // live audience size
   const readTarget = () => {
@@ -63,9 +69,11 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
       courses: fd.getAll("courses").map(String),
       countries: String(fd.get("countries") ?? "").toUpperCase().split(/[^A-Z]+/).filter((c) => c.length === 2),
       buyers_only: fd.get("buyers_only") === "on",
+      groups: fd.getAll("groups").map(String),
+      pick: fd.getAll("pick").map(String),
     };
     const ex = String(fd.get("exclude_buyers_of") ?? "");
-    const options = { include_contacts: fd.get("include_contacts") === "on", exclude_buyers_of: ex || null };
+    const options = { include_contacts: fd.get("include_contacts") === "on" || audience.pick.length > 0, exclude_buyers_of: ex || null };
     return { kind: (designed || fd.get("kind") !== "update" ? "promotion" : "update") as "promotion" | "update", audience, options };
   };
   const showPeople = () => {
@@ -80,7 +88,13 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
     const t = readTarget();
     countAudience(t.kind, t.audience, t.options).then(setCount).catch(() => setCount(null));
   };
-  useEffect(recount, [kind, design]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(recount, [kind, design, who, picked, withContacts]); // eslint-disable-line react-hooks/exhaustive-deps
+  // everyone who can be picked: students who can receive this kind of email, plus the contact list
+  useEffect(() => {
+    if (who !== "pick") return;
+    listAudience(designed || kind !== "update" ? "promotion" : "update", {}, { include_contacts: true, exclude_buyers_of: null }).then(setPool).catch(() => setPool(null));
+  }, [who, kind, designed]);
+  const togglePick = (email: string) => setPicked((prev) => { const n = new Set(prev); if (n.has(email)) n.delete(email); else n.add(email); return n; });
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     if (isAdmin && mode === "now" && !confirm(`Send this email to ${count ?? "all matching"} people now?`)) e.preventDefault();
@@ -120,6 +134,38 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
 
         <fieldset data-audience className="grid gap-3">
           <legend className="mb-2 text-sm font-semibold">2 · Who gets it</legend>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2"><input type="radio" checked={who === "match"} onChange={() => setWho("match")} /> Everyone who matches</label>
+            <label className="flex items-center gap-2"><input type="radio" checked={who === "pick"} onChange={() => setWho("pick")} /> Only people I choose</label>
+          </div>
+          {who === "pick" && (
+            <div className="grid gap-2 text-sm">
+              {[...picked].map((e) => <input key={e} type="hidden" name="pick" value={e} />)}
+              <div className="flex flex-wrap items-center gap-2">
+                <input value={poolQ} onChange={(e) => setPoolQ(e.target.value)} placeholder="Search by name or email" className="fc-input !py-1.5 min-w-0 flex-1 text-sm" />
+                <span className="text-xs text-muted">{picked.size} chosen</span>
+                {picked.size > 0 && <button type="button" onClick={() => setPicked(new Set())} className="text-xs underline">Clear</button>}
+              </div>
+              {pool === null && <p className="text-xs text-muted">Loading…</p>}
+              {Array.isArray(pool) && (
+                <ul className="max-h-72 divide-y divide-line overflow-y-auto rounded-lg border border-line px-3">
+                  {pool.filter((p) => !poolQ || `${p.name ?? ""} ${p.email}`.toLowerCase().includes(poolQ.toLowerCase())).slice(0, 500).map((p) => {
+                    const e = p.email.toLowerCase();
+                    return (
+                      <li key={e}><label className="flex cursor-pointer items-baseline gap-2 py-2">
+                        <input type="checkbox" checked={picked.has(e)} onChange={() => togglePick(e)} />
+                        <span className="min-w-0 break-all"><span className="font-medium text-ink">{p.name || p.email}</span>{p.name && <span className="text-muted"> · {p.email}</span>}</span>
+                        <span className="ml-auto text-xs text-muted">{p.type}</span>
+                      </label></li>
+                    );
+                  })}
+                  {!pool.length && <li className="py-2 text-muted">Nobody can receive this kind of email yet.</li>}
+                </ul>
+              )}
+              <p className="text-xs text-muted">Only people who can receive {designed || kind !== "update" ? "marketing emails (they agreed, and haven't unsubscribed)" : "this email"} are listed. Tip: in the Contacts tab you can tick people and click &quot;Email selected people&quot;.</p>
+            </div>
+          )}
+          <div className={`grid gap-3 ${who === "pick" ? "hidden" : ""}`}>
           <div className="grid gap-1 text-sm">
             <span className="font-medium">Students of these courses <span className="font-normal text-muted">(none ticked = everyone)</span></span>
             <div className="grid max-h-44 gap-1 overflow-y-auto rounded-lg border border-line p-3">
@@ -140,9 +186,18 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
             <span className="text-xs font-normal text-muted">Use this for follow-up offers, so customers don&apos;t keep getting &quot;buy now&quot; emails.</span>
           </label>
           <label className={`flex items-start gap-2 text-sm ${kind === "update" && !designed ? "opacity-50" : ""}`}>
-            <input type="checkbox" name="include_contacts" defaultChecked={draft?.include_contacts} disabled={kind === "update" && !designed} className="mt-1" />
+            <input type="checkbox" name="include_contacts" checked={withContacts && who === "match"} onChange={(e) => setWithContacts(e.target.checked)} disabled={(kind === "update" && !designed) || who === "pick"} className="mt-1" />
             <span>Also send to the contact list ({contacts} people without an account, from the Contacts tab)</span>
           </label>
+          {withContacts && who === "match" && groups.length > 0 && (
+            <div className="grid gap-1 pl-6 text-sm">
+              <span className="text-xs text-muted">Only these groups <span>(none ticked = the whole contact list)</span></span>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {groups.map((g) => <label key={g.name} className="flex items-center gap-2"><input type="checkbox" name="groups" value={g.name} defaultChecked={draft?.groups?.includes(g.name)} />{g.name} <span className="text-xs text-muted">({g.count})</span></label>)}
+              </div>
+            </div>
+          )}
+          </div>
           <div className="grid gap-2 rounded-lg bg-surface px-3 py-2 text-sm">
             <p className="flex flex-wrap items-baseline justify-between gap-2">
               <span>This will go to <b>{count ?? "…"}</b> {count === 1 ? "person" : "people"}.</span>
