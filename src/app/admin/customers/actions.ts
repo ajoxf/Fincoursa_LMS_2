@@ -80,3 +80,17 @@ export async function updateStudentProfile(userId: string, form: FormData) {
   await createAdminClient().from("audit_log").insert({ actor_id: admin.id, action: "profile.updated_by_staff", entity: "profiles", entity_id: userId, data: { fields: Object.keys(patch) } });
   revalidatePath(`/admin/customers/${userId}`);
 }
+
+/**
+ * Admins give or take away team access (the "support" role): Customers, Orders, Leads, Marketing, and
+ * Emails & updates, where the team drafts emails and submits them for an admin's approval.
+ */
+export async function setTeamAccess(userId: string, on: boolean) {
+  const admin = await requireRole(["admin"]);
+  if (userId === admin.id) return;
+  const db = createAdminClient();
+  if (on) await db.from("user_roles").upsert({ user_id: userId, role: "support" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+  else await db.from("user_roles").delete().eq("user_id", userId).eq("role", "support");
+  await db.from("audit_log").insert({ actor_id: admin.id, action: on ? "role.support.granted" : "role.support.removed", entity: "profiles", entity_id: userId });
+  revalidatePath(`/admin/customers/${userId}`);
+}

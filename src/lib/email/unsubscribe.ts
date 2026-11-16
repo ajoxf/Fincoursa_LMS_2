@@ -13,3 +13,12 @@ export function verifyUnsubscribe(userId: string, token: string) {
   const a = Buffer.from(sign(userId)), b = Buffer.from(String(token));
   return a.length === b.length && timingSafeEqual(a, b);
 }
+
+/** Unsubscribe link for an imported contact (no FinCoursa account). */
+export const contactUnsubscribeUrl = (contactId: string) => `${env.siteUrl}/unsubscribe?c=${contactId}&t=${sign(`c:${contactId}`)}`;
+
+export function verifyContactUnsubscribe(contactId: string, token: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(contactId)) return false;
+  const a = Buffer.from(sign(`c:${contactId}`)), b = Buffer.from(String(token));
+  return a.length === b.length && timingSafeEqual(a, b);
+}

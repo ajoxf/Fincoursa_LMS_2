@@ -2,7 +2,8 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmailBatch, type BatchEmail } from "@/lib/email/send";
 import { messageEmail } from "@/lib/email/templates";
-import { unsubscribeUrl } from "@/lib/email/unsubscribe";
+import { contactUnsubscribeUrl, unsubscribeUrl } from "@/lib/email/unsubscribe";
+import { isLaunchDesign, launchEmail } from "@/lib/email/launch-design";
 import { env } from "@/lib/env";
 
 export type CampaignKind = "promotion" | "update" | "announcement";
@@ -35,12 +36,23 @@ export function cleanUrl(u: string | null | undefined): string | null {
 
 type CampaignRow = {
   id: string; kind: CampaignKind; subject: string; heading: string; body: string; cta_label: string | null; cta_url: string | null;
-  status: string; total: number;
+  status: string; total: number; design?: string | null;
 };
 
+/** Click tag for one email campaign: links carry ?v=<tag>, so Admin can count its clicks (campaign_clicks.variant). */
+export const campaignTag = (id: string) => `e-${id.slice(0, 8)}`;
+
+export type Recipient = { userId?: string | null; contactId?: string | null; name?: string | null };
+
 /** Render one person's copy of a campaign. */
-export function renderCampaign(c: Pick<CampaignRow, "kind" | "subject" | "heading" | "body" | "cta_label" | "cta_url">, to: { userId: string; name?: string | null }) {
-  const unsub = unsubscribeUrl(to.userId);
+export function renderCampaign(c: Pick<CampaignRow, "kind" | "subject" | "heading" | "body" | "cta_label" | "cta_url"> & { id?: string; design?: string | null }, to: Recipient) {
+  const unsub = to.contactId ? contactUnsubscribeUrl(to.contactId) : unsubscribeUrl(to.userId!);
+  const oneClickUrl = unsub.replace("/unsubscribe?", "/api/unsubscribe?");
+  const listHeaders = { "List-Unsubscribe": `<${oneClickUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };
+  if (isLaunchDesign(c.design)) {
+    const d = launchEmail({ design: c.design, tag: c.id ? campaignTag(c.id) : "email", unsubscribeUrl: unsub, note: c.body, firstName: to.name });
+    return { subject: c.subject, html: d.html, text: d.text, headers: listHeaders };
+  }
   const m = messageEmail({
     subject: c.subject, heading: c.heading, body: c.body, name: to.name,
     cta: c.cta_label && c.cta_url ? { label: c.cta_label, url: c.cta_url } : null,
@@ -48,15 +60,14 @@ export function renderCampaign(c: Pick<CampaignRow, "kind" | "subject" | "headin
       : "You're receiving this because you're enrolled with FinCoursa.",
     unsubscribeUrl: unsub,
   });
-  const oneClick = unsub.replace("/unsubscribe?", "/api/unsubscribe?");
-  const headers = c.kind === "promotion" ? { "List-Unsubscribe": `<${oneClick}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : undefined;
+  const headers = c.kind === "promotion" ? listHeaders : undefined;
   return { ...m, headers };
 }
 
 async function refreshCounts(id: string) {
   const db = createAdminClient();
   const n = async (status: string) =>
-    (await db.from("email_campaign_recipients").select("user_id", { count: "exact", head: true }).eq("campaign_id", id).eq("status", status)).count ?? 0;
+    (await db.from("email_campaign_recipients").select("id", { count: "exact", head: true }).eq("campaign_id", id).eq("status", status)).count ?? 0;
   const [sent, failed, skipped, pending] = await Promise.all([n("sent"), n("failed"), n("skipped"), n("pending")]);
   const patch: Record<string, unknown> = { sent, failed, skipped };
   if (pending === 0) { patch.status = "sent"; patch.finished_at = new Date().toISOString(); }
@@ -70,24 +81,24 @@ async function refreshCounts(id: string) {
  */
 export async function sendCampaignBatch(id: string, size = 50) {
   const db = createAdminClient();
-  const { data: c } = await db.from("email_campaigns").select("id, kind, subject, heading, body, cta_label, cta_url, status, total, started_at").eq("id", id).single();
+  const { data: c } = await db.from("email_campaigns").select("id, kind, subject, heading, body, cta_label, cta_url, status, total, started_at, design").eq("id", id).single();
   if (!c) throw new Error("Campaign not found");
-  if (c.status === "cancelled" || c.status === "sent" || c.status === "draft") return { total: c.total, ...(await refreshCounts(id)), status: c.status };
+  if (c.status === "cancelled" || c.status === "sent" || c.status === "draft" || c.status === "awaiting_approval") return { total: c.total, ...(await refreshCounts(id)), status: c.status };
   if (!c.started_at || c.status === "scheduled") await db.from("email_campaigns").update({ status: "sending", started_at: c.started_at ?? new Date().toISOString() }).eq("id", id);
 
-  const { data: batch } = await db.from("email_campaign_recipients").select("user_id, email, name").eq("campaign_id", id).eq("status", "pending").limit(size);
+  const { data: batch } = await db.from("email_campaign_recipients").select("id, user_id, contact_id, email, name").eq("campaign_id", id).eq("status", "pending").limit(size);
   if (batch?.length) {
     const emails: BatchEmail[] = batch.map((r) => ({
-      to: r.email, ...renderCampaign(c as CampaignRow, { userId: r.user_id, name: r.name }),
-      template: "campaign", ref: `${id}:${r.user_id}`,
+      to: r.email, ...renderCampaign(c as CampaignRow, { userId: r.user_id, contactId: r.contact_id, name: r.name }),
+      template: "campaign", ref: `${id}:${r.user_id ?? `c:${r.contact_id}`}`,
     }));
     const results = await sendEmailBatch(emails);
     const now = new Date().toISOString();
-    const by = (want: string[]) => batch.filter((_, i) => want.includes(results[i])).map((r) => r.user_id);
+    const by = (want: string[]) => batch.filter((_, i) => want.includes(results[i])).map((r) => r.id);
     const sent = by(["sent", "duplicate"]), skipped = by(["skipped"]), failed = by(["failed"]);
-    if (sent.length) await db.from("email_campaign_recipients").update({ status: "sent", sent_at: now }).eq("campaign_id", id).in("user_id", sent);
-    if (skipped.length) await db.from("email_campaign_recipients").update({ status: "skipped", sent_at: now, error: "No email provider key (RESEND_API_KEY)" }).eq("campaign_id", id).in("user_id", skipped);
-    if (failed.length) await db.from("email_campaign_recipients").update({ status: "failed", error: "Provider rejected the batch" }).eq("campaign_id", id).in("user_id", failed);
+    if (sent.length) await db.from("email_campaign_recipients").update({ status: "sent", sent_at: now }).eq("campaign_id", id).in("id", sent);
+    if (skipped.length) await db.from("email_campaign_recipients").update({ status: "skipped", sent_at: now, error: "No email provider key (RESEND_API_KEY)" }).eq("campaign_id", id).in("id", skipped);
+    if (failed.length) await db.from("email_campaign_recipients").update({ status: "failed", error: "Provider rejected the batch" }).eq("campaign_id", id).in("id", failed);
   }
   const counts = await refreshCounts(id);
   return { total: c.total, ...counts, status: counts.pending === 0 ? "sent" : "sending" };
