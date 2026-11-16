@@ -81,7 +81,7 @@ export function HeaderBar({ learnLinks, mainLinks, user }: { learnLinks: L[]; ma
                     {user.isInstructor && <Link role="menuitem" href="/instructor" className="block rounded-lg px-3 py-2 hover:bg-surface">Instructor dashboard</Link>}
                     {user.isAdmin && <Link role="menuitem" href="/admin" className="block rounded-lg px-3 py-2 hover:bg-surface">Admin</Link>}
                     <Link role="menuitem" href="/dashboard/settings" className="block rounded-lg px-3 py-2 hover:bg-surface">Account settings</Link>
-                    <a role="menuitem" href="/auth/sign-out" className="block rounded-lg px-3 py-2 hover:bg-surface">Sign out</a>
+                    <form action="/auth/sign-out" method="post"><button role="menuitem" className="block w-full rounded-lg px-3 py-2 text-left hover:bg-surface">Sign out</button></form>
                   </div>
                 )}
               </div>
