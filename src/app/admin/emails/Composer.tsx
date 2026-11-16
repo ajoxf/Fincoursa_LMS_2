@@ -47,7 +47,7 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const [kind, setKind] = useState<"promotion" | "update">(draft?.kind ?? "promotion");
-  const [count, setCount] = useState<number | null>(null);
+  const [counted, setCount] = useState<number | null>(null);
   const [state, action, saving] = useActionState<ComposeState, FormData>(createCampaign, null);
   const [test, setTest] = useState<ComposeState>(null);
   const [preview, setPreview] = useState<{ html?: string; subject?: string; error?: string } | null>(null);
@@ -61,6 +61,8 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
   const [pool, setPool] = useState<AudiencePerson[] | null>(null);
   const [poolQ, setPoolQ] = useState("");
   const [withContacts, setWithContacts] = useState(Boolean(draft?.include_contacts));
+  // "Only people I choose" with nobody ticked means nobody, never everyone
+  const count = who === "pick" && picked.size === 0 ? 0 : counted;
 
   // live audience size
   const readTarget = () => {
@@ -85,6 +87,8 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
   const recount = () => {
     if (!form.current) return;
     setPeople(null);
+    // "Only people I choose" with nobody ticked means nobody, never everyone
+    if (who === "pick" && picked.size === 0) return;
     const t = readTarget();
     countAudience(t.kind, t.audience, t.options).then(setCount).catch(() => setCount(null));
   };
@@ -140,6 +144,7 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
           </div>
           {who === "pick" && (
             <div className="grid gap-2 text-sm">
+              <input type="hidden" name="who" value="pick" />
               {[...picked].map((e) => <input key={e} type="hidden" name="pick" value={e} />)}
               <div className="flex flex-wrap items-center gap-2">
                 <input value={poolQ} onChange={(e) => setPoolQ(e.target.value)} placeholder="Search by name or email" className="fc-input !py-1.5 min-w-0 flex-1 text-sm" />
@@ -249,8 +254,8 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
               className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2.5 text-sm text-ink">Preview</button>
             <button type="button" disabled={pending} onClick={() => form.current && start(async () => setTest(await sendTestEmail(new FormData(form.current!))))}
               className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2.5 text-sm text-ink">Send a test</button>
-            <button disabled={saving || state?.campaignId !== undefined} className="fc-btn fc-btn-primary !min-w-0 !px-5 !py-2.5 text-sm">
-              {saving ? "Saving…" : !isAdmin ? "Submit for approval" : mode === "now" ? `Send to ${count ?? "…"} people` : "Schedule"}
+            <button disabled={saving || state?.campaignId !== undefined || (who === "pick" && picked.size === 0)} className="fc-btn fc-btn-primary !min-w-0 !px-5 !py-2.5 text-sm">
+              {saving ? "Saving…" : who === "pick" && picked.size === 0 ? "Choose at least one person" : !isAdmin ? "Submit for approval" : mode === "now" ? `Send to ${count ?? "…"} people` : "Schedule"}
             </button>
           </div>
           {test && <p className={`text-sm ${test.ok ? "text-success" : "text-danger"}`}>{test.message}</p>}

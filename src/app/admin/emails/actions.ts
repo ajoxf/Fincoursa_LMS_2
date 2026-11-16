@@ -106,6 +106,8 @@ export async function createCampaign(_: ComposeState, form: FormData): Promise<C
   if ("error" in m) return { ok: false, message: m.error! };
   const audience = readAudience(form);
   const options = readOptions(form);
+  // "Only people I choose" must never fall back to everyone
+  if (form.get("who") === "pick" && !audience.pick?.length) return { ok: false, message: "Choose at least one person to send to." };
   if (audience.pick?.length) options.include_contacts = true;
   const when = String(form.get("send_on") ?? "").trim();
   const schedule = form.get("mode") === "schedule";
