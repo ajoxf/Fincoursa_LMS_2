@@ -88,7 +88,9 @@ export async function startCheckout(form: FormData) {
 
   // Free (e.g. 100% coupon): fulfil immediately
   if (quote.totalMinor === 0) {
-    await db.rpc("fulfill_order", { p_order: order.id, p_gateway_ref: "free" });
+    // the reference must be unique per order: a shared "free" made every free order after the first fail
+    const { error: fErr } = await db.rpc("fulfill_order", { p_order: order.id, p_gateway_ref: `free_${order.id}` });
+    if (fErr) { console.error("[checkout] free order not fulfilled", order.id, fErr.message); throw new Error("We couldn't complete your enrolment. Please try again or email team@fincoursa.com."); }
     after(async () => { await sendReceipt(order.id); await sendEnrolledForOrder(order.id); });
     redirect(`/checkout/success?order=${order.id}`);
   }
