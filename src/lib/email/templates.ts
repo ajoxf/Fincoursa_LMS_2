@@ -360,7 +360,7 @@ export function staffInviteEmail(o: { name?: string | null; role: "instructor" |
     subject: instructor ? "You've been added as a FinCoursa instructor" : "Your FinCoursa partner account is ready",
     ...layout({
       preheader: "Set up your account in one click.",
-      heading: instructor ? "Welcome to the FinCoursa faculty" : "Welcome to FinCoursa",
+      heading: instructor ? "Your FinCoursa instructor account is ready" : "Your FinCoursa partner account is ready",
       body: join(
         p(`Hi ${first(o.name)},`),
         p(`FinCoursa Academy has set up ${instructor ? "an instructor" : "a partner"} account for you. Your dashboard shows:`),
