@@ -7,7 +7,8 @@ import { formatMoney, minorUnitsFactor } from "@/lib/money";
 import { formatDate, nowIso } from "@/lib/format";
 import { cashbackLabel, cashbackRule, getCashbackSettings, type CashbackRule } from "@/lib/cashback";
 import { Card } from "@/components/dash/Stat";
-import { adjustCustomerCredit, saveCashbackSettings, saveItemCashback } from "./actions";
+import { adjustCustomerCredit, saveCashbackSettings, saveItemCashback, saveReferralSettings } from "./actions";
+import { getReferralSettings } from "@/lib/referral";
 
 export const metadata: Metadata = { title: "Cashback & credit" };
 
@@ -39,6 +40,7 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
     db.from("prices").select("currency").eq("is_active", true),
     db.from("credit_redemptions").select("amount_minor, grant:credit_grants(currency)").is("reversed_at", null),
   ]);
+  const referral = await getReferralSettings();
   const { data: pending } = await db.from("course_reviews")
     .select("id, user_id, rating, review, created_at, course:courses(title), order:orders(number), profile:profiles!course_reviews_user_id_fkey(email, full_name)")
     .eq("status", "pending").order("created_at");
@@ -73,6 +75,18 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
       </div>
       {ok && <p className="rounded-lg bg-success/10 p-3 text-sm text-success">{ok}</p>}
       {err && <p className="rounded-lg bg-danger/10 p-3 text-sm text-danger">{err}</p>}
+
+      <Card title="Refer a friend">
+        <form action={saveReferralSettings} className="grid gap-3 text-sm">
+          <p className="text-muted">Anyone with an account gets a personal link at <Link href="/refer" className="underline">fincoursa.com/refer</Link>. When a friend opens it and buys within 30 days,
+            the person who shared it gets this % of what the friend paid (before tax) as credit, usable for the same time as cashback. Not given when a partner already earns commission on the sale; cancelled if the order is refunded.</p>
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="flex items-center gap-2 font-medium"><input type="checkbox" name="referral_enabled" defaultChecked={referral.enabled} /> On</label>
+            <label className="grid gap-1 font-medium">Credit for the referrer (%)<input name="referral_percent" defaultValue={referral.percent} inputMode="decimal" className="fc-input w-28" /></label>
+            <button className="fc-btn fc-btn-primary !min-w-0 !px-5 !py-2.5 text-sm">Save</button>
+          </div>
+        </form>
+      </Card>
 
       {(pending ?? []).length > 0 && (
         <Card title={`Reviews waiting for you (${pending!.length})`}>

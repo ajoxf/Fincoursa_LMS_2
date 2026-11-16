@@ -170,3 +170,15 @@ export async function hideReview(reviewId: string, back2: string) {
   revalidatePath(back2.split("?")[0]);
   revalidatePath("/", "layout");
 }
+
+/** Refer a friend: on/off and the % of a friend's purchase given as credit. */
+export async function saveReferralSettings(form: FormData) {
+  const admin = await requireRole(["admin"]);
+  const percent = num(form.get("referral_percent"));
+  if (!(percent >= 0 && percent <= 100)) back("err", "Enter a referral % between 0 and 100.");
+  await setSetting("referral", { enabled: form.get("referral_enabled") === "on", percent }, admin.id);
+  await audit(admin.id, "referral.settings", "site_settings", "referral", { percent });
+  revalidatePath("/admin/credit");
+  revalidatePath("/refer");
+  back("ok", "Referral settings saved.");
+}

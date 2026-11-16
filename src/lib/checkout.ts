@@ -46,6 +46,8 @@ export type Quote = {
   creditNote: string | null;
   /** cashback this order earns once paid */
   cashbackMinor: number;
+  /** what the buyer pays before tax, after codes and credit (referral credit is a % of this) */
+  netPaidMinor: number;
   /** "10%" or "$10.00", for the summary; null when no cashback */
   cashbackLabel: string | null;
   cashbackValidDays: number | null;
@@ -160,7 +162,7 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
     taxName: tax?.name ?? null, taxLabel: tax?.label ?? "Tax", pricesIncludeTax: includes, reverseCharge,
     coupon, couponError, foundingMinor: founding, foundingNote,
     creditAvailableMinor: creditAvailable, creditMinor: credit, creditNote,
-    cashbackMinor, cashbackLabel: cashbackMinor > 0 ? cashbackLabel(rule, price.currency) : null, cashbackValidDays: creditValidDays(cb), cashbackRedeemBy: cb.redeem_by ?? null,
+    cashbackMinor, netPaidMinor: computeTax(base, rate, includes).net, cashbackLabel: cashbackMinor > 0 ? cashbackLabel(rule, price.currency) : null, cashbackValidDays: creditValidDays(cb), cashbackRedeemBy: cb.redeem_by ?? null,
     cashbackReviewPct: cashbackMinor > 0 && rule?.mode === "percent" && cb.review_bonus_pct && cb.review_bonus_pct > rule.percent ? cb.review_bonus_pct : null,
     accessUntil: (price as { access_until?: string | null }).access_until ?? null, optionLabel: (price as { label?: string | null }).label ?? null,
   };

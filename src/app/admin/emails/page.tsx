@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDate } from "@/lib/format";
+import { formatMoney } from "@/lib/money";
 import { Card } from "@/components/dash/Stat";
 import { KIND_LABEL, campaignTag, type Audience, type CampaignKind } from "@/lib/campaigns";
 import { listDesigns } from "@/lib/email/designs";
@@ -43,6 +44,10 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
   const { data: clickRows } = tags.length ? await db.from("campaign_clicks").select("variant").in("variant", tags) : { data: [] as { variant: string }[] };
   const clicks = new Map<string, number>();
   for (const r of clickRows ?? []) clicks.set(r.variant, (clicks.get(r.variant) ?? 0) + 1);
+  // what people did after each email: opened, clicked, signed up, bought
+  const sentIds = (history ?? []).filter((c) => c.sent > 0).map((c) => c.id);
+  const { data: funnelRows } = sentIds.length ? await db.rpc("campaign_funnel", { p_ids: sentIds }) : { data: [] };
+  const funnel = new Map(((funnelRows ?? []) as { campaign_id: string; opened: number; clicked: number; signed_up: number; sampled: number; bought: number; revenue_minor: number }[]).map((f) => [f.campaign_id, f]));
   const people = [...new Set((history ?? []).flatMap((c) => [c.submitted_by, c.approved_by]).filter(Boolean) as string[])];
   const { data: staff } = people.length ? await db.from("profiles").select("id, full_name, email").in("id", people) : { data: [] as { id: string; full_name: string | null; email: string }[] };
   const who = new Map((staff ?? []).map((p) => [p.id, p.full_name || p.email]));
@@ -105,8 +110,20 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
                   <span className="text-muted"> · {c.status === "scheduled" || (c.status === "awaiting_approval" && c.send_mode === "schedule") ? `for ${formatDate(c.scheduled_for)}` : c.status === "awaiting_approval" ? "to send when approved" : formatDate(c.finished_at ?? c.created_at)}</span>
                   {c.status !== "scheduled" && c.status !== "awaiting_approval" && (
                     <p className="text-xs text-muted">{c.sent} of {c.total} sent{c.failed ? ` · ${c.failed} failed` : ""}{c.skipped ? ` · ${c.skipped} not delivered (no email provider)` : ""}
-                      {c.sent ? ` · ${clicks.get(campaignTag(c.id)) ?? 0} clicks` : ""}</p>
+                      {c.sent && !funnel.get(c.id) ? ` · ${clicks.get(campaignTag(c.id)) ?? 0} clicks` : ""}</p>
                   )}
+                  {(() => {
+                    const f = funnel.get(c.id);
+                    if (!f) return null;
+                    return (
+                      <p className="text-xs text-muted">
+                        <b className="text-ink">{f.opened}</b> opened · <b className="text-ink">{f.clicked || clicks.get(campaignTag(c.id)) || 0}</b> clicked
+                        {f.signed_up ? <> · <b className="text-ink">{f.signed_up}</b> signed up</> : null}
+                        {f.sampled ? <> · <b className="text-ink">{f.sampled}</b> tried the sample</> : null}
+                        {" · "}<b className="text-ink">{f.bought}</b> bought{Number(f.revenue_minor) > 0 ? ` (${formatMoney(Number(f.revenue_minor))})` : ""}
+                      </p>
+                    );
+                  })()}
                 </div>
                 <HistoryActions id={c.id} status={c.status} total={c.total} sent={c.sent} failed={c.failed} skipped={c.skipped} isAdmin={isAdmin} />
               </li>
