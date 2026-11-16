@@ -317,7 +317,7 @@ export type AudiencePerson = {
 };
 
 /** Per-person opens and clicks are recorded for emails sent from this time on. */
-const TRACKING_SINCE = "2026-11-16T12:00:00Z";
+const TRACKING_SINCE = "2026-11-16T05:00:00Z"; // per-person tracking went live at 04:57 UTC
 
 /** The people an email would reach right now, using the same rules as enqueue_campaign. */
 async function audienceList(kind: CampaignKind, a: Audience, o: Options): Promise<AudiencePerson[]> {

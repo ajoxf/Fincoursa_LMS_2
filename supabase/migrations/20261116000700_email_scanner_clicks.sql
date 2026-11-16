@@ -58,8 +58,9 @@ language sql stable security definer set search_path = public as $$
          count(*) filter (where j.signed_up_at is not null)::int, count(*) filter (where j.sample_at is not null)::int,
          count(*) filter (where j.orders > 0)::int, coalesce(sum(j.revenue_minor), 0)::bigint,
          count(*) filter (where j.scanner_clicks > 0)::int,
-         -- per-person tracking started on 16 Nov 2026; earlier emails have no opens or clicks per person
-         (select coalesce(started_at, created_at) >= '2026-11-16T12:00:00Z' from public.email_campaigns where email_campaigns.id = x.id)
+         -- per-person tracking went live 16 Nov 2026 04:57 UTC; earlier emails have no opens or clicks per person
+         -- (the admin page decides this itself from the email's creation time, so this column is informational)
+         (select coalesce(started_at, created_at) >= '2026-11-16T05:00:00Z' from public.email_campaigns where email_campaigns.id = x.id)
   from unnest(p_ids) as x(id) cross join lateral public.campaign_recipient_journey(x.id) j
   group by x.id;
 $$;
