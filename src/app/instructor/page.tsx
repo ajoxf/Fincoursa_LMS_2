@@ -32,17 +32,18 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
   };
   // each sale behind the earnings: no student names or emails, only what the sale was worth and the share
   const { data: earningRows } = await supabase.from("instructor_earnings")
-    .select("id, created_at, course_id, currency, net_revenue_minor, share_pct, amount_minor, status, available_at, list_minor, code_discount_minor, credit_used_minor, payment_fee_minor, payment_fee_pct, partner_minor, cashback_minor, shared_minor, course:courses(title)")
+    .select("id, created_at, course_id, currency, net_revenue_minor, share_pct, amount_minor, status, available_at, list_minor, code_discount_minor, credit_used_minor, payment_fee_minor, payment_fee_pct, partner_minor, cashback_minor, cashback_given_minor, cashback_counted_pct, shared_minor, course:courses(title)")
     .order("created_at", { ascending: false }).limit(500);
   type Earning = { id: string; created_at: string; currency: string; net_revenue_minor: number; share_pct: number; amount_minor: number; status: string; available_at: string | null;
-    list_minor: number | null; code_discount_minor: number; credit_used_minor: number; payment_fee_minor: number; payment_fee_pct: number; partner_minor: number; cashback_minor: number; shared_minor: number | null;
+    list_minor: number | null; code_discount_minor: number; credit_used_minor: number; payment_fee_minor: number; payment_fee_pct: number; partner_minor: number; cashback_minor: number; cashback_given_minor: number; cashback_counted_pct: number; shared_minor: number | null;
     course: { title: string } | null };
   const earnings = (earningRows ?? []) as unknown as Earning[];
   const live = earnings.filter((e) => e.status !== "reversed");
   const lifetime = live.reduce((a, e) => a + Number(e.amount_minor), 0);
   const lifetimeSales = live.reduce((a, e) => a + Number(e.net_revenue_minor), 0);
   const sum = (k: keyof Earning) => live.reduce((a, e) => a + Number(e[k] ?? 0), 0);
-  const totals = { fee: sum("payment_fee_minor"), partner: sum("partner_minor"), cashback: sum("cashback_minor"), shared: live.reduce((a, e) => a + Number(e.shared_minor ?? e.net_revenue_minor), 0) };
+  const cbPcts = [...new Set(live.filter((e) => Number(e.cashback_given_minor) > 0).map((e) => Number(e.cashback_counted_pct)))];
+  const totals = { fee: sum("payment_fee_minor"), partner: sum("partner_minor"), cashback: sum("cashback_minor"), cashbackGiven: sum("cashback_given_minor"), shared: live.reduce((a, e) => a + Number(e.shared_minor ?? e.net_revenue_minor), 0) };
   const EARN_STATUS: Record<string, string> = { pending: "In refund window", approved: "Ready for payout", paid: "Paid", reversed: "Refunded (cancelled)" };
   if (error) return <p className="text-danger">Your instructor profile isn&apos;t linked yet. Ask an admin to connect it to your account.</p>;
   const m = (n: number) => formatMoney(n, cur);
@@ -102,7 +103,7 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
             <div className="flex justify-between"><span>Course sales (what students paid, excluding tax)</span><b>{m(lifetimeSales)}</b></div>
             <div className="flex justify-between text-muted"><span>&minus; Payment processing fees</span><span>{m(totals.fee)}</span></div>
             <div className="flex justify-between text-muted"><span>&minus; Partner commissions (sales through a partner&apos;s link or code)</span><span>{m(totals.partner)}</span></div>
-            <div className="flex justify-between text-muted"><span>&minus; Cashback credit given to students</span><span>{m(totals.cashback)}</span></div>
+            <div className="flex justify-between text-muted"><span>&minus; Cashback credit{cbPcts.length === 1 && cbPcts[0] < 100 ? ` (${cbPcts[0]}% of ${m(totals.cashbackGiven)} given to students; FinCoursa carries the rest)` : " given to students"}</span><span>{m(totals.cashback)}</span></div>
             <div className="mt-1 flex justify-between border-t border-line pt-2"><span>= Amount shared with you</span><b>{m(totals.shared)}</b></div>
             <div className="flex justify-between text-muted"><span>&times; Your revenue share</span><span>{shares.length === 1 ? `${shares[0]}%` : "per course, below"}</span></div>
             <div className="mt-1 flex justify-between border-t-2 border-ink pt-2 text-base"><b>= Your earnings</b><b>{m(lifetime)}</b></div>
@@ -113,7 +114,7 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
               <li><b className="text-ink">What students paid:</b> the course price after any discount code and any FinCoursa credit the student used, excluding tax. A programme&apos;s price is split equally across its courses.</li>
               <li><b className="text-ink">Payment processing fee:</b> the card and payment gateway fee on the sale, at the standard rate shown on each sale. No fee on free enrolments.</li>
               <li><b className="text-ink">Partner commission:</b> only when the student came through a FinCoursa partner&apos;s referral link or code.</li>
-              <li><b className="text-ink">Cashback credit:</b> the FinCoursa credit a student receives for buying (and for a review, during offers that include it). It is a cost of the sale, so it is taken off before the share.</li>
+              <li><b className="text-ink">Cashback credit:</b> the FinCoursa credit a student receives for buying (and for a review, during offers that include it). Part of it counts as a cost of the sale and is taken off before the share (the % is shown on each sale); FinCoursa carries the rest.</li>
               <li><b className="text-ink">Your earnings:</b> the amount shared &times; your revenue share, never below zero. Earnings become payable 30 days after the sale, once the refund window has passed. A refunded sale is cancelled.</li>
               <li>Student names and contact details are never shown.</li>
             </ul>
@@ -141,7 +142,7 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
                         <td className="py-2.5 text-right">{formatMoney(e.net_revenue_minor, e.currency)}</td>
                         <td className="py-2.5 text-right text-muted">{f(e.payment_fee_minor)}{Number(e.payment_fee_minor) > 0 && <span className="block text-xs">{Number(e.payment_fee_pct)}%</span>}</td>
                         <td className="py-2.5 text-right text-muted">{f(e.partner_minor)}</td>
-                        <td className="py-2.5 text-right text-muted">{f(e.cashback_minor)}</td>
+                        <td className="py-2.5 text-right text-muted">{f(e.cashback_minor)}{Number(e.cashback_given_minor) > 0 && Number(e.cashback_counted_pct) < 100 && <span className="block text-xs">{Number(e.cashback_counted_pct)}% of {formatMoney(e.cashback_given_minor, e.currency)}</span>}</td>
                         <td className="py-2.5 text-right">{formatMoney(e.shared_minor ?? e.net_revenue_minor, e.currency)}</td>
                         <td className="py-2.5 text-right">&times; {Number(e.share_pct)}%</td>
                         <td className="py-2.5 text-right font-semibold">{formatMoney(e.amount_minor, e.currency)}</td>

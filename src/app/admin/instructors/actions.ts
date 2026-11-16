@@ -103,13 +103,15 @@ export async function deleteInstructor(id: string): Promise<{ ok: boolean; error
 /** The payment processing fee % taken off a sale before the instructor's share (new sales; unpaid earnings are recalculated). */
 export async function saveInstructorDeductions(form: FormData) {
   const admin = await requireRole(["admin"]);
-  const pct = Number(String(form.get("payment_fee_pct") ?? "").replace(/[%\s]/g, ""));
+  const num = (k: string) => Number(String(form.get(k) ?? "").replace(/[%\s]/g, ""));
+  const pct = num("payment_fee_pct"), cb = num("cashback_counted_pct");
   if (!(pct >= 0 && pct <= 20)) redirect(`/admin/instructors?err=${encodeURIComponent("Enter a fee between 0 and 20%.")}`);
+  if (!(cb >= 0 && cb <= 100)) redirect(`/admin/instructors?err=${encodeURIComponent("Enter a cashback share between 0 and 100%.")}`);
   const db = createAdminClient();
-  await db.from("site_settings").upsert({ key: "instructor_deductions", value: { payment_fee_pct: pct }, updated_by: admin.id }, { onConflict: "key" });
+  await db.from("site_settings").upsert({ key: "instructor_deductions", value: { payment_fee_pct: pct, cashback_counted_pct: cb }, updated_by: admin.id }, { onConflict: "key" });
   const { data: open } = await db.from("instructor_earnings").select("order_id").in("status", ["pending", "approved"]).is("payout_id", null);
   for (const o of [...new Set((open ?? []).map((r) => r.order_id))]) await db.rpc("recalc_instructor_earnings", { p_order: o });
-  await db.from("audit_log").insert({ actor_id: admin.id, action: "instructor.deductions", entity: "site_settings", entity_id: "instructor_deductions", data: { payment_fee_pct: pct } });
+  await db.from("audit_log").insert({ actor_id: admin.id, action: "instructor.deductions", entity: "site_settings", entity_id: "instructor_deductions", data: { payment_fee_pct: pct, cashback_counted_pct: cb } });
   revalidatePath("/admin/instructors");
-  redirect(`/admin/instructors?ok=${encodeURIComponent(`Payment fee set to ${pct}%. Unpaid earnings were recalculated.`)}`);
+  redirect(`/admin/instructors?ok=${encodeURIComponent(`Saved: payment fee ${pct}%, ${cb}% of cashback taken off. Unpaid earnings were recalculated.`)}`);
 }
