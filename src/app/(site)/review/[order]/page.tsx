@@ -81,11 +81,12 @@ export default async function ReviewPage({ params, searchParams }: { params: Pro
           <textarea name="review" required minLength={20} maxLength={1500} rows={4} className={field}
             placeholder="A few sentences another CMT candidate would find useful." />
         </label>
-        <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" name="can_publish" defaultChecked className="mt-1" />
-          <span>FinCoursa may publish my review on the website with my first name.</span>
-        </label>
         <button className="fc-btn fc-btn-primary justify-self-start">Send feedback and review</button>
+        {/* consent stays ticked by default, shown quietly under the button */}
+        <label className="-mt-3 flex items-center gap-2 text-xs text-muted">
+          <input type="checkbox" name="can_publish" defaultChecked className="h-3.5 w-3.5 accent-black" />
+          <span>Your review may appear on fincoursa.com with your first name.</span>
+        </label>
         <p className="text-xs text-muted">Credit is not cash. It can be used on future FinCoursa courses and can&apos;t be withdrawn, refunded or transferred. One review per order.</p>
       </form>
     </section>
