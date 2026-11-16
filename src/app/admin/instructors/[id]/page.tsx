@@ -16,6 +16,7 @@ import { instructorAccess, instructorBusiness, type InstructorAccess } from "@/l
 import { resendInstructorInvite } from "../actions";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
+import { ColumnChart } from "@/components/dash/ColumnChart";
 
 export const metadata: Metadata = { title: "Instructor" };
 
@@ -79,7 +80,7 @@ export default async function AdminInstructor({ params, searchParams }: PageProp
       </nav>
 
       {tab === "business" ? (
-        <BusinessTab id={id} base={base} month={typeof sp.month === "string" ? sp.month : null} />
+        <BusinessTab id={id} base={base} month={typeof sp.month === "string" ? sp.month : null} course={typeof sp.course === "string" ? sp.course : null} />
       ) : tab === "dashboard" ? (
         <>
           <p className="rounded-lg bg-surface p-3 text-sm text-muted">
@@ -131,9 +132,11 @@ function AccessBadge({ a }: { a: InstructorAccess }) {
 }
 
 /** FinCoursa's side: what this instructor's courses made, what they cost, what the instructor earns and what we keep. */
-async function BusinessTab({ id, base, month }: { id: string; base: string; month: string | null }) {
+async function BusinessTab({ id, base, month, course }: { id: string; base: string; month: string | null; course: string | null }) {
   const cur = env.defaultCurrency;
-  const b = await instructorBusiness(createAdminClient(), id, { month, currency: cur });
+  const courseId = course && /^[0-9a-f-]{36}$/i.test(course) ? course : null;
+  const b = await instructorBusiness(createAdminClient(), id, { month, currency: cur, courseId });
+  const courseTitle = courseId ? b.courseOptions.find((c) => c.id === courseId)?.title : null;
   const m = (n: number) => formatMoney(n, cur);
   const t = b.total;
   const neg = (n: number) => (n ? `−${m(n)}` : "–");
@@ -141,6 +144,13 @@ async function BusinessTab({ id, base, month }: { id: string; base: string; mont
     <div className="grid gap-6">
       <form action={base} className="flex flex-wrap items-end gap-3">
         <input type="hidden" name="tab" value="business" />
+        {b.courseOptions.length > 1 && (
+          <label className="grid gap-1 text-xs font-medium">Course
+            <select name="course" defaultValue={courseId ?? ""} className="fc-input !py-2 text-sm">
+              <option value="">All their courses</option>
+              {b.courseOptions.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select></label>
+        )}
         <label className="grid gap-1 text-xs font-medium">Period
           <select name="month" defaultValue={month ?? ""} className="fc-input !py-2 text-sm">
             <option value="">All time</option>
@@ -154,7 +164,16 @@ async function BusinessTab({ id, base, month }: { id: string; base: string; mont
         <div className="fc-card p-4"><p className="text-sm text-muted">Instructor&apos;s earnings</p><p className="mt-1 text-2xl font-bold">{m(t.instructor)}</p><p className="text-xs text-muted">Owed now {m(b.owed)} · paid out {m(b.paidOut)} (all time)</p></div>
         <div className="fc-card p-4"><p className="text-sm text-muted">FinCoursa keeps</p><p className={`mt-1 text-2xl font-bold ${t.kept < 0 ? "text-danger" : "text-success"}`}>{m(t.kept)}</p><p className="text-xs text-muted">{t.revenue ? `${Math.round((t.kept / t.revenue) * 100)}% of revenue` : "no revenue yet"}</p></div>
       </div>
-      <Card title={`By course${month ? `, ${monthLabel(month)}` : ""}`}>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card title={`Revenue${courseTitle ? ` · ${courseTitle}` : ""} · ${month ? `by day, ${monthLabel(month)}` : "by month, last 12 months"}`}>
+          <ColumnChart label="Revenue" currency={cur} data={b.series.map((p) => ({ x: p.label, y: p.revenue }))} />
+        </Card>
+        <Card title={`FinCoursa keeps${courseTitle ? ` · ${courseTitle}` : ""} · ${month ? "by day" : "by month"}`}>
+          <ColumnChart label="FinCoursa keeps" currency={cur} data={b.series.map((p) => ({ x: p.label, y: Math.max(0, p.kept) }))} />
+          {b.series.some((p) => p.kept < 0) && <p className="mt-2 text-xs text-danger">Some periods made a loss (costs and instructor share above revenue); they show as zero here and in red in the table.</p>}
+        </Card>
+      </div>
+      <Card title={`By course${courseTitle ? ` · ${courseTitle}` : ""}${month ? `, ${monthLabel(month)}` : ""}`}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm tabular-nums">
             <thead className="text-left text-muted"><tr>
