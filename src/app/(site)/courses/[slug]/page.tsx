@@ -108,17 +108,30 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
             ) : (
               <div className="w-full rounded-2xl border border-accent/50 bg-white/[0.04] p-6 text-left md:w-[380px]">
                 {/* price */}
-                <div className="flex flex-wrap items-center gap-2">
-                  {course.price?.compare_at_minor && !course.isFree ? (
+                {(() => {
+                  const was = !course.isFree && course.price?.compare_at_minor && course.price.compare_at_minor > course.price.amount_minor ? course.price.compare_at_minor : null;
+                  const pct = was && course.price ? Math.round(((was - course.price.amount_minor) / was) * 100) : 0;
+                  return (
                     <>
-                      <span className="fc-chip fc-chip-lime !py-0.5 text-xs font-semibold">{isLive ? "Introductory offer" : "Launch price"}</span>
-                      <span className="text-lg text-white/50 line-through">{formatMoney(course.price.compare_at_minor, course.price.currency)}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {was ? (
+                          <>
+                            <span className="fc-chip fc-chip-lime !py-0.5 text-xs font-semibold">{isLive ? "Introductory offer" : "Launch price"}</span>
+                            {pct > 0 && <span className="rounded-full border border-accent px-2.5 py-0.5 text-xs font-bold text-accent">{pct}% off</span>}
+                          </>
+                        ) : isLive && !course.isFree ? <span className="text-[15px]">Price</span> : null}
+                      </div>
+                      <p className="mt-1 flex flex-wrap items-baseline gap-x-3">
+                        <span className={`whitespace-nowrap font-bold tracking-tight ${course.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
+                          {course.isFree ? "Free" : course.price && formatMoney(course.price.amount_minor, course.price.currency)}
+                        </span>
+                        {was && course.price && (
+                          <span className="whitespace-nowrap text-2xl font-medium text-white/55 line-through decoration-2 md:text-[30px]">{formatMoney(was, course.price.currency)}</span>
+                        )}
+                      </p>
                     </>
-                  ) : isLive && !course.isFree ? <span className="text-[15px]">Price</span> : null}
-                </div>
-                <p className={`mt-1 whitespace-nowrap font-bold tracking-tight ${course.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
-                  {course.isFree ? "Free" : course.price && formatMoney(course.price.amount_minor, course.price.currency)}
-                </p>
+                  );
+                })()}
                 <p className="mt-1 text-sm text-white/75">
                   {isLive ? "Live sessions + recordings" : accessLabel([course.access_days])}{!course.isFree ? " · plus applicable taxes" : ""}
                 </p>
