@@ -37,7 +37,7 @@ export function SendProgress({ id, total, onDone }: { id: string; total: number;
   );
 }
 
-export type DesignOption = { id: string; label: string };
+export type DesignOption = { id: string; label: string; description?: string | null; defaultSubject?: string | null };
 
 export function Composer({ courses, draft, consenting, contacts, designs, isAdmin }: { courses: Course[]; draft?: Draft; consenting: number; contacts: number; designs: DesignOption[]; isAdmin: boolean }) {
   const [design, setDesign] = useState<string>(draft?.design ?? "message");
@@ -76,11 +76,19 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
       <form ref={form} action={action} onSubmit={submit} onChange={(e) => { if ((e.target as HTMLElement).closest("[data-audience]")) recount(); }} className="grid content-start gap-5">
         <fieldset className="grid gap-2">
           <legend className="mb-2 text-sm font-semibold">1 · Design</legend>
-          <select name="design" value={design} onChange={(e) => setDesign(e.target.value)} className="fc-input">
+          <select name="design" value={design} onChange={(e) => {
+            const next = e.target.value;
+            const subj = form.current?.elements.namedItem("subject") as HTMLInputElement | null;
+            const prev = designs.find((d) => d.id === design)?.defaultSubject;
+            const want = designs.find((d) => d.id === next)?.defaultSubject;
+            // fill in the design's suggested subject, unless someone already typed their own
+            if (subj && want && (!subj.value.trim() || subj.value === prev)) subj.value = want;
+            setDesign(next);
+          }} className="fc-input">
             <option value="message">Simple message (you write the text)</option>
             {designs.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
           </select>
-          {designed && <p className="text-xs text-muted">A ready-made launch email with the offer, both buttons and the fine print. You only choose the subject line and, if you like, add a short personal note at the top. It is sent as a promotion, so only people who agreed to marketing emails get it, with an unsubscribe link.</p>}
+          {designed && <p className="text-xs text-muted">{designs.find((d) => d.id === design)?.description ?? "A ready-made email."} You only choose the subject line and, if you like, add a short personal note at the top. It is sent as a promotion, so only people who agreed to marketing emails get it, with an unsubscribe link.</p>}
         </fieldset>
 
         <fieldset className={`grid gap-2 ${designed ? "hidden" : ""}`}>
