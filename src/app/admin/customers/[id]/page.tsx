@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatMoney } from "@/lib/money";
 import { ALL_COUNTRIES, countryName, formatDate, nowMs } from "@/lib/format";
 import { Card, Progress, Stat } from "@/components/dash/Stat";
-import { grantCourse, removeAccess, restoreAccess, setAccessUntil, updateStudentProfile } from "../actions";
+import { grantCourse, removeAccess, restoreAccess, setAccessUntil, setTeamAccess, updateStudentProfile } from "../actions";
 import { grantReviewBonus, hideReview, rejectReview } from "../../credit/actions";
 import { getCashbackSettings } from "@/lib/cashback";
 
@@ -60,6 +60,13 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             {s.marketing_opt_in ? "Agreed to marketing emails" : "No marketing emails"}
           </span>
         </div>
+        {me.roles.includes("admin") && me.id !== id && !(s.roles ?? []).includes("admin") && (
+          <form action={setTeamAccess.bind(null, id, !(s.roles ?? []).includes("support"))} className="mt-3">
+            <button className="rounded-full border border-line px-3 py-1 text-xs font-semibold hover:border-ink">
+              {(s.roles ?? []).includes("support") ? "Remove team access" : "Give team access (draft emails, view customers and marketing)"}
+            </button>
+          </form>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
