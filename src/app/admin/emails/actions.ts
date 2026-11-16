@@ -273,7 +273,12 @@ export async function setDesignStatus(id: string, status: "approved" | "draft" |
   redirect(`/admin/emails?tab=designs&ok=${encodeURIComponent(said)}`);
 }
 
-export type AudiencePerson = { email: string; name: string | null; type: "Student" | "Contact"; status?: string };
+export type AudiencePerson = {
+  email: string; name: string | null; type: "Student" | "Contact"; status?: string;
+  /** after sending: what the person did (dates are ISO strings) */
+  opened_at?: string | null; clicked_at?: string | null; opens?: number; clicks?: number;
+  signed_up_at?: string | null; sample_at?: string | null; bought_at?: string | null; revenue_minor?: number; currency?: string | null;
+};
 
 /** The people an email would reach right now, using the same rules as enqueue_campaign. */
 async function audienceList(kind: CampaignKind, a: Audience, o: Options): Promise<AudiencePerson[]> {
@@ -321,9 +326,11 @@ export async function listAudience(kind: CampaignKind, audience: Audience, optio
 export async function campaignRecipients(id: string): Promise<{ people: AudiencePerson[]; frozen: boolean }> {
   await requireRole([...STAFF]);
   const db = createAdminClient();
-  const { data: rows } = await db.from("email_campaign_recipients").select("email, name, status, contact_id").eq("campaign_id", id).order("email").limit(20000);
+  const { data: rows } = await db.rpc("campaign_recipient_journey", { p_campaign: id });
   if (rows?.length) {
-    return { frozen: true, people: rows.map((r) => ({ email: r.email, name: r.name, type: r.contact_id ? "Contact" : "Student", status: r.status })) };
+    type J = { email: string; name: string | null; is_contact: boolean; status: string; opened_at: string | null; clicked_at: string | null; opens: number; clicks: number;
+      signed_up_at: string | null; sample_at: string | null; bought_at: string | null; revenue_minor: number; currency: string | null };
+    return { frozen: true, people: (rows as J[]).map((r) => ({ ...r, type: r.is_contact ? "Contact" : "Student", revenue_minor: Number(r.revenue_minor) })) };
   }
   const { data: c } = await db.from("email_campaigns").select("kind, audience, include_contacts, exclude_buyers_of").eq("id", id).maybeSingle();
   if (!c) return { frozen: false, people: [] };

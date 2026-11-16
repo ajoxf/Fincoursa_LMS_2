@@ -11,6 +11,7 @@ function navFor(u: SessionUser, hasCertificates: boolean): { title: string; item
     { href: "/dashboard/purchases", label: "Purchases" },
     // only once they have one (certificates are switched on per course)
     ...(hasCertificates ? [{ href: "/dashboard/certificates", label: "Certificates" }] : []),
+    { href: "/refer", label: "Refer a friend" },
     { href: "/dashboard/settings", label: "Settings" },
   ] }];
   if (u.roles.includes("instructor")) groups.push({ title: "Teaching", items: [{ href: "/instructor", label: "Instructor dashboard" }] });

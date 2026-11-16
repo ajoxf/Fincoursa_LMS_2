@@ -1,5 +1,7 @@
 "use server";
 import { cookies } from "next/headers";
+import { REFERRAL_COOKIE, getReferralSettings, referrerFor } from "@/lib/referral";
+import { creditValidDays, getCashbackSettings } from "@/lib/cashback";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { buildQuote, resolveAttribution } from "@/lib/checkout";
@@ -48,6 +50,13 @@ export async function startCheckout(form: FormData) {
 
   const source = await attributionFor(user.id).catch(() => ({ campaign_id: null, touch: null }));
 
+  // Refer a friend: the person whose link this buyer opened earns credit (not when a partner already gets commission)
+  const ref = await getReferralSettings();
+  const referrer = ref.enabled && !attr?.affiliateId ? await referrerFor(jar.get(REFERRAL_COOKIE)?.value) : null;
+  const referral = referrer && referrer !== user.id && quote.netPaidMinor > 0
+    ? { referred_by: referrer, referral_minor: Math.round(quote.netPaidMinor * Math.max(0, Math.min(100, ref.percent)) / 100), referral_valid_days: quote.cashbackValidDays ?? creditValidDays(await getCashbackSettings()) }
+    : null;
+
   let gatewayId: string | null = null;
   if (quote.totalMinor > 0) {
     const allowed = await gatewaysFor(country, quote.currency);
@@ -65,6 +74,7 @@ export async function startCheckout(form: FormData) {
     gateway: gatewayId ?? "free",
     campaign_id: source.campaign_id, touch: source.touch,
     credit_minor: quote.creditMinor, founding_discount_minor: quote.foundingMinor, cashback_minor: quote.cashbackMinor, cashback_valid_days: quote.cashbackValidDays,
+    ...(referral && referral.referral_minor > 0 ? referral : {}),
   }).select("id, number").single();
   if (error || !order) throw new Error("Could not create order");
 

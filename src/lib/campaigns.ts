@@ -5,6 +5,7 @@ import { messageEmail } from "@/lib/email/templates";
 import { contactUnsubscribeUrl, unsubscribeUrl } from "@/lib/email/unsubscribe";
 import { getDesign, renderDesign, type EmailDesign } from "@/lib/email/designs";
 import { env } from "@/lib/env";
+import { addTracking } from "@/lib/email/tracking";
 
 export type CampaignKind = "promotion" | "update" | "announcement";
 export type Audience = { courses?: string[]; countries?: string[]; buyers_only?: boolean };
@@ -42,7 +43,8 @@ type CampaignRow = {
 /** Click tag for one email campaign: links carry ?v=<tag>, so Admin can count its clicks (campaign_clicks.variant). */
 export const campaignTag = (id: string) => `e-${id.slice(0, 8)}`;
 
-export type Recipient = { userId?: string | null; contactId?: string | null; name?: string | null };
+/** recipientId: the email_campaign_recipients row; when set, opens and clicks are tracked for that person. */
+export type Recipient = { userId?: string | null; contactId?: string | null; name?: string | null; recipientId?: number | null };
 
 /** Render one person's copy of a campaign. A designed campaign needs its design passed in (see getDesign). */
 export function renderCampaign(c: Pick<CampaignRow, "kind" | "subject" | "heading" | "body" | "cta_label" | "cta_url"> & { id?: string; design?: string | null }, to: Recipient, design?: Pick<EmailDesign, "html" | "text_body"> | null) {
@@ -52,7 +54,7 @@ export function renderCampaign(c: Pick<CampaignRow, "kind" | "subject" | "headin
   if (c.design && c.design !== "message") {
     if (!design) throw new Error("This email's design could not be found");
     const d = renderDesign(design, { tag: c.id ? campaignTag(c.id) : "email", unsubscribeUrl: unsub, note: c.body, firstName: to.name });
-    return { subject: c.subject, html: d.html, text: d.text, headers: listHeaders };
+    return { subject: c.subject, html: to.recipientId ? addTracking(d.html, to.recipientId) : d.html, text: d.text, headers: listHeaders };
   }
   const m = messageEmail({
     subject: c.subject, heading: c.heading, body: c.body, name: to.name,
@@ -62,7 +64,7 @@ export function renderCampaign(c: Pick<CampaignRow, "kind" | "subject" | "headin
     unsubscribeUrl: unsub,
   });
   const headers = c.kind === "promotion" ? listHeaders : undefined;
-  return { ...m, headers };
+  return { ...m, html: to.recipientId ? addTracking(m.html, to.recipientId) : m.html, headers };
 }
 
 async function refreshCounts(id: string) {
@@ -91,7 +93,7 @@ export async function sendCampaignBatch(id: string, size = 50) {
   if (batch?.length) {
     const design = await getDesign(c.design);
     const emails: BatchEmail[] = batch.map((r) => ({
-      to: r.email, ...renderCampaign(c as CampaignRow, { userId: r.user_id, contactId: r.contact_id, name: r.name }, design),
+      to: r.email, ...renderCampaign(c as CampaignRow, { userId: r.user_id, contactId: r.contact_id, name: r.name, recipientId: r.id }, design),
       template: "campaign", ref: `${id}:${r.user_id ?? `c:${r.contact_id}`}`,
     }));
     const results = await sendEmailBatch(emails);
