@@ -6,14 +6,18 @@ import { createClient } from "@/lib/supabase/server";
 import { Stat, Card } from "@/components/dash/Stat";
 import { BarList } from "@/components/dash/BarList";
 import { getCurriculum } from "@/lib/course-admin";
+import { EarningsStatement } from "@/components/dash/EarningsStatement";
+import { loadEarnings } from "@/lib/instructor-statement";
+import { env } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Manage course" };
 
 type LessonStat = { lesson_id: string; title: string; chapter: string; started: number; completed: number };
 
 /** Shared by instructors (own courses) and admins: progress analytics + read-only curriculum. Editing is admin-only. */
-export default async function ManageCourse({ params }: PageProps<"/instructor/courses/[id]">) {
+export default async function ManageCourse({ params, searchParams }: PageProps<"/instructor/courses/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
   await requireUser(`/instructor/courses/${id}`);
   const user = await getSessionUser();
   const supabase = await createClient();
@@ -26,6 +30,13 @@ export default async function ManageCourse({ params }: PageProps<"/instructor/co
   ]);
   if (!course) notFound();
   const lessons = (report.lessons ?? []) as LessonStat[];
+  // the instructor's own earnings from this course (admins manage money in Admin, so this is for instructors)
+  let statement: { earnings: Awaited<ReturnType<typeof loadEarnings>>; share: number | null } | null = null;
+  if (hasRole(user, "instructor") && user) {
+    const { data: ins } = await supabase.from("instructors").select("id, default_revenue_share_pct").eq("user_id", user.id).maybeSingle();
+    const { data: link } = ins ? await supabase.from("course_instructors").select("revenue_share_pct").eq("instructor_id", ins.id).eq("course_id", id).maybeSingle() : { data: null };
+    if (link) statement = { earnings: await loadEarnings(supabase, { courseId: id }), share: Number(link.revenue_share_pct ?? ins?.default_revenue_share_pct ?? 0) };
+  }
   const enrolled = Number(report.enrolled) || 0;
 
   return (
@@ -54,6 +65,10 @@ export default async function ManageCourse({ params }: PageProps<"/instructor/co
           }))} format={(n) => `${n}`} />
         </Card>
       </div>
+      {statement && (
+        <EarningsStatement earnings={statement.earnings} currency={env.defaultCurrency} basePath={`/instructor/courses/${id}`} fixedCourse={id}
+          courses={[{ id, title: course.title, share: statement.share }]} month={typeof sp.month === "string" ? sp.month : null} />
+      )}
       <Card title="Curriculum">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
           <span>{chapters.length} chapters · {chapters.reduce((n, c) => n + c.lessons.length, 0)} lessons</span>
