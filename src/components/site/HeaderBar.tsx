@@ -1,7 +1,7 @@
 "use client";
 import { Logo } from "@/components/site/Logo";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { brand } from "./brand";
 
 type L = { href: string; label: string };
@@ -17,6 +17,17 @@ export function HeaderBar({ learnLinks, mainLinks, user }: { learnLinks: L[]; ma
   // Black bar at the top of the page; once scrolled it becomes a floating white bar.
   const [scrolled, setScrolled] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [acct, setAcct] = useState(false); // desktop account menu
+  const account = useRef<HTMLDivElement>(null);
+  // close the account menu on a click outside it (not on blur, which closed it before a slow click on an item landed)
+  useEffect(() => {
+    if (!acct) return;
+    const away = (e: PointerEvent) => { if (account.current && !account.current.contains(e.target as Node)) setAcct(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setAcct(false); };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
+  }, [acct]);
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 40);
     on();
@@ -55,15 +66,15 @@ export function HeaderBar({ learnLinks, mainLinks, user }: { learnLinks: L[]; ma
 
           <div className="hidden items-center md:flex">
             {user ? (
-              <div className="relative">
-                <button onClick={() => setMenu(!menu)} onBlur={() => setTimeout(() => setMenu(false), 150)}
-                  className="flex items-center gap-2.5 text-[15px]" aria-haspopup="menu" aria-expanded={menu}>
+              <div className="relative" ref={account}>
+                <button onClick={() => setAcct(!acct)}
+                  className="flex items-center gap-2.5 text-[15px]" aria-haspopup="menu" aria-expanded={acct}>
                   {shortName(user.name)}
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#c4401a] text-sm text-white">{initial}</span>
                   <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden><path d="M1 3h8L5 7.5z" fill="currentColor" /></svg>
                 </button>
-                {menu && (
-                  <div role="menu" className="absolute right-0 top-full mt-3 min-w-52 rounded-xl bg-white p-2 text-sm text-ink shadow-lg ring-1 ring-black/5">
+                {acct && (
+                  <div role="menu" onClick={() => setAcct(false)} className="absolute right-0 top-full mt-3 min-w-52 rounded-xl bg-white p-2 text-sm text-ink shadow-lg ring-1 ring-black/5">
                     <Link role="menuitem" href="/dashboard" className="block rounded-lg px-3 py-2 hover:bg-surface">My Dashboard</Link>
                     <Link role="menuitem" href="/dashboard/certificates" className="block rounded-lg px-3 py-2 hover:bg-surface">Certificates</Link>
                     {user.isPartner && <Link role="menuitem" href="/affiliate" className="block rounded-lg px-3 py-2 hover:bg-surface">Partner dashboard</Link>}
