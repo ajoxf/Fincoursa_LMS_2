@@ -4,7 +4,7 @@ import { TrackConversion } from "@/components/site/Tracking";
 import { resendConfirmation, type AuthState } from "./actions";
 
 type Field = { name: string; label: string; type?: string; required?: boolean; autoComplete?: string; defaultValue?: string };
-type Check = { name: string; label: string };
+type Check = { name: string; label: string; defaultChecked?: boolean };
 
 export function AuthForm({ action, fields, submit, next, checks = [], conversion }: {
   action: (s: AuthState, f: FormData) => Promise<AuthState>; fields: Field[]; submit: string; next?: string; checks?: Check[];
@@ -34,7 +34,7 @@ export function AuthForm({ action, fields, submit, next, checks = [], conversion
         </label>
       ))}
       {checks.map((c) => (
-        <label key={c.name} className="flex items-start gap-2 text-sm text-ink/80"><input type="checkbox" name={c.name} className="mt-1" />{c.label}</label>
+        <label key={c.name} className="flex items-start gap-2 text-sm text-ink/80"><input type="checkbox" name={c.name} defaultChecked={c.defaultChecked} className="mt-1" />{c.label}</label>
       ))}
       {next && <input type="hidden" name="next" value={next} />}
       {state?.error && <p className="text-sm text-danger">{state.error}</p>}
