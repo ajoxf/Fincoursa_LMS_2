@@ -147,3 +147,19 @@ export async function markOrderPaid(orderId: string, form: FormData) {
   }
   revalidatePath("/admin/orders");
 }
+
+/** From the alert on the admin pages: finish a free (100% code) order that didn't enrol the buyer, and email them. */
+export async function completeStuckOrder(orderId: string) {
+  const admin = await requireRole(["admin", "finance"]);
+  const db = createAdminClient();
+  const { data: o } = await db.from("orders").select("status, gateway, total_minor").eq("id", orderId).single();
+  if (!o || o.status !== "pending" || o.total_minor !== 0) throw new Error("Only a free order that is still waiting can be completed here");
+  const { data: first, error } = await db.rpc("fulfill_order", { p_order: orderId, p_gateway_ref: `free_${orderId}` });
+  if (error) throw new Error(error.message);
+  await audit(admin.id, "order.completed_from_alert", "orders", orderId, {});
+  if (first) {
+    const { sendEnrolledForOrder } = await import("@/lib/email/events");
+    await sendEnrolledForOrder(orderId).catch((e) => console.error("[email] enrolled", e));
+  }
+  revalidatePath("/admin", "layout");
+}

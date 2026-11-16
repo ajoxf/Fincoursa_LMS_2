@@ -1,4 +1,5 @@
 import "server-only";
+import { alertOrderProblem } from "@/lib/alerts";
 import type { GatewayEvent } from "./types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReceipt, sendRefund } from "@/lib/email/events";
@@ -34,6 +35,8 @@ export async function applyGatewayEvents(gatewayId: string, events: GatewayEvent
         ({ data: first, error: err } = await db.rpc("fulfill_order", { p_order: ev.orderId, p_gateway_ref: ev.sessionId ?? null }));
         // fulfill_order returns false when the order was already paid: send the receipt only once
         if (!err && first) await sendReceipt(ev.orderId).catch((e) => console.error("[email] receipt", e));
+        // the buyer has paid but isn't enrolled: tell the admins straight away (the provider will also retry)
+        if (err) await alertOrderProblem(ev.orderId, `The payment went through with ${gatewayId}, but the enrolment failed (${err.message}).`).catch((e) => console.error("[alert]", e));
       }
     } else if (ev.type === "payment.failed") {
       ({ error: err } = await db.from("orders").update({ status: "failed" }).eq("id", ev.orderId).eq("status", "pending"));
