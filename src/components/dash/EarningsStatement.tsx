@@ -10,9 +10,11 @@ type CourseOption = { id: string; title: string; share: number | null };
  * paid to earnings, an explanation of each figure, every sale, and a CSV download. No student details.
  * `fixedCourse`: on a course's own report page, only that course (no course filter or per-course table).
  */
-export function EarningsStatement({ earnings, courses, currency, basePath, course, month, fixedCourse }: {
+export function EarningsStatement({ earnings, courses, currency, basePath, course, month, fixedCourse, instructorId }: {
   earnings: Earning[]; courses: CourseOption[]; currency: string; basePath: string;
   course?: string | null; month?: string | null; fixedCourse?: string;
+  /** admin view: the CSV is limited to this instructor */
+  instructorId?: string;
 }) {
   const m = (n: number) => formatMoney(n, currency);
   const activeCourse = fixedCourse ?? (courses.some((c) => c.id === course) ? course! : null);
@@ -22,7 +24,7 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
   const t = summarize(rows);
   const shares = [...new Set(courses.filter((c) => !activeCourse || c.id === activeCourse).map((c) => c.share).filter((s): s is number => s != null))];
   const shareText = shares.length === 1 ? `${shares[0]}%` : null;
-  const csv = `/api/instructor/statement?${new URLSearchParams({ ...(activeCourse ? { course: activeCourse } : {}), ...(activeMonth ? { month: activeMonth } : {}) })}`;
+  const csv = `/api/instructor/statement?${new URLSearchParams({ ...(instructorId ? { instructor: instructorId } : {}), ...(activeCourse ? { course: activeCourse } : {}), ...(activeMonth ? { month: activeMonth } : {}) })}`;
   const scope = [activeCourse && !fixedCourse ? courses.find((c) => c.id === activeCourse)?.title : null, activeMonth ? monthLabel(activeMonth) : "all time"].filter(Boolean).join(", ");
   // per-course table: only on the dashboard, with more than one course and no course filter
   const perCourse = !fixedCourse && !activeCourse && courses.length > 1
