@@ -12,7 +12,7 @@ export function HistoryActions({ id, status, total, sent, failed, skipped, isAdm
   const [resume, setResume] = useState(false);
   const [approved, setApproved] = useState<{ id: string; total: number } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [list, setList] = useState<{ people: AudiencePerson[]; frozen: boolean } | "loading" | null>(null);
+  const [list, setList] = useState<{ people: AudiencePerson[]; frozen: boolean; tracked?: boolean } | "loading" | null>(null);
   const left = total - sent - failed - skipped;
   return (
     <>
@@ -44,7 +44,7 @@ export function HistoryActions({ id, status, total, sent, failed, skipped, isAdm
     </div>
     {/* the list gets its own full-width row under the email, so the subject and status columns keep their width */}
     {list === "loading" && <p className="text-xs text-muted md:col-span-3">Loading…</p>}
-    {list && list !== "loading" && <div className="md:col-span-3"><PeopleList people={list.people} note={list.frozen ? undefined : "Not sent yet: these are the people it would go to today. The final list is fixed when it sends."} /></div>}
+    {list && list !== "loading" && <div className="md:col-span-3"><PeopleList people={list.people} untracked={list.tracked === false} note={list.frozen ? undefined : "Not sent yet: these are the people it would go to today. The final list is fixed when it sends."} /></div>}
     </>
   );
 }

@@ -51,7 +51,7 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
   // what people did after each email: opened, clicked, signed up, bought
   const sentIds = (history ?? []).filter((c) => c.sent > 0).map((c) => c.id);
   const { data: funnelRows } = sentIds.length ? await db.rpc("campaign_funnel", { p_ids: sentIds }) : { data: [] };
-  const funnel = new Map(((funnelRows ?? []) as { campaign_id: string; opened: number; clicked: number; signed_up: number; sampled: number; bought: number; revenue_minor: number }[]).map((f) => [f.campaign_id, f]));
+  const funnel = new Map(((funnelRows ?? []) as { campaign_id: string; opened: number; clicked: number; signed_up: number; sampled: number; bought: number; revenue_minor: number; scanned?: number; tracked?: boolean }[]).map((f) => [f.campaign_id, f]));
   const people = [...new Set((history ?? []).flatMap((c) => [c.submitted_by, c.approved_by]).filter(Boolean) as string[])];
   const { data: staff } = people.length ? await db.from("profiles").select("id, full_name, email").in("id", people) : { data: [] as { id: string; full_name: string | null; email: string }[] };
   const who = new Map((staff ?? []).map((p) => [p.id, p.full_name || p.email]));
@@ -125,7 +125,9 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
                     if (!f) return null;
                     return (
                       <p className="text-xs text-muted">
-                        <b className="text-ink">{f.opened}</b> opened · <b className="text-ink">{f.clicked || clicks.get(campaignTag(c.id)) || 0}</b> clicked
+                        {f.tracked === false
+                          ? <>Sent before per-person tracking · {clicks.get(campaignTag(c.id)) ?? 0} link visits in total</>
+                          : <><b className="text-ink">{f.opened}</b> opened · <b className="text-ink">{f.clicked}</b> clicked{f.scanned ? ` (+${f.scanned} checked by email scanners)` : ""}</>}
                         {f.signed_up ? <> · <b className="text-ink">{f.signed_up}</b> signed up</> : null}
                         {f.sampled ? <> · <b className="text-ink">{f.sampled}</b> tried the sample</> : null}
                         {" · "}<b className="text-ink">{f.bought}</b> bought{Number(f.revenue_minor) > 0 ? ` (${formatMoney(Number(f.revenue_minor))})` : ""}

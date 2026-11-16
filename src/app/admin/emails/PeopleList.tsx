@@ -10,7 +10,7 @@ type Filter = "all" | "opened" | "not_opened" | "clicked" | "converted";
 const FILTERS: [Filter, string][] = [["all", "Everyone"], ["opened", "Opened"], ["not_opened", "Not opened"], ["clicked", "Clicked"], ["converted", "Signed up or bought"]];
 
 /** Recipients with search, CSV download and, after sending, what each person did. */
-export function PeopleList({ people, note }: { people: AudiencePerson[]; note?: string }) {
+export function PeopleList({ people, note, untracked = false }: { people: AudiencePerson[]; note?: string; untracked?: boolean }) {
   const [q, setQ] = useState("");
   const [f, setF] = useState<Filter>("all");
   const tracked = people.some((p) => p.status);
@@ -42,14 +42,15 @@ export function PeopleList({ people, note }: { people: AudiencePerson[]; note?: 
       {note && <p className="text-xs text-muted">{note}</p>}
       {tracked && (
         <div className="grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
-          {[["Sent", people.filter((p) => p.status === "sent").length], ["Opened", n("opened_at")], ["Clicked", n("clicked_at")],
+          {[["Sent", people.filter((p) => p.status === "sent").length], ["Opened", untracked ? "–" : n("opened_at")], ["Clicked", untracked ? "–" : n("clicked_at")],
             ["Signed up", n("signed_up_at")], ["Free sample", n("sample_at")], ["Bought", n("bought_at")]].map(([l, v]) => (
             <div key={l as string} className="rounded-lg bg-surface px-2 py-1.5"><b className="block text-base text-ink">{v}</b><span className="text-xs text-muted">{l}</span></div>
           ))}
         </div>
       )}
+      {untracked && <p className="rounded-lg bg-surface px-3 py-2 text-xs text-muted">This email was sent before opens and clicks were tracked per person (16 November 2026), so those show as &ndash;. Sign-ups, free sample and purchases are still matched by email address.</p>}
       {tracked && revenue > 0 && <p className="text-xs text-muted">Sales from these people within 30 days of the email: <b className="text-ink">{formatMoney(revenue, cur)}</b> (before tax)</p>}
-      {tracked && (
+      {tracked && !untracked && (
         <div className="flex flex-wrap gap-1.5 text-xs">
           {FILTERS.map(([v, l]) => <button key={v} type="button" onClick={() => setF(v)} className={`rounded-full px-2.5 py-1 ${f === v ? "bg-ink text-white" : "bg-surface"}`}>{l}</button>)}
         </div>
@@ -70,7 +71,8 @@ export function PeopleList({ people, note }: { people: AudiencePerson[]; note?: 
                   {chip(p.signed_up_at, `Signed up ${when(p.signed_up_at)}`, "bg-primary/10 text-primary")}
                   {chip(p.sample_at, `Tried the free sample ${when(p.sample_at)}`, "bg-primary/10 text-primary")}
                   {chip(p.bought_at, `Bought ${when(p.bought_at)}${p.revenue_minor ? ` · ${formatMoney(p.revenue_minor, p.currency ?? undefined)}` : ""}`, "bg-success/15 text-success")}
-                  {p.status === "sent" && !p.opened_at && <span className="text-muted">Not opened yet</span>}
+                  {(p.scanner_clicks ?? 0) > 0 && <span className="rounded-full bg-surface px-2 py-0.5 text-muted" title="Their email system opened every link within seconds to check it was safe. This isn't counted as a click.">Links checked by an email scanner</span>}
+                  {p.status === "sent" && !p.opened_at && !untracked && <span className="text-muted">Not opened yet</span>}
                 </div>
               )}
             </li>
@@ -79,7 +81,7 @@ export function PeopleList({ people, note }: { people: AudiencePerson[]; note?: 
       )}
       {shown.length > 500 && <p className="text-xs text-muted">Showing 500 of {shown.length}. Search, or download the full list.</p>}
       {people.length > 0 && <button type="button" onClick={csv} className="justify-self-start text-xs underline">Download as CSV</button>}
-      {tracked && <p className="text-xs text-muted">Opens are a guide, not exact: some email apps open every email automatically (counted as opened), and some block images (not counted until they click). Signed up, free sample and bought count anything within 30 days of the email.</p>}
+      {tracked && <p className="text-xs text-muted">Opens are a guide, not exact: some email apps open every email automatically (counted as opened), and some block images (not counted until they click). Company email scanners that open every link at once to check it is safe are shown as &quot;links checked&quot;, not as clicks. Signed up, free sample and bought count anything within 30 days of the email.</p>}
     </div>
   );
 }
