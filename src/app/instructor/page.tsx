@@ -23,6 +23,13 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
     supabase.rpc("instructor_earnings_series", { p_days: days, p_currency: cur }),
     supabase.from("payouts").select("id, amount_minor, currency, status, paid_at, created_at, reference").eq("payee_type", "instructor").order("created_at", { ascending: false }).limit(10),
   ]);
+  // the revenue share the admin set: per course, else the instructor's default
+  const { data: me2 } = await supabase.from("instructors").select("id, default_revenue_share_pct").eq("user_id", me.id).maybeSingle();
+  const { data: links } = me2 ? await supabase.from("course_instructors").select("course_id, revenue_share_pct").eq("instructor_id", me2.id) : { data: [] as { course_id: string; revenue_share_pct: number | null }[] };
+  const shareFor = (courseId: string) => {
+    const l = (links ?? []).find((x) => x.course_id === courseId);
+    return Number(l?.revenue_share_pct ?? me2?.default_revenue_share_pct ?? 0);
+  };
   // each sale behind the earnings: no student names or emails, only what the sale was worth and the share
   const { data: earningRows } = await supabase.from("instructor_earnings")
     .select("id, created_at, course_id, currency, net_revenue_minor, share_pct, amount_minor, status, available_at, course:courses(title)")
@@ -36,6 +43,7 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
   if (error) return <p className="text-danger">Your instructor profile isn&apos;t linked yet. Ask an admin to connect it to your account.</p>;
   const m = (n: number) => formatMoney(n, cur);
   const courses = (summary.courses ?? []) as CourseRow[];
+  const shares = [...new Set(courses.map((c) => shareFor(c.course_id)))];
   const students = courses.reduce((s, c) => s + c.students, 0);
   const periodTotal = (series ?? []).reduce((s: number, r: { amount_minor: number }) => s + Number(r.amount_minor), 0);
 
@@ -61,7 +69,7 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
             <thead className="text-left text-muted"><tr>
               <th className="py-2 font-medium">Course</th><th className="py-2 text-right font-medium">Students</th>
               <th className="w-48 py-2 pl-6 font-medium">Avg. progress</th><th className="py-2 text-right font-medium">Completed</th>
-              <th className="py-2 text-right font-medium">Earnings</th><th />
+              <th className="py-2 text-right font-medium">Your share</th><th className="py-2 text-right font-medium">Earnings</th><th />
             </tr></thead>
             <tbody>
               {courses.map((c) => (
@@ -70,11 +78,12 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
                   <td className="py-3 text-right tabular-nums">{c.students}</td>
                   <td className="py-3 pl-6"><Progress pct={Number(c.avg_progress)} /></td>
                   <td className="py-3 text-right tabular-nums">{c.completions}</td>
+                  <td className="py-3 text-right tabular-nums">{shareFor(c.course_id)}%</td>
                   <td className="py-3 text-right tabular-nums">{m(c.earnings_minor)}</td>
                   <td className="py-3 text-right"><Link href={`/instructor/courses/${c.course_id}`} className="text-primary underline">View report</Link></td>
                 </tr>
               ))}
-              {!courses.length && <tr><td colSpan={6} className="py-6 text-center text-muted">No courses assigned yet.</td></tr>}
+              {!courses.length && <tr><td colSpan={7} className="py-6 text-center text-muted">No courses assigned yet.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -82,6 +91,9 @@ export default async function InstructorDashboard({ searchParams }: PageProps<"/
       <Card title="How your earnings are calculated">
         <div className="grid gap-4 text-sm">
           <div className="grid gap-2 rounded-xl bg-surface p-4">
+            {courses.length > 0 && (
+              <p className="text-base"><b>Your revenue share: {shares.length === 1 ? `${shares[0]}%` : courses.map((c) => `${c.title} ${shareFor(c.course_id)}%`).join(" · ")}</b>{shares.length === 1 && courses.length > 1 ? " on all your courses" : ""}</p>
+            )}
             <p><b>For each sale:</b> what the student paid for your course, after any discount code or FinCoursa credit and excluding tax, multiplied by your revenue share.</p>
             <p className="font-mono text-xs sm:text-sm">Your earnings = course price paid (excl. tax) &times; your share %</p>
             <p className="text-muted">When a course is sold as part of a programme, the programme price is split equally across its courses first. Earnings become payable 30 days after the sale, once the refund window has passed; a refunded sale is cancelled. Student names and contact details are never shown.</p>

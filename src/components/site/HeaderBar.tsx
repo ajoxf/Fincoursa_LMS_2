@@ -9,7 +9,8 @@ type U = { name: string; isAdmin: boolean; isInstructor: boolean; isPartner: boo
 
 /** "Fincoursa Team" → "Fincoursa T" (as fincoursa.com shows it) */
 function shortName(n: string) {
-  const parts = n.trim().split(/\s+/);
+  // ignore qualifications after a comma: "Dean Rogers, CMT" -> "Dean R"
+  const parts = n.split(",")[0].trim().split(/\s+/);
   return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}` : parts[0];
 }
 
@@ -74,7 +75,7 @@ export function HeaderBar({ learnLinks, mainLinks, user }: { learnLinks: L[]; ma
                   <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden><path d="M1 3h8L5 7.5z" fill="currentColor" /></svg>
                 </button>
                 {acct && (
-                  <div role="menu" onClick={() => setAcct(false)} className="absolute right-0 top-full mt-3 min-w-52 rounded-xl bg-white p-2 text-sm text-ink shadow-lg ring-1 ring-black/5">
+                  <div role="menu" onClick={(e) => { if ((e.target as HTMLElement).closest("a")) setAcct(false); }} className="absolute right-0 top-full mt-3 min-w-52 rounded-xl bg-white p-2 text-sm text-ink shadow-lg ring-1 ring-black/5">
                     <Link role="menuitem" href="/dashboard" className="block rounded-lg px-3 py-2 hover:bg-surface">My Dashboard</Link>
                     <Link role="menuitem" href="/dashboard/certificates" className="block rounded-lg px-3 py-2 hover:bg-surface">Certificates</Link>
                     {user.isPartner && <Link role="menuitem" href="/affiliate" className="block rounded-lg px-3 py-2 hover:bg-surface">Partner dashboard</Link>}
