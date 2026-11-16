@@ -10,7 +10,9 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const course = req.nextUrl.searchParams.get("course");
   const month = req.nextUrl.searchParams.get("month");
-  const rows = filterEarnings(await loadEarnings(await createClient()), {
+  // admins (who can read every instructor's rows) pass the instructor; instructors only ever get their own (RLS)
+  const ins = req.nextUrl.searchParams.get("instructor");
+  const rows = filterEarnings(await loadEarnings(await createClient(), { instructorId: ins && /^[0-9a-f-]{36}$/i.test(ins) ? ins : undefined }), {
     course: course && /^[0-9a-f-]{36}$/i.test(course) ? course : null,
     month: month && /^\d{4}-\d{2}$/.test(month) ? month : null,
   });
