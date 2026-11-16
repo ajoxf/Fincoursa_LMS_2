@@ -1,3 +1,4 @@
+import { alertOrderProblem, openOrderAlerts } from "@/lib/alerts";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendLiveReminders, sendMissedCompletionEmails, sendReviewInvites } from "@/lib/email/events";
@@ -30,5 +31,10 @@ export async function GET(request: NextRequest) {
   const reviewInvites = await sendReviewInvites().catch((e) => { console.error("[cron] review invites", e); return null; });
   // marketing consent -> Resend contact list (catches anything the instant sync missed)
   const emailList = await syncPendingEmailContacts().catch((e) => { console.error("[cron] email list", e); return null; });
-  return NextResponse.json({ ok: true, completionEmails, liveReminders, campaignEmails, automations, growth, weekly, reviewInvites, emailList });
+  // safety net: any order still stuck without an enrolment emails the admins (once per order)
+  const stuck = await openOrderAlerts().then(async (list) => {
+    for (const a of list) await alertOrderProblem(a.id, a.problem);
+    return list.length;
+  }).catch((e) => { console.error("[cron] order alerts", e); return null; });
+  return NextResponse.json({ ok: true, completionEmails, liveReminders, campaignEmails, automations, growth, weekly, reviewInvites, emailList, stuck });
 }

@@ -13,6 +13,7 @@ import { allow, LIMITS, TOO_MANY } from "@/lib/rate-limit";
 import { sendEnrolledForOrder, sendPaymentPending, sendReceipt } from "@/lib/email/events";
 import { applyGatewayEvents } from "@/lib/payments/apply";
 import { attributionFor } from "@/lib/attribution";
+import { alertOrderProblem } from "@/lib/alerts";
 import { testPaymentsAllowed } from "@/lib/payments/gateways/manual";
 
 export async function startCheckout(form: FormData) {
@@ -90,7 +91,11 @@ export async function startCheckout(form: FormData) {
   if (quote.totalMinor === 0) {
     // the reference must be unique per order: a shared "free" made every free order after the first fail
     const { error: fErr } = await db.rpc("fulfill_order", { p_order: order.id, p_gateway_ref: `free_${order.id}` });
-    if (fErr) { console.error("[checkout] free order not fulfilled", order.id, fErr.message); throw new Error("We couldn't complete your enrolment. Please try again or email team@fincoursa.com."); }
+    if (fErr) {
+      console.error("[checkout] free order not fulfilled", order.id, fErr.message);
+      await alertOrderProblem(order.id, `The free enrolment could not be completed (${fErr.message}).`).catch((e) => console.error("[alert]", e));
+      throw new Error("We couldn't complete your enrolment. Please try again or email team@fincoursa.com.");
+    }
     after(async () => { await sendReceipt(order.id); await sendEnrolledForOrder(order.id); });
     redirect(`/checkout/success?order=${order.id}`);
   }
