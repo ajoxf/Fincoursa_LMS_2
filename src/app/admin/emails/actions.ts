@@ -272,3 +272,60 @@ export async function setDesignStatus(id: string, status: "approved" | "draft" |
   const said = { approved: "Approved. It now appears in the Design list.", draft: "Moved back to draft.", retired: "Retired. It no longer appears in the Design list." }[status];
   redirect(`/admin/emails?tab=designs&ok=${encodeURIComponent(said)}`);
 }
+
+export type AudiencePerson = { email: string; name: string | null; type: "Student" | "Contact"; status?: string };
+
+/** The people an email would reach right now, using the same rules as enqueue_campaign. */
+async function audienceList(kind: CampaignKind, a: Audience, o: Options): Promise<AudiencePerson[]> {
+  const db = createAdminClient();
+  const { data: students, error } = await db.rpc("campaign_audience", {
+    p_kind: kind, p_buyers_only: Boolean(a.buyers_only),
+    p_courses: a.courses?.length ? a.courses : null, p_countries: a.countries?.length ? a.countries : null,
+  });
+  if (error) throw new Error(error.message);
+  let buyers = new Set<string>();
+  if (o.exclude_buyers_of) {
+    const { data } = await db.from("enrollments").select("user_id").eq("course_id", o.exclude_buyers_of).is("revoked_at", null).neq("source", "free");
+    buyers = new Set((data ?? []).map((e) => e.user_id as string));
+  }
+  const out = new Map<string, AudiencePerson>();
+  for (const s of (students ?? []) as { user_id: string; email: string; full_name: string | null }[]) {
+    if (buyers.has(s.user_id)) continue;
+    const key = s.email.toLowerCase();
+    if (!out.has(key)) out.set(key, { email: s.email, name: s.full_name, type: "Student" });
+  }
+  if (o.include_contacts) {
+    const { data: contacts } = await db.from("email_contacts").select("email, first_name, last_name").is("unsubscribed_at", null).limit(20000);
+    const emails = (contacts ?? []).map((c) => c.email.toLowerCase());
+    // contacts who also have an account: leave out if they opted out of marketing, or already bought
+    const blocked = new Set<string>();
+    for (let i = 0; i < emails.length; i += 200) {
+      const { data: profs } = await db.from("profiles").select("id, email, marketing_opt_in").in("email", emails.slice(i, i + 200));
+      for (const p of profs ?? []) if (p.marketing_opt_in === false || buyers.has(p.id)) blocked.add(String(p.email).toLowerCase());
+    }
+    for (const c of contacts ?? []) {
+      const key = c.email.toLowerCase();
+      if (blocked.has(key) || out.has(key)) continue;
+      out.set(key, { email: key, name: [c.first_name, c.last_name].filter(Boolean).join(" ") || null, type: "Contact" });
+    }
+  }
+  return [...out.values()].sort((x, y) => (x.name ?? x.email).localeCompare(y.name ?? y.email));
+}
+
+export async function listAudience(kind: CampaignKind, audience: Audience, options: Options) {
+  await requireRole([...STAFF]);
+  return audienceList(kind === "promotion" ? "promotion" : "update", audience, options);
+}
+
+/** Who a saved email went to (with each person's status), or for one not sent yet, who it would go to today. */
+export async function campaignRecipients(id: string): Promise<{ people: AudiencePerson[]; frozen: boolean }> {
+  await requireRole([...STAFF]);
+  const db = createAdminClient();
+  const { data: rows } = await db.from("email_campaign_recipients").select("email, name, status, contact_id").eq("campaign_id", id).order("email").limit(20000);
+  if (rows?.length) {
+    return { frozen: true, people: rows.map((r) => ({ email: r.email, name: r.name, type: r.contact_id ? "Contact" : "Student", status: r.status })) };
+  }
+  const { data: c } = await db.from("email_campaigns").select("kind, audience, include_contacts, exclude_buyers_of").eq("id", id).maybeSingle();
+  if (!c) return { frozen: false, people: [] };
+  return { frozen: false, people: await audienceList(c.kind === "promotion" ? "promotion" : "update", (c.audience ?? {}) as Audience, { include_contacts: Boolean(c.include_contacts), exclude_buyers_of: c.exclude_buyers_of }) };
+}

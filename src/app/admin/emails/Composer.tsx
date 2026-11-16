@@ -1,7 +1,9 @@
 "use client";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { countAudience, createCampaign, previewEmail, sendNextBatch, sendTestEmail, type ComposeState } from "./actions";
+import { PeopleList } from "./PeopleList";
+import type { AudiencePerson } from "./actions";
+import { countAudience, listAudience, createCampaign, previewEmail, sendNextBatch, sendTestEmail, type ComposeState } from "./actions";
 
 type Course = { id: string; title: string };
 type Draft = { kind?: "promotion" | "update"; design?: string; include_contacts?: boolean; exclude_buyers_of?: string | null; subject?: string; heading?: string; body?: string; cta_label?: string | null; cta_url?: string | null; courses?: string[]; countries?: string[]; buyers_only?: boolean };
@@ -52,10 +54,11 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
   const [pending, start] = useTransition();
   const [mode, setMode] = useState<"now" | "schedule">("now");
 
+  const [people, setPeople] = useState<AudiencePerson[] | "loading" | null>(null);
+
   // live audience size
-  const recount = () => {
-    if (!form.current) return;
-    const fd = new FormData(form.current);
+  const readTarget = () => {
+    const fd = new FormData(form.current!);
     const audience = {
       courses: fd.getAll("courses").map(String),
       countries: String(fd.get("countries") ?? "").toUpperCase().split(/[^A-Z]+/).filter((c) => c.length === 2),
@@ -63,7 +66,19 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
     };
     const ex = String(fd.get("exclude_buyers_of") ?? "");
     const options = { include_contacts: fd.get("include_contacts") === "on", exclude_buyers_of: ex || null };
-    countAudience(designed || fd.get("kind") !== "update" ? "promotion" : "update", audience, options).then(setCount).catch(() => setCount(null));
+    return { kind: (designed || fd.get("kind") !== "update" ? "promotion" : "update") as "promotion" | "update", audience, options };
+  };
+  const showPeople = () => {
+    if (!form.current) return;
+    const t = readTarget();
+    setPeople("loading");
+    listAudience(t.kind, t.audience, t.options).then(setPeople).catch(() => setPeople(null));
+  };
+  const recount = () => {
+    if (!form.current) return;
+    setPeople(null);
+    const t = readTarget();
+    countAudience(t.kind, t.audience, t.options).then(setCount).catch(() => setCount(null));
   };
   useEffect(recount, [kind, design]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -128,7 +143,14 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
             <input type="checkbox" name="include_contacts" defaultChecked={draft?.include_contacts} disabled={kind === "update" && !designed} className="mt-1" />
             <span>Also send to the contact list ({contacts} people without an account, from the Contacts tab)</span>
           </label>
-          <p className="rounded-lg bg-surface px-3 py-2 text-sm">This will go to <b>{count ?? "…"}</b> {count === 1 ? "person" : "people"}.</p>
+          <div className="grid gap-2 rounded-lg bg-surface px-3 py-2 text-sm">
+            <p className="flex flex-wrap items-baseline justify-between gap-2">
+              <span>This will go to <b>{count ?? "…"}</b> {count === 1 ? "person" : "people"}.</span>
+              {count ? <button type="button" onClick={() => (people ? setPeople(null) : showPeople())} className="text-xs underline">{people ? "Hide the list" : "See who"}</button> : null}
+            </p>
+            {people === "loading" && <p className="text-xs text-muted">Loading…</p>}
+            {Array.isArray(people) && <PeopleList people={people} />}
+          </div>
         </fieldset>
 
         <fieldset className="grid gap-3">
