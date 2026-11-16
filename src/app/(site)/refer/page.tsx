@@ -12,8 +12,17 @@ export const metadata: Metadata = { title: "Refer a friend", description: "Share
 export default async function ReferPage() {
   const [user, s, cb] = await Promise.all([getSessionUser(), getReferralSettings(), getCashbackSettings()]);
   const until = cb.redeem_by ? `until ${formatDate(cb.redeem_by)}` : cb.validity_days ? `for ${cb.validity_days} days` : "";
-  const code = user && s.enabled ? await ensureReferralCode(user.id, user.fullName, user.email) : null;
-  const stats = user && s.enabled ? await referralStats(user.id) : null;
+  // never let a problem creating the link or reading the totals take the whole page down
+  let code: string | null = null, failed = false;
+  if (user && s.enabled) {
+    try { code = await ensureReferralCode(user.id, user.fullName, user.email); }
+    catch (e) {
+      // a second try covers two page loads racing to create the same code
+      try { code = await ensureReferralCode(user.id, user.fullName, user.email); }
+      catch (e2) { failed = true; console.error("refer: could not get a referral code", { user: user.id, first: String(e), second: String(e2) }); }
+    }
+  }
+  const stats = code ? await referralStats(user!.id).catch((e) => { console.error("refer: stats failed", String(e)); return null; }) : null;
   const message = "I'm using the FinCoursa CMT Level II Question Bank: 1,100+ exam-style questions with every answer explained. Try the free sample:";
 
   return (
@@ -28,6 +37,8 @@ export default async function ReferPage() {
       </div>
       {!s.enabled ? (
         <p className="rounded-lg bg-surface p-4 text-sm text-muted">Referral rewards are paused at the moment. You can still share fincoursa.com with friends.</p>
+      ) : failed ? (
+        <p className="rounded-lg bg-warning/10 p-4 text-sm text-warning">We couldn&apos;t load your link just now. Please refresh the page in a moment. If it keeps happening, email team@fincoursa.com.</p>
       ) : code ? (
         <div className="grid gap-6">
           <ShareLink url={referralUrl(code)} message={message} />
