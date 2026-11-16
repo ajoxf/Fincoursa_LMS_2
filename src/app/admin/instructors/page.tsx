@@ -6,6 +6,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/dash/Stat";
 import { createInstructor, saveInstructorDeductions } from "./actions";
 import { agreementStatus } from "@/lib/agreements";
+import { instructorAccessMany } from "@/lib/instructor-admin";
+import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Instructors" };
 
@@ -18,6 +20,8 @@ export default async function AdminInstructors({ searchParams }: PageProps<"/adm
   const { data } = await createAdminClient()
     .from("instructors").select("id, name, title, photo_url, is_published, user_id, default_revenue_share_pct, course_instructors(course_id)").order("sort_order");
   const signed = await agreementStatus("instructor");
+  // invited / signed in, from each linked login
+  const access = await instructorAccessMany(createAdminClient(), (data ?? []).map((i: { user_id: string | null }) => i.user_id));
   return (
     <div className="grid gap-6">
       <h1 className="text-3xl font-bold text-primary">Instructors</h1>
@@ -54,8 +58,16 @@ export default async function AdminInstructors({ searchParams }: PageProps<"/adm
               <span className="block font-semibold">{i.name}</span>
               <span className="block truncate text-muted">{i.title}</span>
               <span className="mt-1 block text-xs text-muted">
-                {i.course_instructors?.length ?? 0} courses · {Number(i.default_revenue_share_pct)}% share · {i.user_id ? "login linked" : "no login"} · {i.is_published ? "on site" : "hidden"}
+                {i.course_instructors?.length ?? 0} courses · {Number(i.default_revenue_share_pct)}% share · {i.is_published ? "on site" : "hidden"}
               </span>
+              {(() => {
+                const a = i.user_id ? access.get(i.user_id) : null;
+                return (
+                  <span className={`mt-1 block text-xs ${!a ? "text-muted" : a.state === "active" ? "text-success" : "text-warning"}`}>
+                    {!a ? "Not invited (no login email)" : a.state === "active" ? `Signed in · last ${formatDate(a.lastSignIn, "datetime")}` : `Invited${a.invitedAt ? ` ${formatDate(a.invitedAt)}` : ""} · hasn't signed in yet`}
+                  </span>
+                );
+              })()}
               <span className={`mt-1 block text-xs ${signed.get(i.id) === "signed" ? "text-success" : signed.get(i.id) ? "text-warning" : "text-muted"}`}>
                 {signed.get(i.id) === "signed" ? "Agreement signed" : signed.get(i.id) ? "Agreement sent, not signed yet" : "No agreement on file"}
               </span>

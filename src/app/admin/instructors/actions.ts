@@ -115,3 +115,18 @@ export async function saveInstructorDeductions(form: FormData) {
   revalidatePath("/admin/instructors");
   redirect(`/admin/instructors?ok=${encodeURIComponent(`Saved: payment fee ${pct}%, ${cb}% of cashback taken off. Unpaid earnings were recalculated.`)}`);
 }
+
+/** Send the instructor their invitation (sign-in link) again. */
+export async function resendInstructorInvite(id: string) {
+  await requireRole(["admin"]);
+  const db = createAdminClient();
+  const { data: ins } = await db.from("instructors").select("name, user_id").eq("id", id).maybeSingle();
+  const back = (k: "ok" | "err", m: string): never => redirect(`/admin/instructors/${id}?${k}=${encodeURIComponent(m)}`);
+  if (!ins?.user_id) back("err", "Add a login email in Edit profile first.");
+  const { data: p } = await db.from("profiles").select("email").eq("id", ins!.user_id).maybeSingle();
+  if (!p?.email) back("err", "This login has no email address.");
+  const m = staffInviteEmail({ name: ins!.name, role: "instructor", url: `${env.siteUrl}/users/sign_in?invite=1&email=${encodeURIComponent(p!.email)}&next=/instructor` });
+  const sent = await sendEmail({ to: p!.email, ...m, template: "instructor_invite_again", ref: `${ins!.user_id}:${Date.now()}` });
+  revalidatePath(`/admin/instructors/${id}`);
+  back(sent ? "ok" : "err", sent ? `Invitation sent again to ${p!.email}.` : "The email couldn't be sent. Check the email settings.");
+}
