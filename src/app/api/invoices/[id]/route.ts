@@ -3,7 +3,8 @@ import { getSessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/money";
 import { countryName, formatDate } from "@/lib/format";
-import { brand } from "@/components/site/brand";
+import { getBranding } from "@/lib/site-settings";
+import { EMAIL_THEME } from "@/lib/email/templates";
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -15,6 +16,8 @@ const AED_PER = { USD: 3.6725 } as Record<string, number>;
 /** Printable tax invoice in the FinCoursa theme (browser "Save as PDF"). Buyer sees own invoices; staff see all (RLS). */
 export async function GET(_req: NextRequest, ctx: RouteContext<"/api/invoices/[id]">) {
   const { id } = await ctx.params;
+  // the white logo for the black header band: the one uploaded in Admin -> Home page & logos, else the email logo
+  const logo = (await getBranding().catch(() => ({} as { logo_white?: string }))).logo_white || EMAIL_THEME.logo;
   if (!(await getSessionUser())) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const supabase = await createClient();
   const { data: o } = await supabase
@@ -92,7 +95,7 @@ td.r,th.r{padding-left:16px}
 <div class="actions"><button class="btn" onclick="print()">Print / Save PDF</button></div>
 <div class="page">
   <div class="top">
-    ${brand.logoFooter ? `<img src="${esc(brand.logoFooter)}" alt="FinCoursa">` : `<span style="font-size:26px;font-weight:700;letter-spacing:-.5px">FinCoursa</span>`}
+    <img src="${esc(logo)}" alt="FinCoursa">
     <span class="pill lime">${title}</span>
   </div>
   <div class="body">

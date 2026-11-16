@@ -43,7 +43,7 @@ export function PeopleList({ people, note, untracked = false }: { people: Audien
       {tracked && (
         <div className="grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
           {[["Sent", people.filter((p) => p.status === "sent").length], ["Opened", untracked ? "–" : n("opened_at")], ["Clicked", untracked ? "–" : n("clicked_at")],
-            ["Signed up", n("signed_up_at")], ["Free sample", n("sample_at")], ["Bought", n("bought_at")]].map(([l, v]) => (
+            ["Signed up", n("signed_up_at")], ["Free sample", n("sample_at")], ["Bought or enrolled", n("bought_at")]].map(([l, v]) => (
             <div key={l as string} className="rounded-lg bg-surface px-2 py-1.5"><b className="block text-base text-ink">{v}</b><span className="text-xs text-muted">{l}</span></div>
           ))}
         </div>
@@ -70,7 +70,7 @@ export function PeopleList({ people, note, untracked = false }: { people: Audien
                   {chip(p.clicked_at, `Clicked ${when(p.clicked_at)}${(p.clicks ?? 0) > 1 ? ` · ${p.clicks} clicks` : ""}`, "bg-accent/30 text-ink")}
                   {chip(p.signed_up_at, `Signed up ${when(p.signed_up_at)}`, "bg-primary/10 text-primary")}
                   {chip(p.sample_at, `Tried the free sample ${when(p.sample_at)}`, "bg-primary/10 text-primary")}
-                  {chip(p.bought_at, `Bought ${when(p.bought_at)}${p.revenue_minor ? ` · ${formatMoney(p.revenue_minor, p.currency ?? undefined)}` : ""}`, "bg-success/15 text-success")}
+                  {chip(p.bought_at, p.revenue_minor ? `Bought ${when(p.bought_at)} · ${formatMoney(p.revenue_minor, p.currency ?? undefined)}` : `Enrolled with a code ${when(p.bought_at)} (free)`, "bg-success/15 text-success")}
                   {(p.scanner_clicks ?? 0) > 0 && <span className="rounded-full bg-surface px-2 py-0.5 text-muted" title="Their email system opened every link within seconds to check it was safe. This isn't counted as a click.">Links checked by an email scanner</span>}
                   {p.status === "sent" && !p.opened_at && !untracked && <span className="text-muted">Not opened yet</span>}
                 </div>
@@ -81,7 +81,7 @@ export function PeopleList({ people, note, untracked = false }: { people: Audien
       )}
       {shown.length > 500 && <p className="text-xs text-muted">Showing 500 of {shown.length}. Search, or download the full list.</p>}
       {people.length > 0 && <button type="button" onClick={csv} className="justify-self-start text-xs underline">Download as CSV</button>}
-      {tracked && <p className="text-xs text-muted">Opens are a guide, not exact: some email apps open every email automatically (counted as opened), and some block images (not counted until they click). Company email scanners that open every link at once to check it is safe are shown as &quot;links checked&quot;, not as clicks. Signed up, free sample and bought count anything within 30 days of the email.</p>}
+      {tracked && <p className="text-xs text-muted">Opens are a guide, not exact: some email apps open every email automatically (counted as opened), and some block images (not counted until they click). Company email scanners that open every link at once to check it is safe are shown as &quot;links checked&quot;, not as clicks. Signed up counts new accounts only; signed up, free sample and bought (including enrolments that were free with a code) count anything within 30 days of the email.</p>}
     </div>
   );
 }

@@ -133,7 +133,7 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
                           : <><b className="text-ink">{f.opened}</b> opened · <b className="text-ink">{f.clicked}</b> clicked{f.scanned ? ` (+${f.scanned} checked by email scanners)` : ""}</>}
                         {f.signed_up ? <> · <b className="text-ink">{f.signed_up}</b> signed up</> : null}
                         {f.sampled ? <> · <b className="text-ink">{f.sampled}</b> tried the sample</> : null}
-                        {" · "}<b className="text-ink">{f.bought}</b> bought{Number(f.revenue_minor) > 0 ? ` (${formatMoney(Number(f.revenue_minor))})` : ""}
+                        {" · "}<b className="text-ink">{f.bought}</b> bought or enrolled{Number(f.revenue_minor) > 0 ? ` (${formatMoney(Number(f.revenue_minor))})` : ""}
                       </p>
                     );
                   })()}
