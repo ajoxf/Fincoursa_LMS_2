@@ -16,6 +16,10 @@ export async function ContactsTab({ q, group }: { q: string; group: string }) {
     db.from("email_contacts").select("id", { count: "exact", head: true }).is("unsubscribed_at", null),
     db.from("email_contacts").select("groups").is("unsubscribed_at", null).limit(20000),
   ]);
+  // contacts who also have an account where they said no to marketing emails: their account choice wins
+  const emails = (rows ?? []).map((r) => r.email.toLowerCase());
+  const { data: optedOut } = emails.length ? await db.from("profiles").select("email").in("email", emails).eq("marketing_opt_in", false) : { data: [] as { email: string }[] };
+  const noMarketing = new Set((optedOut ?? []).map((p) => String(p.email).toLowerCase()));
   const groupCount = new Map<string, number>();
   for (const r of all ?? []) for (const g of (r.groups ?? []) as string[]) groupCount.set(g, (groupCount.get(g) ?? 0) + 1);
   const groups = [...groupCount].sort((a, b) => a[0].localeCompare(b[0]));
@@ -71,13 +75,16 @@ export async function ContactsTab({ q, group }: { q: string; group: string }) {
                 <li key={r.id} className="grid gap-2 py-2.5">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <label className="flex min-w-0 items-baseline gap-2">
-                      <input type="checkbox" name="pick" value={r.email} form="pick-form" disabled={Boolean(r.unsubscribed_at)} />
+                      <input type="checkbox" name="pick" value={r.email} form="pick-form" disabled={Boolean(r.unsubscribed_at) || noMarketing.has(r.email.toLowerCase())} />
                       <span className="min-w-0">
                         <span className="font-medium">{[r.first_name, r.last_name].filter(Boolean).join(" ") || r.email}</span>
                         {(r.first_name || r.last_name) && <span className="text-muted"> · {r.email}</span>}
                         <span className="block text-xs text-muted">
                           {(r.groups ?? []).length ? (r.groups as string[]).join(", ") : "No group"} · added {formatDate(r.created_at)}{r.unsubscribed_at ? ` · unsubscribed ${formatDate(r.unsubscribed_at)}` : ""}
                         </span>
+                        {noMarketing.has(r.email.toLowerCase()) && !r.unsubscribed_at && (
+                          <span className="block text-xs text-warning">Won&apos;t get marketing emails: they have a FinCoursa account and said no to marketing emails there. They can turn it on in their account settings.</span>
+                        )}
                       </span>
                     </label>
                     <span className="flex gap-3 text-xs">
