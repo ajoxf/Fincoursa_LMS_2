@@ -425,7 +425,7 @@ export function reviewInviteEmail(o: { name?: string | null; course: string; pct
       body: join(
         p(`You've had ${o.course} for a couple of weeks now. We'd like to hear what's working for you and what we should improve.`),
         p(`Share your feedback and a short review, and we'll top up your cashback to ${o.pct}% of what you paid: ${o.topUp} more FinCoursa credit${o.useBy ? `, usable until ${o.useBy}` : ""}.`),
-        p("It takes about two minutes. Your feedback stays private; the review is published only if you say so."),
+        p("It takes about two minutes."),
       ),
       cta: { label: "Share feedback and a review", url: o.url },
       footer: "Credit is not cash. It can be used on future FinCoursa courses and can't be withdrawn, refunded or transferred.",
