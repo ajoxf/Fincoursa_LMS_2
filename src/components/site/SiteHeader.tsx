@@ -16,9 +16,9 @@ export async function SiteHeader() {
   const [user, bundles, topics] = await Promise.all([getSessionUser(), getBundles().catch(() => []), getTopics().catch(() => [])]);
   // "Programmes" only appears while at least one programme is published
   const learn = [
-    { href: "/cmt", label: "CMT Prep" },
     ...topics.map((t) => ({ href: `/topics/${t.slug}`, label: t.name })),
     ...(bundles.length ? [programmesLink] : []),
+    { href: "/cmt", label: "CMT Prep" },
     allCoursesLink,
   ];
   const name = user ? (user.fullName?.trim() || user.email?.split("@")[0] || "Account") : null;
