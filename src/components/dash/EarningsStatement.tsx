@@ -13,7 +13,7 @@ type CourseOption = { id: string; title: string; share: number | null };
 export function EarningsStatement({ earnings, courses, currency, basePath, course, month, fixedCourse, instructorId }: {
   earnings: Earning[]; courses: CourseOption[]; currency: string; basePath: string;
   course?: string | null; month?: string | null; fixedCourse?: string;
-  /** admin view: the CSV is limited to this instructor */
+  /** admin view only: shows Excel / CSV / PDF downloads for this instructor's statement */
   instructorId?: string;
 }) {
   const m = (n: number) => formatMoney(n, currency);
@@ -24,7 +24,8 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
   const t = summarize(rows);
   const shares = [...new Set(courses.filter((c) => !activeCourse || c.id === activeCourse).map((c) => c.share).filter((s): s is number => s != null))];
   const shareText = shares.length === 1 ? `${shares[0]}%` : null;
-  const csv = `/api/instructor/statement?${new URLSearchParams({ ...(instructorId ? { instructor: instructorId } : {}), ...(activeCourse ? { course: activeCourse } : {}), ...(activeMonth ? { month: activeMonth } : {}) })}`;
+  // downloads are for admins only (instructorId is passed on the admin page); instructors don't get them for now
+  const dl = (format: string) => `/api/admin/instructor-statement?${new URLSearchParams({ instructor: instructorId ?? "", format, ...(activeCourse ? { course: activeCourse } : {}), ...(activeMonth ? { month: activeMonth } : {}) })}`;
   const scope = [activeCourse && !fixedCourse ? courses.find((c) => c.id === activeCourse)?.title : null, activeMonth ? monthLabel(activeMonth) : "all time"].filter(Boolean).join(", ");
   // per-course table: only on the dashboard, with more than one course and no course filter
   const perCourse = !fixedCourse && !activeCourse && courses.length > 1
@@ -55,7 +56,14 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
               {months.map((k) => <option key={k} value={k}>{monthLabel(k)}</option>)}
             </select></label>
           <button className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2 text-sm text-ink">Show</button>
-          <a href={csv} className="ml-auto text-sm font-semibold underline">Download as CSV</a>
+          {instructorId && (
+            <span className="ml-auto flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-muted">Download:</span>
+              <a href={dl("xlsx")} className="fc-btn fc-btn-outline !min-w-0 !px-3 !py-1.5 text-xs text-ink">Excel</a>
+              <a href={dl("csv")} className="fc-btn fc-btn-outline !min-w-0 !px-3 !py-1.5 text-xs text-ink">CSV</a>
+              <a href={dl("pdf")} className="fc-btn fc-btn-outline !min-w-0 !px-3 !py-1.5 text-xs text-ink">PDF</a>
+            </span>
+          )}
         </form>
 
         {perCourse.length > 0 && (
