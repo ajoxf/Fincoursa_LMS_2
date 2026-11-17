@@ -20,8 +20,8 @@ export type InstructorDashboardData = {
  * The instructor dashboard body: stats, daily earnings, courses, earnings statement and payouts.
  * Used by the instructor's own page and, unchanged, by Admin -> Instructors -> (instructor), so the admin sees exactly what they see.
  */
-export function InstructorDashboardView({ d, basePath, sp, title = "Instructor Dashboard", instructorId }: {
-  d: InstructorDashboardData; basePath: string; sp: { course?: string | null; month?: string | null }; title?: string; instructorId?: string;
+export function InstructorDashboardView({ d, basePath, sp, title = "Instructor Dashboard" }: {
+  d: InstructorDashboardData; basePath: string; sp: { course?: string | null; month?: string | null }; title?: string;
 }) {
   const m = (n: number) => formatMoney(n, d.currency);
   const all = summarize(d.earnings);
@@ -70,7 +70,7 @@ export function InstructorDashboardView({ d, basePath, sp, title = "Instructor D
       </Card>
       <EarningsStatement earnings={d.earnings} currency={d.currency} basePath={basePath}
         courses={d.courses.map((c) => ({ id: c.course_id, title: c.title, share: c.share }))}
-        course={sp.course ?? null} month={sp.month ?? null} instructorId={instructorId} />
+        course={sp.course ?? null} month={sp.month ?? null} />
       <Card title="Payout history">
         {d.payouts.length ? (
           <ul className="divide-y divide-line text-sm">
