@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { getBundles } from "@/lib/catalog";
+import { getListedBundles } from "@/lib/catalog";
 import { PageHero, Chips } from "@/components/site/PageHero";
 import { BundleTile } from "@/components/site/BundleTile";
 
 export const metadata: Metadata = { title: "Programmes", alternates: { canonical: "/pages/programmes" } };
 
 export default async function BundlesPage() {
-  const bundles = await getBundles();
+  const bundles = await getListedBundles();
   return (
     <>
       <PageHero label="Programmes" title="Structured tracks, not scattered videos.">
