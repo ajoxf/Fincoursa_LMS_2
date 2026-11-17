@@ -7,7 +7,6 @@ const programmesLink = { href: "/pages/programmes", label: "Programmes" };
 const allCoursesLink = { href: "/pages/paid-courses", label: "All courses" };
 
 export const mainLinks = [
-  { href: "/cmt", label: "CMT Prep" },
   { href: "/pages/instructors", label: "Instructors" },
   { href: "/pages/institutions", label: "For Institutions" },
   { href: "/pages/contact-us", label: "Contact" },
@@ -17,6 +16,7 @@ export async function SiteHeader() {
   const [user, bundles, topics] = await Promise.all([getSessionUser(), getBundles().catch(() => []), getTopics().catch(() => [])]);
   // "Programmes" only appears while at least one programme is published
   const learn = [
+    { href: "/cmt", label: "CMT Prep" },
     ...topics.map((t) => ({ href: `/topics/${t.slug}`, label: t.name })),
     ...(bundles.length ? [programmesLink] : []),
     allCoursesLink,
