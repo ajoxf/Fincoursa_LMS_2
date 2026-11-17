@@ -15,9 +15,9 @@ export const metadata: Metadata = {
 const SAMPLE = "/go/cmt-free-sample?v=cmt-page";
 // One programme per level (Admin → Programmes): a course for each curriculum section, then the level's question bank
 const LEVELS_PROGRAMMES = [
-  { level: "Level I", slug: "cmt-level-1" },
-  { level: "Level II", slug: "cmt-level-2" },
-  { level: "Level III", slug: "cmt-level-3" },
+  { level: "Level I", n: 1, slug: "cmt-level-1" },
+  { level: "Level II", n: 2, slug: "cmt-level-2" },
+  { level: "Level III", n: 3, slug: "cmt-level-3" },
 ];
 /** "CMT Level II: Trend Analysis" → "Trend Analysis"; "CMT Level 2 - Question Bank" → "Question Bank" */
 const shortTitle = (t: string) => t.replace(/^CMT Level [IV\d]+\s*[:\-–]\s*/i, "");
@@ -101,7 +101,7 @@ export default async function CmtPrepPage() {
                     );
                   })}
                 </ul>
-                {l.programme && <Link href={`/bundles/${l.programme.slug}`} className="fc-btn fc-btn-outline mt-auto !mt-6 text-ink">View the {l.level} Programme</Link>}
+                <Link href={`/programmes/${l.slug}`} className="fc-btn fc-btn-primary mt-auto !mt-6">Explore Level {l.n} &rarr;</Link>
               </div>
             ))}
           </div>
