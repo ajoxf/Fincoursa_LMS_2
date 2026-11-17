@@ -159,14 +159,14 @@ async function BusinessTab({ id, base, month, course }: { id: string; base: stri
         <button className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2 text-sm text-ink">Show</button>
       </form>
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <div className="fc-card p-4"><p className="text-sm text-muted">Net Revenue</p><p className="mt-1 text-2xl font-bold">{m(t.revenue)}</p><p className="text-xs text-muted">{t.sales} paid · {t.free} free with a code{t.refunded ? ` · ${t.refunded} refunded` : ""}</p></div>
+        <div className="fc-card p-4"><p className="text-sm text-muted">Gross Revenue (excl. tax)</p><p className="mt-1 text-2xl font-bold">{m(t.revenue)}</p><p className="text-xs text-muted">{t.sales} paid · {t.free} free with a code{t.refunded ? ` · ${t.refunded} refunded` : ""}</p></div>
         <div className="fc-card p-4"><p className="text-sm text-muted">Direct Costs</p><p className="mt-1 text-2xl font-bold">{m(t.fee + t.partner + t.cashback)}</p></div>
         <div className="fc-card p-4"><p className="text-sm text-muted">Instructor Share</p><p className="mt-1 text-2xl font-bold">{m(t.instructor)}</p><p className="text-xs text-muted">Owed now {m(b.owed)} · paid out {m(b.paidOut)} (all time)</p></div>
         <div className="fc-card p-4"><p className="text-sm text-muted">Net Margin</p><p className={`mt-1 text-2xl font-bold ${t.kept < 0 ? "text-danger" : "text-success"}`}>{m(t.kept)}</p><p className="text-xs text-muted">{t.revenue ? `${Math.round((t.kept / t.revenue) * 100)}% of revenue` : "no revenue yet"}</p></div>
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
-        <Card title={`Net Revenue${courseTitle ? ` · ${courseTitle}` : ""} · ${month ? `by day, ${monthLabel(month)}` : "by month, last 12 months"}`}>
-          <ColumnChart label="Net Revenue" currency={cur} data={b.series.map((p) => ({ x: p.label, y: p.revenue }))} />
+        <Card title={`Gross Revenue${courseTitle ? ` · ${courseTitle}` : ""} · ${month ? `by day, ${monthLabel(month)}` : "by month, last 12 months"}`}>
+          <ColumnChart label="Gross Revenue" currency={cur} data={b.series.map((p) => ({ x: p.label, y: p.revenue }))} />
         </Card>
         <Card title={`Net Margin${courseTitle ? ` · ${courseTitle}` : ""} · ${month ? "by day" : "by month"}`}>
           <ColumnChart label="Net Margin" currency={cur} data={b.series.map((p) => ({ x: p.label, y: Math.max(0, p.kept) }))} />
@@ -178,7 +178,7 @@ async function BusinessTab({ id, base, month, course }: { id: string; base: stri
           <table className="w-full min-w-[900px] text-sm tabular-nums">
             <thead className="text-left text-muted"><tr>
               <th className="py-2 font-medium">Course</th><th className="py-2 text-right font-medium">Paid Sales</th><th className="py-2 text-right font-medium">Free Enrolments</th>
-              <th className="py-2 text-right font-medium">Net Revenue</th><th className="py-2 text-right font-medium">Gateway Fees</th>
+              <th className="py-2 text-right font-medium">Gross Revenue (excl. tax)</th><th className="py-2 text-right font-medium">Gateway Fees</th>
               <th className="py-2 text-right font-medium">Commissions</th><th className="py-2 text-right font-medium">Cashback</th>
               <th className="py-2 text-right font-medium">Instructor Share</th><th className="py-2 text-right font-medium">Net Margin</th>
             </tr></thead>
@@ -202,7 +202,7 @@ async function BusinessTab({ id, base, month, course }: { id: string; base: stri
             </tr></tfoot>
           </table>
         </div>
-        <p className="mt-3 text-xs text-muted">Net Revenue is what students paid after codes and credit, excluding tax; refunded sales are left out. Direct Costs are gateway fees, partner commissions and cashback. Net Margin is what FinCoursa keeps after Direct Costs and the Instructor Share. Cashback here is the full credit given to students (FinCoursa&apos;s cost), not only the part taken off before the instructor&apos;s share. Payment fees use the rate set in Admin &rarr; Instructors.</p>
+        <p className="mt-3 text-xs text-muted">Gross Revenue is what students paid after codes and credit, excluding tax; refunded sales are left out. Direct Costs are gateway fees, partner commissions and cashback. Net Margin is what FinCoursa keeps after Direct Costs and the Instructor Share. Cashback here is the full credit given to students (FinCoursa&apos;s cost), not only the part taken off before the instructor&apos;s share. Payment fees use the rate set in Admin &rarr; Instructors.</p>
       </Card>
     </div>
   );
