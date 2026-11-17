@@ -51,12 +51,32 @@ export default async function BundlePage({ params }: PageProps<"/bundles/[slug]"
           </div>
         }>
         {bundle.description && <p className="mt-6 max-w-[560px] text-[15px] leading-relaxed">{bundle.description}</p>}
-        <Chips items={[`${bundle.courses.length} ${bundle.courses.length === 1 ? "course" : "courses"}`, ...(hours > 0 ? [`${hours} hours`] : []), "Self-paced"]} />
+        <Chips items={[...(bundle.comingSoon ? [] : [`${bundle.courses.length} ${bundle.courses.length === 1 ? "course" : "courses"}`]), ...(hours > 0 ? [`${hours} hours`] : []), "Self-paced"]} />
         {bundle.thumbnail_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={assetUrl(bundle.thumbnail_url)} alt="" className="mt-8 aspect-video w-full max-w-[560px] rounded-2xl object-cover" />
         )}
       </PageHero>
+      {bundle.comingSoon ? (
+        // before launch: a short summary, plus anything in the programme that is already open
+        <section className="bg-surface">
+          <div className="fc-container py-24">
+            <SectionHeading label="What’s included" title="What this programme will include"
+              sub="Courses are being prepared and will open over time. Leave your email above and we’ll tell you as soon as they do." />
+            <ul className="mx-auto mt-10 grid max-w-[968px] gap-4 sm:grid-cols-3">
+              {["Study courses that follow the curriculum, section by section", "A question bank with exam-style and chart questions, each answer explained", "Timed exam mode to build pace before exam day"].map((t) => (
+                <li key={t} className="rounded-2xl bg-white p-6 text-[15px] leading-relaxed text-ink/85">{t}</li>
+              ))}
+            </ul>
+            {bundle.courses.some((c) => !c.comingSoon) && (
+              <div className="mx-auto mt-14 grid max-w-[968px] gap-6">
+                <h3 className="text-center text-2xl font-semibold text-ink">Available now</h3>
+                {bundle.courses.filter((c) => !c.comingSoon).map((c) => <CourseCard key={c.id} course={c} />)}
+              </div>
+            )}
+          </div>
+        </section>
+      ) : (
       <section className="bg-surface">
         <div className="fc-container py-24">
           <SectionHeading label="What’s included" title="Courses in this track"
@@ -66,6 +86,7 @@ export default async function BundlePage({ params }: PageProps<"/bundles/[slug]"
           </div>
         </div>
       </section>
+      )}
     </>
   );
 }
