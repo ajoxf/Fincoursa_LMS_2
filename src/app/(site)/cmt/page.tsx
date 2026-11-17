@@ -4,10 +4,11 @@ import { PageHero, Chips } from "@/components/site/PageHero";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { CourseCard } from "@/components/site/CourseCard";
 import { getCourses } from "@/lib/catalog";
+import { CMT_PPP, cmtDisclaimer } from "@/lib/cmt-ppp";
 
 export const metadata: Metadata = {
   title: "CMT Exam Prep",
-  description: "Prepare for the Chartered Market Technician (CMT) exams with FinCoursa, a participant in the CMT Association Prep Provider Program. Exam-style question banks with chart questions and worked explanations.",
+  description: "Prepare for the Chartered Market Technician (CMT) exams with FinCoursa: exam-style question banks with chart questions and worked explanations, and complimentary sample questions.",
   alternates: { canonical: "/cmt" },
   openGraph: { title: "CMT Exam Prep | FinCoursa", url: "/cmt", description: "Exam-style CMT practice with chart questions and worked explanations. Start with complimentary sample questions." },
 };
@@ -46,8 +47,17 @@ export default async function CmtPrepPage() {
       <PageHero label="CMT Exam Prep" title={<>Prepare for the <span className="text-accent">Chartered Market Technician</span> exams.</>}
         aside={
           <div className="w-full rounded-2xl border border-accent/50 bg-white/[0.04] p-6 md:w-[340px]">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Prep Provider Program</p>
-            <p className="mt-3 text-[15px] leading-relaxed text-white/85">FinCoursa is a participant in the CMT Association Prep Provider Program.</p>
+            {CMT_PPP.APPROVED ? (
+              <>
+                {CMT_PPP.BADGE && <img src={CMT_PPP.BADGE} alt="CMT Association Participating Prep Provider" className="mb-4 h-20 w-auto" />}
+                <p className="text-[15px] leading-relaxed text-white/85">{CMT_PPP.STATUS}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Free to start</p>
+                <p className="mt-3 text-[15px] leading-relaxed text-white/85">Try exam-style CMT Level II questions, charts included, before you decide.</p>
+              </>
+            )}
             <Link href={SAMPLE} className="fc-btn fc-btn-primary mt-5 w-full !py-3.5">Start Practising</Link>
             <p className="mt-2 text-center text-xs text-white/60">Complimentary sample questions. No payment needed.</p>
           </div>
@@ -128,12 +138,7 @@ export default async function CmtPrepPage() {
               </details>
             ))}
           </div>
-          <p className="text-xs leading-relaxed text-muted">
-            FinCoursa is a participant in the CMT Association Prep Provider Program. The CMT Association does not endorse, promote, review or
-            warrant the accuracy of the products or services offered by FinCoursa, and participation does not make FinCoursa an official or
-            authorised provider. FinCoursa materials are our own and are not reviewed by the CMT Association. CMT® and Chartered Market
-            Technician® are trademarks of the CMT Association, used here to describe the exams our materials prepare for.
-          </p>
+          <p className="text-xs leading-relaxed text-muted">{cmtDisclaimer()}</p>
         </div>
       </section>
     </>

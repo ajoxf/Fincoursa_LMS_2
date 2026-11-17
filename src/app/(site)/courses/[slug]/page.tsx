@@ -218,6 +218,11 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
           ...(course.certificate_enabled ? ["Certificate of completion"] : []),
           ...course.tags,
         ])]} />
+        {course.tags.some((t) => /^cmt\b/i.test(t)) && (
+          <Link href="/cmt" className="mt-5 inline-flex items-center gap-2 text-[15px] font-semibold text-accent underline-offset-4 hover:underline">
+            New to the CMT exams? Read our CMT exam prep guide &rarr;
+          </Link>
+        )}
       </PageHero>
 
       <section className="bg-surface">
