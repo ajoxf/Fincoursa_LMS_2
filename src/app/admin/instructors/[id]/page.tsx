@@ -20,7 +20,7 @@ import { ColumnChart } from "@/components/dash/ColumnChart";
 
 export const metadata: Metadata = { title: "Instructor" };
 
-const TABS = [["dashboard", "Instructor View"], ["business", "FinCoursa View"], ["profile", "Edit Profile"]] as const;
+const TABS = [["dashboard", "Dashboard (Instructor View)"], ["business", "Dashboard (FinCoursa View)"], ["profile", "Edit Profile"]] as const;
 
 export default async function AdminInstructor({ params, searchParams }: PageProps<"/admin/instructors/[id]">) {
   const { id } = await params;
