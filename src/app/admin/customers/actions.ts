@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
@@ -93,4 +94,49 @@ export async function setTeamAccess(userId: string, on: boolean) {
   else await db.from("user_roles").delete().eq("user_id", userId).eq("role", "support");
   await db.from("audit_log").insert({ actor_id: admin.id, action: on ? "role.support.granted" : "role.support.removed", entity: "profiles", entity_id: userId });
   revalidatePath(`/admin/customers/${userId}`);
+}
+
+/**
+ * Why an account can't be deleted (empty = it can). Only stray or mistaken logins can go: anything with a purchase,
+ * course access, credit, certificates, a review, an instructor or affiliate profile, or a team role must stay.
+ */
+export async function deleteBlockers(userId: string): Promise<string[]> {
+  await requireRole(["admin"]);
+  const db = createAdminClient();
+  const count = async (table: string, col = "user_id") => (await db.from(table).select(col, { count: "exact", head: true }).eq(col, userId)).count ?? 0;
+  const [{ data: roles }, { data: ins }, aff, orders, enr, certs, credit, reviews] = await Promise.all([
+    db.from("user_roles").select("role").eq("user_id", userId),
+    db.from("instructors").select("name").eq("user_id", userId),
+    count("affiliates"), count("orders"), count("enrollments"), count("certificates"), count("credit_grants"), count("course_reviews"),
+  ]);
+  const out: string[] = [];
+  const staff = (roles ?? []).map((r) => r.role).filter((r) => ["admin", "finance", "support"].includes(r));
+  if (staff.length) out.push(`Has team access (${staff.join(", ")}). Remove team access first.`);
+  for (const i of ins ?? []) out.push(`It is the login for the instructor profile "${i.name}". Link that profile to another email first (Admin → Instructors).`);
+  if (aff) out.push("It has an affiliate profile.");
+  if (orders) out.push(`It has ${orders} ${orders === 1 ? "order" : "orders"}.`);
+  if (enr) out.push(`It has access to ${enr} ${enr === 1 ? "course" : "courses"} (current or past).`);
+  if (certs) out.push("It has certificates.");
+  if (credit) out.push("It has FinCoursa credit.");
+  if (reviews) out.push("It has course reviews or feedback.");
+  return out;
+}
+
+/** Permanently delete a mistaken login (admin only, after typing its email). Refuses anything with history. */
+export async function deleteAccount(userId: string, form: FormData) {
+  const admin = await requireRole(["admin"]);
+  const back = (k: "ok" | "err", m: string, path = `/admin/customers/${userId}`) => redirect(`${path}?${k}=${encodeURIComponent(m)}#delete`);
+  if (userId === admin.id) back("err", "You can't delete your own account.");
+  const db = createAdminClient();
+  const { data: p } = await db.from("profiles").select("email").eq("id", userId).maybeSingle();
+  if (!p) back("err", "This account no longer exists.", "/admin/customers");
+  const typed = String(form.get("confirm_email") ?? "").trim().toLowerCase();
+  if (typed !== String(p!.email).toLowerCase()) back("err", "The email you typed doesn't match. Nothing was deleted.");
+  const blockers = await deleteBlockers(userId);
+  if (blockers.length) back("err", `Not deleted: ${blockers[0]}`);
+  const { error } = await db.auth.admin.deleteUser(userId);
+  if (error) back("err", `Not deleted: ${error.message}`);
+  await db.from("audit_log").insert({ actor_id: admin.id, action: "account.deleted", entity: "profiles", entity_id: userId, data: { email: p!.email } });
+  revalidatePath("/admin/customers");
+  back("ok", `Deleted the account ${p!.email}.`, "/admin/customers");
 }
