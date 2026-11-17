@@ -51,7 +51,7 @@ export default async function BundlePage({ params }: PageProps<"/bundles/[slug]"
           </div>
         }>
         {bundle.description && <p className="mt-6 max-w-[560px] text-[15px] leading-relaxed">{bundle.description}</p>}
-        <Chips items={[`${bundle.courses.length} ${bundle.courses.length === 1 ? "course" : "courses"}`, `${hours} hours`, "Self-paced"]} />
+        <Chips items={[`${bundle.courses.length} ${bundle.courses.length === 1 ? "course" : "courses"}`, ...(hours > 0 ? [`${hours} hours`] : []), "Self-paced"]} />
         {bundle.thumbnail_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={assetUrl(bundle.thumbnail_url)} alt="" className="mt-8 aspect-video w-full max-w-[560px] rounded-2xl object-cover" />
