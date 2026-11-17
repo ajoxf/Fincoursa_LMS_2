@@ -167,11 +167,12 @@ async function BusinessTab({ id, base, month, course }: { id: string; base: stri
           ))}
         </span>
       </form>
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
         <div className="fc-card p-4"><p className="text-sm text-muted">Gross Revenue (excl. tax)</p><p className="mt-1 text-2xl font-bold">{m(t.revenue)}</p><p className="text-xs text-muted">{t.sales} paid · {t.free} free with a code{t.refunded ? ` · ${t.refunded} refunded` : ""}</p></div>
-        <div className="fc-card p-4"><p className="text-sm text-muted">Direct Costs</p><p className="mt-1 text-2xl font-bold">{m(t.fee + t.partner + t.cashback)}</p></div>
+        <div className="fc-card p-4"><p className="text-sm text-muted">Direct Costs</p><p className="mt-1 text-2xl font-bold">{m(t.fee + t.partner + t.cashback)}</p><p className="text-xs text-muted">Cashback {m(t.cashback)}: used {m(t.cbUsed)} · open {m(t.cbOpen)} · expired {m(t.cbExpired)}</p></div>
         <div className="fc-card p-4"><p className="text-sm text-muted">Instructor Share</p><p className="mt-1 text-2xl font-bold">{m(t.instructor)}</p><p className="text-xs text-muted">Owed now {m(b.owed)} · paid out {m(b.paidOut)} (all time)</p></div>
-        <div className="fc-card p-4"><p className="text-sm text-muted">Net Margin</p><p className={`mt-1 text-2xl font-bold ${t.kept < 0 ? "text-danger" : "text-success"}`}>{m(t.kept)}</p><p className="text-xs text-muted">{t.revenue ? `${Math.round((t.kept / t.revenue) * 100)}% of revenue` : "no revenue yet"}</p></div>
+        <div className="fc-card p-4"><p className="text-sm text-muted">Net Margin (Worst Case)</p><p className={`mt-1 text-2xl font-bold ${t.kept < 0 ? "text-danger" : "text-success"}`}>{m(t.kept)}</p><p className="text-xs text-muted">If all cashback given is spent</p></div>
+        <div className="fc-card p-4"><p className="text-sm text-muted">Net Margin (Actual)</p><p className={`mt-1 text-2xl font-bold ${t.actual < 0 ? "text-danger" : "text-success"}`}>{m(t.actual)}</p><p className="text-xs text-muted">Counting only cashback spent so far{t.cbOpen ? `; ${m(t.cbOpen)} still open` : ""}</p></div>
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
         <Card title={`Gross Revenue${courseTitle ? ` · ${courseTitle}` : ""} · ${month ? `by day, ${monthLabel(month)}` : "by month, last 12 months"}`}>
@@ -184,34 +185,36 @@ async function BusinessTab({ id, base, month, course }: { id: string; base: stri
       </div>
       <Card title={`By course${courseTitle ? ` · ${courseTitle}` : ""}${month ? `, ${monthLabel(month)}` : ""}`}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm tabular-nums">
+          <table className="w-full min-w-[1040px] text-sm tabular-nums">
             <thead className="text-left text-muted"><tr>
               <th className="py-2 font-medium">Course</th><th className="py-2 text-right font-medium">Paid Sales</th><th className="py-2 text-right font-medium">Free Enrolments</th>
               <th className="py-2 text-right font-medium">Gross Revenue (excl. tax)</th><th className="py-2 text-right font-medium">Gateway Fees</th>
               <th className="py-2 text-right font-medium">Commissions</th><th className="py-2 text-right font-medium">Cashback</th>
-              <th className="py-2 text-right font-medium">Instructor Share</th><th className="py-2 text-right font-medium">Net Margin</th>
+              <th className="py-2 text-right font-medium">Instructor Share</th><th className="py-2 text-right font-medium">Net Margin (Worst Case)</th><th className="py-2 text-right font-medium">Net Margin (Actual)</th>
             </tr></thead>
             <tbody>
               {b.courses.map((c) => (
                 <tr key={c.course_id} className="border-t border-line">
                   <td className="py-2.5">{c.title}</td><td className="py-2.5 text-right">{c.sales}</td><td className="py-2.5 text-right">{c.free}</td>
                   <td className="py-2.5 text-right">{m(c.revenue)}</td><td className="py-2.5 text-right text-muted">{neg(c.fee)}</td>
-                  <td className="py-2.5 text-right text-muted">{neg(c.partner)}</td><td className="py-2.5 text-right text-muted">{neg(c.cashback)}</td>
+                  <td className="py-2.5 text-right text-muted">{neg(c.partner)}</td><td className="py-2.5 text-right text-muted">{neg(c.cashback)}{c.cashback > 0 && <span className="block text-xs">used {m(c.cbUsed)} · open {m(c.cbOpen)} · expired {m(c.cbExpired)}</span>}</td>
                   <td className="py-2.5 text-right text-muted">{neg(c.instructor)}</td>
                   <td className={`py-2.5 text-right font-semibold ${c.kept < 0 ? "text-danger" : ""}`}>{m(c.kept)}</td>
+                  <td className={`py-2.5 text-right font-semibold ${c.actual < 0 ? "text-danger" : ""}`}>{m(c.actual)}</td>
                 </tr>
               ))}
-              {!b.courses.length && <tr><td colSpan={9} className="py-6 text-center text-muted">No courses assigned yet.</td></tr>}
+              {!b.courses.length && <tr><td colSpan={10} className="py-6 text-center text-muted">No courses assigned yet.</td></tr>}
             </tbody>
             <tfoot><tr className="border-t-2 border-ink font-semibold">
               <td className="py-2.5">Total</td><td className="py-2.5 text-right">{t.sales}</td><td className="py-2.5 text-right">{t.free}</td>
               <td className="py-2.5 text-right">{m(t.revenue)}</td><td className="py-2.5 text-right">{neg(t.fee)}</td><td className="py-2.5 text-right">{neg(t.partner)}</td>
               <td className="py-2.5 text-right">{neg(t.cashback)}</td><td className="py-2.5 text-right">{neg(t.instructor)}</td>
               <td className={`py-2.5 text-right ${t.kept < 0 ? "text-danger" : ""}`}>{m(t.kept)}</td>
+              <td className={`py-2.5 text-right ${t.actual < 0 ? "text-danger" : ""}`}>{m(t.actual)}</td>
             </tr></tfoot>
           </table>
         </div>
-        <p className="mt-3 text-xs text-muted">Gross Revenue is what students paid after codes and credit, excluding tax; refunded sales are left out. Direct Costs are gateway fees, partner commissions and cashback. Net Margin is what FinCoursa keeps after Direct Costs and the Instructor Share. Cashback here is the full credit given to students (FinCoursa&apos;s cost), not only the part taken off before the instructor&apos;s share. Payment fees use the rate set in Admin &rarr; Instructors.</p>
+        <p className="mt-3 text-xs text-muted">Gross Revenue is what students paid after codes and credit, excluding tax; refunded sales are left out. Direct Costs are gateway fees, partner commissions and cashback. Net Margin is what FinCoursa keeps after Direct Costs and the Instructor Share. Cashback is the full credit given to students. Net Margin (Worst Case) assumes all of it is spent; Net Margin (Actual) counts only what has been spent so far (expired credit costs nothing). The instructor&apos;s share is fixed at the sale and doesn&apos;t change with this. Payment fees use the rate set in Admin &rarr; Instructors.</p>
       </Card>
     </div>
   );

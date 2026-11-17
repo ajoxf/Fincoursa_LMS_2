@@ -7,7 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * limits an instructor to their own sales (staff see all).
  */
 export type Earning = {
-  id: string; created_at: string; course_id: string; currency: string; status: string; available_at: string | null;
+  id: string; order_id: string; created_at: string; course_id: string; currency: string; status: string; available_at: string | null;
   net_revenue_minor: number; share_pct: number; amount_minor: number;
   list_minor: number | null; code_discount_minor: number; credit_used_minor: number;
   payment_fee_minor: number; payment_fee_pct: number; partner_minor: number;
@@ -15,7 +15,7 @@ export type Earning = {
   course: { title: string } | null;
 };
 
-const COLS = "id, created_at, course_id, currency, status, available_at, net_revenue_minor, share_pct, amount_minor, list_minor, code_discount_minor, credit_used_minor, payment_fee_minor, payment_fee_pct, partner_minor, cashback_minor, cashback_given_minor, cashback_counted_pct, shared_minor, course:courses(title)";
+const COLS = "id, order_id, created_at, course_id, currency, status, available_at, net_revenue_minor, share_pct, amount_minor, list_minor, code_discount_minor, credit_used_minor, payment_fee_minor, payment_fee_pct, partner_minor, cashback_minor, cashback_given_minor, cashback_counted_pct, shared_minor, course:courses(title)";
 
 export async function loadEarnings(db: SupabaseClient, opts: { courseId?: string; instructorId?: string } = {}): Promise<Earning[]> {
   let q = db.from("instructor_earnings").select(COLS).order("created_at", { ascending: false }).limit(5000);

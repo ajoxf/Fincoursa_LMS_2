@@ -9,6 +9,8 @@ import { cashbackLabel, cashbackRule, getCashbackSettings, type CashbackRule } f
 import { Card } from "@/components/dash/Stat";
 import { adjustCustomerCredit, saveCashbackSettings, saveItemCashback, saveReferralSettings } from "./actions";
 import { getReferralSettings } from "@/lib/referral";
+import { addSplit, allCashbackGrants, emptySplit, splitGrant, type CashbackSplit } from "@/lib/cashback-status";
+import { monthKey, monthLabel } from "@/lib/instructor-statement";
 
 export const metadata: Metadata = { title: "Cashback & credit" };
 
@@ -40,7 +42,7 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
     db.from("prices").select("currency").eq("is_active", true),
     db.from("credit_redemptions").select("amount_minor, grant:credit_grants(currency)").is("reversed_at", null),
   ]);
-  const referral = await getReferralSettings();
+  const [referral, cbGrants] = await Promise.all([getReferralSettings(), allCashbackGrants(db)]);
   const { data: pending } = await db.from("course_reviews")
     .select("id, user_id, rating, review, created_at, course:courses(title), order:orders(number), profile:profiles!course_reviews_user_id_fkey(email, full_name)")
     .eq("status", "pending").order("created_at");
@@ -61,6 +63,22 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
     const t = row(r.grant.currency);
     totals.set(r.grant.currency, { ...t, spent: t.spent + Number(r.amount_minor) });
   }
+
+  // Cashback lifecycle: where every cashback credit stands now (used / open / expired / cancelled by refund)
+  const cbCur = new Map<string, CashbackSplit & { nextExpiry: string | null }>();
+  const cbMonth = new Map<string, CashbackSplit>(); // key "YYYY-MM|CUR"
+  const expiredList: { id: string; who: string; currency: string; amount: number; given: number; on: string }[] = [];
+  for (const g of cbGrants) {
+    const sp = splitGrant(g, now);
+    const cur = cbCur.get(g.currency) ?? { ...emptySplit(), nextExpiry: null };
+    const nextExpiry = sp.open > 0 && g.expires_at && (!cur.nextExpiry || g.expires_at < cur.nextExpiry) ? g.expires_at : cur.nextExpiry;
+    cbCur.set(g.currency, { ...addSplit(cur, sp), nextExpiry });
+    const mk = `${monthKey(g.created_at)}|${g.currency}`;
+    cbMonth.set(mk, addSplit(cbMonth.get(mk) ?? emptySplit(), sp));
+    if (sp.expired > 0) expiredList.push({ id: g.id, who: g.profile?.full_name || g.profile?.email || "Customer", currency: g.currency, amount: sp.expired, given: sp.given, on: g.expires_at! });
+  }
+  expiredList.sort((a, b) => b.on.localeCompare(a.on));
+  const months = [...cbMonth.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 24);
 
   const field = "fc-input";
   return (
@@ -192,6 +210,68 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
             ))}
           </div>
         ) : <p className="text-sm text-muted">No credit issued yet.</p>}
+      </Card>
+
+      <Card title="Cashback Lifecycle">
+        <p className="mb-3 text-sm text-muted">
+          Every cashback credit (purchase cashback and review top-ups), by where it stands today. Only used cashback costs FinCoursa money;
+          expired credit lapsed unused and costs nothing; refunds cancel unspent cashback.
+        </p>
+        {cbCur.size ? (
+          <div className="grid gap-4">
+            {[...cbCur.entries()].map(([c, t]) => (
+              <div key={c} className="grid gap-2 sm:grid-cols-5">
+                {([
+                  ["Given", t.given, `${c} · all cashback issued`],
+                  ["Used", t.used, "spent at checkout"],
+                  ["Still Open", t.open, t.nextExpiry ? `next expiry ${formatDate(t.nextExpiry)}` : "no expiry date"],
+                  ["Expired", t.expired, "lapsed unused"],
+                  ["Cancelled", t.cancelled, "by refund"],
+                ] as [string, number, string][]).map(([k, v, h]) => (
+                  <div key={k} className="rounded-lg bg-surface p-4">
+                    <p className="text-xs uppercase tracking-wide text-muted">{k}</p>
+                    <p className="text-xl font-bold tabular-nums">{formatMoney(v, c)}</p>
+                    <p className="text-xs text-muted">{h}{t.given > 0 && k !== "Given" ? ` · ${Math.round((v / t.given) * 100)}%` : ""}</p>
+                  </div>
+                ))}
+              </div>
+            ))}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead className="text-left text-muted"><tr>
+                  <th className="py-2 font-medium">Month Issued</th><th className="py-2 font-medium">Currency</th>
+                  <th className="py-2 text-right font-medium">Given</th><th className="py-2 text-right font-medium">Used</th>
+                  <th className="py-2 text-right font-medium">Open</th><th className="py-2 text-right font-medium">Expired</th>
+                  <th className="py-2 text-right font-medium">Cancelled</th>
+                </tr></thead>
+                <tbody>
+                  {months.map(([k, t]) => {
+                    const [mo, c] = k.split("|");
+                    return (
+                      <tr key={k} className="border-t border-line">
+                        <td className="py-2">{monthLabel(mo)}</td><td className="py-2">{c}</td>
+                        {[t.given, t.used, t.open, t.expired, t.cancelled].map((v, i) => <td key={i} className="py-2 text-right tabular-nums">{formatMoney(v, c)}</td>)}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">Expired Credits ({expiredList.length})</h3>
+              {expiredList.length ? (
+                <ul className="divide-y divide-line text-sm">
+                  {expiredList.slice(0, 50).map((x) => (
+                    <li key={x.id} className="flex justify-between gap-4 py-2">
+                      <span>{x.who} · expired {formatDate(x.on)}</span>
+                      <span className="tabular-nums">{formatMoney(x.amount, x.currency)} <span className="text-muted">of {formatMoney(x.given, x.currency)}</span></span>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="text-sm text-muted">No cashback has expired yet.</p>}
+            </div>
+          </div>
+        ) : <p className="text-sm text-muted">No cashback issued yet.</p>}
       </Card>
 
       <Card title="Give or remove credit">
