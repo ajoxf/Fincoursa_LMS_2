@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatMoney } from "@/lib/money";
 import { ALL_COUNTRIES, countryName, formatDate, nowMs } from "@/lib/format";
 import { Card, Progress, Stat } from "@/components/dash/Stat";
-import { grantCourse, removeAccess, restoreAccess, setAccessUntil, setTeamAccess, updateStudentProfile } from "../actions";
+import { deleteAccount, deleteBlockers, grantCourse, removeAccess, restoreAccess, setAccessUntil, setTeamAccess, updateStudentProfile } from "../actions";
 import { grantReviewBonus, hideReview, rejectReview } from "../../credit/actions";
 import { getCashbackSettings } from "@/lib/cashback";
 
@@ -43,6 +43,8 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   for (const o of orders ?? []) if (["paid", "partially_refunded", "refunded"].includes(o.status)) spent[o.currency] = (spent[o.currency] ?? 0) + o.total_minor - (o.refunded_minor ?? 0);
   const spentText = Object.entries(spent).filter(([, v]) => v > 0).map(([c, v]) => formatMoney(v, c)).join(" · ") || "—";
   const today = new Date(now).toISOString().slice(0, 10);
+  const isAdmin = me.roles.includes("admin");
+  const blockers = isAdmin ? (me.id === id ? ["This is your own account."] : await deleteBlockers(id)) : [];
 
   return (
     <div className="grid gap-6">
@@ -220,6 +222,28 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           </form>
           <p className="mt-3 text-xs text-muted">The email address is the customer&apos;s login, so they change it themselves in Settings.</p>
         </Card>
+      )}
+
+      {isAdmin && (
+        <div id="delete" className="scroll-mt-24">
+          <Card title="Delete Account">
+            {blockers.length ? (
+              <div className="grid gap-2 text-sm">
+                <p className="text-muted">This account can&apos;t be deleted, so nothing about the customer&apos;s history is lost:</p>
+                <ul className="list-disc pl-5">{blockers.map((b) => <li key={b}>{b}</li>)}</ul>
+                <p className="text-xs text-muted">To stop someone using the site, remove their course access instead.</p>
+              </div>
+            ) : (
+              <form action={deleteAccount.bind(null, id)} className="grid gap-3 text-sm">
+                <p className="text-muted">For logins created by mistake (for example a wrong or misspelt email). This permanently removes the login and its profile and can&apos;t be undone.</p>
+                <label className="grid gap-1 font-medium">Type <span className="font-mono">{s.email}</span> to confirm
+                  <input name="confirm_email" autoComplete="off" required className="fc-input max-w-md" placeholder={s.email ?? ""} />
+                </label>
+                <div><button className="rounded-full bg-danger px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90">Delete this account permanently</button></div>
+              </form>
+            )}
+          </Card>
+        </div>
       )}
     </div>
   );

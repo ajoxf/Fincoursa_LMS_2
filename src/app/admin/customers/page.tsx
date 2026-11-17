@@ -15,7 +15,8 @@ const spendText = (m?: Record<string, number>) =>
 
 export default async function CustomersPage({ searchParams }: PageProps<"/admin/customers">) {
   await requireRole(["admin", "finance", "support"], "/admin/customers");
-  const f = parseStudentFilters(await searchParams);
+  const sp = await searchParams;
+  const f = parseStudentFilters(sp);
   const db = createAdminClient();
   const since = daysAgoIso(30);
   const [{ rows, total }, { data: courses }, all, consenting, active] = await Promise.all([
@@ -32,6 +33,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
 
   return (
     <div className="grid gap-6">
+      {typeof sp.ok === "string" && <p className="rounded-lg bg-success/10 p-3 text-sm text-success">{sp.ok}</p>}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-primary">Customers</h1>
         <a href={exportHref} className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2 text-sm text-ink">Export CSV{filtered ? " (filtered)" : ""}</a>
