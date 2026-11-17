@@ -32,7 +32,9 @@ export async function SiteFooter() {
         <div className="border-t border-white/20 py-6 text-[15px]">
           © {new Date().getFullYear()} FinCoursa Academy .{" "}
           <Link href="/pages/privacy-policy" className="hover:text-white">Privacy Policy</Link> |{" "}
-          <Link href="/pages/terms-conditions" className="hover:text-white">Terms &amp; Conditions</Link>
+          <Link href="/pages/terms-conditions" className="hover:text-white">Terms &amp; Conditions</Link> |{" "}
+          <Link href="/pages/refund-policy" className="hover:text-white">Refund &amp; Cancellation</Link> |{" "}
+          <Link href="/pages/shipping-policy" className="hover:text-white">Shipping &amp; Delivery</Link>
         </div>
       </div>
     </footer>
