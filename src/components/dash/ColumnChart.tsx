@@ -59,7 +59,7 @@ export function ColumnChart({ data, currency, label, height = 180 }: {
           </svg>
           <div className="relative h-4 text-[11px] text-muted">
             {data.map((d, i) => i % every === 0 && (
-              <span key={d.x} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${((i + 0.5) / data.length) * 100}%` }}>{d.x.slice(5)}</span>
+              <span key={d.x} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${((i + 0.5) / data.length) * 100}%` }}>{/^\d{4}-\d{2}-\d{2}$/.test(d.x) ? d.x.slice(5) : d.x}</span>
             ))}
           </div>
           <span className="absolute left-0 top-0 text-[11px] text-muted">{format(nice)}</span>
