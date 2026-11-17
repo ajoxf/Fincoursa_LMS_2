@@ -7,7 +7,7 @@ export function CopyImages() {
   const [pending, start] = useTransition();
   return (
     <section className="fc-card grid gap-3 p-5">
-      <h2 className="text-lg font-semibold text-primary">Copy images from Thinkific</h2>
+      <h2 className="text-lg font-semibold text-primary">Copy Images from Thinkific</h2>
       <p className="text-sm text-muted">
         Instructor photos, organisation logos and course images that still point at Thinkific are copied into FinCoursa&apos;s own storage.
         Do this before cancelling Thinkific, or those images disappear. Nothing changes on Thinkific. Safe to run again.

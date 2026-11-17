@@ -26,7 +26,7 @@ export default async function PurchasesPage() {
       {(currencies.length > 0 || cb.enabled) && (
         <div className="fc-card mt-6 grid gap-3 p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold">FinCoursa credit</h2>
+            <h2 className="text-lg font-semibold">FinCoursa Credit</h2>
             <p className="text-2xl font-bold tabular-nums">
               {currencies.length ? currencies.map((c) => formatMoney(balances[c], c)).join(" · ") : formatMoney(0)}
             </p>

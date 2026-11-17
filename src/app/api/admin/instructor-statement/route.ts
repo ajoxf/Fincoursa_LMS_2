@@ -4,7 +4,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { minorUnitsFactor } from "@/lib/money";
 import { env } from "@/lib/env";
 import { filterEarnings, loadEarnings, monthLabel, statementCsv } from "@/lib/instructor-statement";
-import { statementPdf, statementXlsx } from "@/lib/statement-export";
+import { fetchLogo, statementPdf, statementXlsx } from "@/lib/statement-export";
+import { getBranding } from "@/lib/site-settings";
+import { EMAIL_THEME } from "@/lib/email/templates";
 
 /** Admin only: an instructor's earnings statement as CSV, Excel or PDF, for one course and/or month if chosen. */
 export async function GET(req: NextRequest) {
@@ -22,11 +24,17 @@ export async function GET(req: NextRequest) {
   const monthKey = month && /^\d{4}-\d{2}$/.test(month) ? month : null;
   const rows = filterEarnings(await loadEarnings(db, { instructorId: id }), { course: courseId, month: monthKey });
   const courseTitle = courseId ? (await db.from("courses").select("title").eq("id", courseId).maybeSingle()).data?.title : null;
-  const meta = {
+  const meta: Parameters<typeof statementPdf>[1] = {
     instructor: ins.name, currency: rows[0]?.currency ?? env.defaultCurrency,
     scope: [courseTitle, monthKey ? monthLabel(monthKey) : "All time"].filter(Boolean).join(", "),
     generated: new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Dubai" }) + " (UAE)",
   };
+  if (format !== "csv") {
+    // the FinCoursa logos uploaded in Admin -> Home page & logos (white falls back to the email logo)
+    const b = await getBranding().catch(() => ({} as { logo_white?: string | null; logo_dark?: string | null }));
+    const [white, dark] = await Promise.all([fetchLogo(b.logo_white || EMAIL_THEME.logo), fetchLogo(b.logo_dark)]);
+    Object.assign(meta, { logoWhite: white, logoDark: dark });
+  }
   const base = `fincoursa-statement-${ins.slug ?? "instructor"}${monthKey ? `-${monthKey}` : ""}`;
   const headers = (type: string, ext: string) => ({ "Content-Type": type, "Content-Disposition": `attachment; filename="${base}.${ext}"`, "Cache-Control": "no-store" });
   if (format === "xlsx") return new NextResponse(new Uint8Array(await statementXlsx(rows, meta)), { headers: headers("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx") });

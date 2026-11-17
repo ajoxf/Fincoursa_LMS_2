@@ -16,7 +16,7 @@ export default async function LegalAdmin({ searchParams }: PageProps<"/admin/leg
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-primary">Terms &amp; privacy</h1>
+        <h1 className="text-3xl font-bold text-primary">Terms &amp; Privacy</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted">Edit the Terms &amp; Conditions and Privacy Policy shown on the site, or import them from a Word file. Each publish keeps the earlier version for your records. Have your lawyer approve the wording.</p>
       </div>
       <div className="flex gap-2 border-b border-line text-sm">

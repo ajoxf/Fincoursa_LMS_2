@@ -66,7 +66,7 @@ export default async function AdminCredit({ searchParams }: PageProps<"/admin/cr
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-primary">Cashback &amp; credit</h1>
+        <h1 className="text-3xl font-bold text-primary">Cashback &amp; Credit</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted">
           Buyers earn cashback as FinCoursa credit when an order is paid. Credit is kept in the order&apos;s currency and is applied
           automatically at their next checkout, before tax. A full refund cancels the order&apos;s unspent cashback and returns any credit it used.

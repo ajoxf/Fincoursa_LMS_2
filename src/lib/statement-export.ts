@@ -5,7 +5,20 @@ import { EARN_STATUS, summarize, type Earning } from "@/lib/instructor-statement
 import { minorUnitsFactor } from "@/lib/money";
 
 /** Admin downloads of an instructor's earnings statement: Excel and PDF (CSV lives in instructor-statement.ts). */
-export type StatementMeta = { instructor: string; scope: string; currency: string; generated: string };
+export type StatementMeta = {
+  instructor: string; scope: string; currency: string; generated: string;
+  /** PNG bytes of the FinCoursa logo: white for the PDF's black header band, dark for the Excel sheet */
+  logoWhite?: Uint8Array | null; logoDark?: Uint8Array | null;
+};
+
+/** Fetch a logo image for the downloads; null if it can't be loaded (the files then show the name in text). */
+export async function fetchLogo(url: string | null | undefined): Promise<Uint8Array | null> {
+  if (!url) return null;
+  try {
+    const r = await fetch(url, { cache: "force-cache" });
+    return r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
+  } catch { return null; }
+}
 
 const amt = (n: number | null | undefined, c: string) => Number(n ?? 0) / minorUnitsFactor(c);
 const money = (n: number, c: string) => `${c} ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -18,7 +31,13 @@ export async function statementXlsx(rows: Earning[], meta: StatementMeta): Promi
 
   const sum = wb.addWorksheet("Summary");
   sum.columns = [{ width: 34 }, { width: 18 }];
-  sum.addRow([`Earnings statement: ${meta.instructor}`]).font = { bold: true, size: 14 };
+  if (meta.logoDark) {
+    // logo across the top rows (733 x 144 source, shown at about 180 x 35)
+    const img = wb.addImage({ buffer: Buffer.from(meta.logoDark) as unknown as ExcelJS.Buffer, extension: "png" });
+    sum.addRow([]); sum.addRow([]); sum.addRow([]);
+    sum.addImage(img, { tl: { col: 0, row: 0 }, ext: { width: 180, height: 35 } });
+  }
+  sum.addRow([`Instructor Earnings Statement: ${meta.instructor}`]).font = { bold: true, size: 14 };
   sum.addRow([`Period: ${meta.scope}`]);
   sum.addRow([`Generated: ${meta.generated}`]);
   sum.addRow([]);
@@ -67,7 +86,7 @@ export async function statementXlsx(rows: Earning[], meta: StatementMeta): Promi
 /** A4 landscape PDF: header, summary waterfall, then every sale. Standard fonts only (no student details). */
 export async function statementPdf(rows: Earning[], meta: StatementMeta): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  doc.setTitle(`Earnings statement: ${meta.instructor}`);
+  doc.setTitle(`Instructor Earnings Statement: ${meta.instructor}`);
   doc.setAuthor("FinCoursa");
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -94,8 +113,14 @@ export async function statementPdf(rows: Earning[], meta: StatementMeta): Promis
   // header band
   page.drawRectangle({ x: 0, y: H - 70, width: W, height: 70, color: rgb(0, 0, 0) });
   page.drawRectangle({ x: 0, y: H - 74, width: W, height: 4, color: lime });
-  text(page, "FinCoursa", M, H - 42, { f: bold, size: 20, color: rgb(1, 1, 1) });
-  text(page, "Instructor earnings statement", W - M, H - 38, { f: bold, size: 12, color: lime, right: true });
+  const logo = meta.logoWhite ? await doc.embedPng(meta.logoWhite).catch(() => null) : null;
+  if (logo) {
+    const h = 26, w = (logo.width / logo.height) * h;
+    page.drawImage(logo, { x: M, y: H - 35 - h / 2, width: w, height: h });
+  } else {
+    text(page, "FinCoursa", M, H - 42, { f: bold, size: 20, color: rgb(1, 1, 1) });
+  }
+  text(page, "Instructor Earnings Statement", W - M, H - 38, { f: bold, size: 12, color: lime, right: true });
   text(page, meta.instructor, M, H - 104, { f: bold, size: 16 });
   text(page, `Period: ${meta.scope}   |   Generated: ${meta.generated}   |   Amounts in ${c}, excluding tax`, M, H - 122, { size: 9, color: muted });
 
@@ -133,7 +158,7 @@ export async function statementPdf(rows: Earning[], meta: StatementMeta): Promis
     return yy - 18;
   };
   y -= 22;
-  text(page, rows.length ? "Every sale" : "No sales in this period.", M, y, { f: bold, size: 11 });
+  text(page, rows.length ? "Every Sale" : "No sales in this period.", M, y, { f: bold, size: 11 });
   y -= 20;
   if (rows.length) y = tableHead(page, y);
   for (const e of rows) {

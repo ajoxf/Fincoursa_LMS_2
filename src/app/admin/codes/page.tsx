@@ -42,7 +42,7 @@ export default async function AdminCodes() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-3xl font-bold text-primary">Discount codes</h1>
+      <h1 className="text-3xl font-bold text-primary">Discount Codes</h1>
       <Card title="Create a code">
         <CodeForm courses={courses ?? []} bundles={bundles ?? []} currencies={currencies} defaultCurrency={env.defaultCurrency} />
       </Card>

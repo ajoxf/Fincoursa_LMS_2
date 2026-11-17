@@ -105,7 +105,7 @@ export default async function StudentDashboard({ searchParams }: PageProps<"/das
       <CourseUpdatesList items={updates} name={user.fullName} />
 
       <section>
-        <h2 className="text-xl font-semibold text-primary">My courses</h2>
+        <h2 className="text-xl font-semibold text-primary">My Courses</h2>
         {enrollments.length === 0 ? (
           <div className="fc-card mt-4 p-8 text-center">
             <p className="text-muted">You haven&apos;t enrolled in a course yet.</p>

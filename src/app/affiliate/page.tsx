@@ -38,7 +38,7 @@ export default async function AffiliatePage({ searchParams }: PageProps<"/affili
     return (
       <div className="grid gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Become a FinCoursa partner</h1>
+          <h1 className="text-3xl font-bold text-primary">Become a FinCoursa Partner</h1>
           <p className="mt-2 max-w-2xl text-muted">Affiliates and Introducing Brokers earn commission on every course sale they refer. You get a personal referral link, a live view of your clients, sales and earnings, and you can build your own team of sub-IBs.</p>
         </div>
         <ApplyForm parentCode={invite} />
@@ -65,7 +65,7 @@ export default async function AffiliatePage({ searchParams }: PageProps<"/affili
     <div className="grid gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Partner dashboard</h1>
+          <h1 className="text-3xl font-bold text-primary">Partner Dashboard</h1>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
             <span className="rounded-button bg-primary px-2 py-0.5 font-mono text-xs text-white">{p.code}</span>
             {isMaster && <span className="rounded-button bg-accent/20 px-2 py-0.5 text-xs font-semibold text-primary">Master IB</span>}

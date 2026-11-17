@@ -29,7 +29,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold text-primary">Orders &amp; refunds</h1>
+        <h1 className="text-3xl font-bold text-primary">Orders &amp; Refunds</h1>
         <form><input name="q" defaultValue={typeof q === "string" ? q : ""} placeholder="Order #" className="fc-input w-40" /></form>
       </div>
       {error && <p className="text-sm text-danger">{error.message}</p>}

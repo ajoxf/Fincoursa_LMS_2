@@ -48,7 +48,7 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/adm
 
       {(pending ?? []).length > 0 && (
         <div className="grid gap-3">
-          <h2 className="font-semibold">Waiting for your approval</h2>
+          <h2 className="font-semibold">Waiting for Your Approval</h2>
           {(pending ?? []).map((m) => <OutboxItem key={m.id} m={m as never} back={back} />)}
         </div>
       )}
