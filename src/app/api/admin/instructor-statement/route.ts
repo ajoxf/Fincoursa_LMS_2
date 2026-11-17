@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { filterEarnings, loadEarnings, monthLabel } from "@/lib/instructor-statement";
 import { fetchLogo, fincoursaCsv, fincoursaPdf, fincoursaXlsx } from "@/lib/statement-export";
+import { cashbackForEarnings } from "@/lib/cashback-status";
 import { getBranding } from "@/lib/site-settings";
 import { EMAIL_THEME } from "@/lib/email/templates";
 
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest) {
   const courseId = course && /^[0-9a-f-]{36}$/i.test(course) ? course : null;
   const monthKey = month && /^\d{4}-\d{2}$/.test(month) ? month : null;
   const rows = filterEarnings(await loadEarnings(db, { instructorId: id }), { course: courseId, month: monthKey }).filter((e) => e.currency === (q.get("currency") || env.defaultCurrency));
+  const cb = await cashbackForEarnings(db, rows);
   const courseTitle = courseId ? (await db.from("courses").select("title").eq("id", courseId).maybeSingle()).data?.title : null;
   const meta: Parameters<typeof fincoursaPdf>[1] = {
     instructor: ins.name, currency: rows[0]?.currency ?? env.defaultCurrency,
@@ -36,7 +38,7 @@ export async function GET(req: NextRequest) {
   }
   const base = `instructor-earnings-statement-${ins.slug ?? "instructor"}${monthKey ? `-${monthKey}` : ""}`;
   const headers = (type: string, ext: string) => ({ "Content-Type": type, "Content-Disposition": `attachment; filename="${base}.${ext}"`, "Cache-Control": "no-store" });
-  if (format === "xlsx") return new NextResponse(new Uint8Array(await fincoursaXlsx(rows, meta)), { headers: headers("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx") });
-  if (format === "pdf") return new NextResponse(new Uint8Array(await fincoursaPdf(rows, meta)), { headers: headers("application/pdf", "pdf") });
-  return new NextResponse(fincoursaCsv(rows), { headers: headers("text/csv; charset=utf-8", "csv") });
+  if (format === "xlsx") return new NextResponse(new Uint8Array(await fincoursaXlsx(rows, meta, cb)), { headers: headers("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx") });
+  if (format === "pdf") return new NextResponse(new Uint8Array(await fincoursaPdf(rows, meta, cb)), { headers: headers("application/pdf", "pdf") });
+  return new NextResponse(fincoursaCsv(rows, cb), { headers: headers("text/csv; charset=utf-8", "csv") });
 }

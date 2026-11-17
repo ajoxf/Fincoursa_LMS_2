@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { EARN_STATUS, type Earning } from "@/lib/instructor-statement";
 import { minorUnitsFactor } from "@/lib/money";
+import type { CashbackSplit } from "@/lib/cashback-status";
 
 /**
  * Admin downloads of the FinCoursa View for one instructor (Excel, CSV, PDF): what their courses made for FinCoursa,
@@ -24,20 +25,25 @@ export async function fetchLogo(url: string | null | undefined): Promise<Uint8Ar
   } catch { return null; }
 }
 
-const amt = (n: number | null | undefined, c: string) => Number(n ?? 0) / minorUnitsFactor(c);
+const amt = (n: number | null | undefined, c: string) => Number(n ?? 0) / minorUnitsFactor(c) + 0; // + 0 turns -0 into 0
 const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** FinCoursa's figures for one sale (minor units). */
+/** Where each sale's cashback stands (used / open / expired), keyed by sale id; set per download. */
+let CB: Map<string, CashbackSplit> = new Map();
+
+/** FinCoursa's figures for one sale (minor units). margin = worst case (all cashback spent); actual = only what was spent. */
 function sale(e: Earning) {
   const revenue = Number(e.net_revenue_minor), fee = Number(e.payment_fee_minor), partner = Number(e.partner_minor);
   const cashback = Number(e.cashback_given_minor || e.cashback_minor), instructor = Number(e.amount_minor);
-  return { revenue, fee, partner, cashback, instructor, margin: revenue - fee - partner - cashback - instructor };
+  const st = CB.get(e.id);
+  const used = st ? st.used : cashback, open = st ? st.open : 0, expired = st ? st.expired : 0;
+  return { revenue, fee, partner, cashback, used, open, expired, instructor, margin: revenue - fee - partner - cashback - instructor, actual: revenue - fee - partner - used - instructor };
 }
 
 /** Totals for a set of sales, refunded sales left out. */
 export function fincoursaTotals(rows: Earning[]) {
   const live = rows.filter((e) => e.status !== "reversed");
-  const z = { revenue: 0, fee: 0, partner: 0, cashback: 0, instructor: 0, margin: 0 };
+  const z = { revenue: 0, fee: 0, partner: 0, cashback: 0, used: 0, open: 0, expired: 0, instructor: 0, margin: 0, actual: 0 };
   for (const e of live) { const s = sale(e); for (const k of Object.keys(z) as (keyof typeof z)[]) z[k] += s[k]; }
   return {
     ...z,
@@ -55,18 +61,21 @@ function byCourse(rows: Earning[]) {
 
 const dateOf = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Dubai" });
 
-export function fincoursaCsv(rows: Earning[]) {
+export function fincoursaCsv(rows: Earning[], cb?: Map<string, CashbackSplit>) {
+  if (cb) CB = cb;
   const cell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-  const head = ["Date", "Course", "Currency", "Gross Revenue", "Gateway Fees", "Commissions", "Cashback", "Instructor Share", "Net Margin", "Status"];
+  const head = ["Date", "Course", "Currency", "Gross Revenue", "Gateway Fees", "Commissions", "Cashback Given", "Cashback Used", "Cashback Open", "Cashback Expired", "Instructor Share", "Net Margin (Worst Case)", "Net Margin (Actual)", "Status"];
   const lines = rows.map((e) => {
     const s = sale(e), c = e.currency;
     return [e.created_at.slice(0, 10), e.course?.title ?? "", c, amt(s.revenue, c).toFixed(2), amt(s.fee, c).toFixed(2), amt(s.partner, c).toFixed(2),
-      amt(s.cashback, c).toFixed(2), amt(s.instructor, c).toFixed(2), amt(s.margin, c).toFixed(2), EARN_STATUS[e.status] ?? e.status].map(cell).join(",");
+      amt(s.cashback, c).toFixed(2), amt(s.used, c).toFixed(2), amt(s.open, c).toFixed(2), amt(s.expired, c).toFixed(2), amt(s.instructor, c).toFixed(2),
+      amt(s.margin, c).toFixed(2), amt(s.actual, c).toFixed(2), EARN_STATUS[e.status] ?? e.status].map(cell).join(",");
   });
   return [head.map(cell).join(","), ...lines].join("\n");
 }
 
-export async function fincoursaXlsx(rows: Earning[], meta: StatementMeta): Promise<Buffer> {
+export async function fincoursaXlsx(rows: Earning[], meta: StatementMeta, cb?: Map<string, CashbackSplit>): Promise<Buffer> {
+  if (cb) CB = cb;
   const wb = new ExcelJS.Workbook();
   wb.creator = "FinCoursa";
   const t = fincoursaTotals(rows);
@@ -87,29 +96,32 @@ export async function fincoursaXlsx(rows: Earning[], meta: StatementMeta): Promi
   const lines: [string, number, boolean?][] = [
     ["Paid Sales", t.paidSales], ["Free Enrolments", t.free], ["Refunded", t.refunded],
     [`Gross Revenue (${c})`, amt(t.revenue, c), true], [`Gateway Fees (${c})`, -amt(t.fee, c), true], [`Commissions (${c})`, -amt(t.partner, c), true],
-    [`Cashback (${c})`, -amt(t.cashback, c), true], [`Instructor Share (${c})`, -amt(t.instructor, c), true], [`Net Margin (${c})`, amt(t.margin, c), true],
+    [`Cashback Given (${c})`, -amt(t.cashback, c), true], [`Instructor Share (${c})`, -amt(t.instructor, c), true], [`Net Margin, Worst Case (${c})`, amt(t.margin, c), true],
+    [`  Cashback Used (${c})`, amt(t.used, c), true], [`  Cashback Open (${c})`, amt(t.open, c), true], [`  Cashback Expired (${c})`, amt(t.expired, c), true],
+    [`Net Margin, Actual (${c})`, amt(t.actual, c), true],
   ];
   for (const [k, v, isMoney] of lines) { const r = sum.addRow([k, v]); if (isMoney) r.getCell(2).numFmt = money; }
   sum.getRow(sum.rowCount).font = { bold: true };
 
   const bc = wb.addWorksheet("By Course");
-  bc.addRow(["Course", "Paid Sales", "Free Enrolments", "Gross Revenue", "Gateway Fees", "Commissions", "Cashback", "Instructor Share", "Net Margin"]).font = { bold: true };
-  for (const r of byCourse(rows)) bc.addRow([r.title, r.paidSales, r.free, amt(r.revenue, c), amt(r.fee, c), amt(r.partner, c), amt(r.cashback, c), amt(r.instructor, c), amt(r.margin, c)]);
-  bc.columns.forEach((col, i) => { col.width = [36, 11, 15, 14, 13, 13, 12, 16, 13][i]; if (i >= 3) col.numFmt = money; });
+  bc.addRow(["Course", "Paid Sales", "Free Enrolments", "Gross Revenue", "Gateway Fees", "Commissions", "Cashback Given", "Cashback Used", "Cashback Open", "Cashback Expired", "Instructor Share", "Net Margin (Worst Case)", "Net Margin (Actual)"]).font = { bold: true };
+  for (const r of byCourse(rows)) bc.addRow([r.title, r.paidSales, r.free, amt(r.revenue, c), amt(r.fee, c), amt(r.partner, c), amt(r.cashback, c), amt(r.used, c), amt(r.open, c), amt(r.expired, c), amt(r.instructor, c), amt(r.margin, c), amt(r.actual, c)]);
+  bc.columns.forEach((col, i) => { col.width = [36, 11, 15, 14, 13, 13, 14, 14, 14, 16, 16, 22, 18][i]; if (i >= 3) col.numFmt = money; });
 
   const ws = wb.addWorksheet("Sales");
-  ws.addRow(["Date", "Course", "Currency", "Gross Revenue", "Gateway Fees", "Commissions", "Cashback", "Instructor Share", "Net Margin", "Status"]).font = { bold: true };
+  ws.addRow(["Date", "Course", "Currency", "Gross Revenue", "Gateway Fees", "Commissions", "Cashback Given", "Cashback Used", "Cashback Open", "Cashback Expired", "Instructor Share", "Net Margin (Worst Case)", "Net Margin (Actual)", "Status"]).font = { bold: true };
   ws.views = [{ state: "frozen", ySplit: 1 }];
   for (const e of rows) {
     const s = sale(e), cc = e.currency;
-    ws.addRow([new Date(e.created_at), e.course?.title ?? "", cc, amt(s.revenue, cc), amt(s.fee, cc), amt(s.partner, cc), amt(s.cashback, cc), amt(s.instructor, cc), amt(s.margin, cc), EARN_STATUS[e.status] ?? e.status]);
+    ws.addRow([new Date(e.created_at), e.course?.title ?? "", cc, amt(s.revenue, cc), amt(s.fee, cc), amt(s.partner, cc), amt(s.cashback, cc), amt(s.used, cc), amt(s.open, cc), amt(s.expired, cc), amt(s.instructor, cc), amt(s.margin, cc), amt(s.actual, cc), EARN_STATUS[e.status] ?? e.status]);
   }
-  ws.columns.forEach((col, i) => { col.width = [12, 36, 9, 14, 13, 13, 12, 16, 13, 20][i]; if (i === 0) col.numFmt = "dd mmm yyyy"; else if (i >= 3 && i <= 8) col.numFmt = money; });
+  ws.columns.forEach((col, i) => { col.width = [12, 36, 9, 14, 13, 13, 14, 14, 14, 16, 16, 22, 18, 20][i]; if (i === 0) col.numFmt = "dd mmm yyyy"; else if (i >= 3 && i <= 12) col.numFmt = money; });
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
 
 /** A4 landscape PDF: header with logo, the summary, the by-course table and every sale. Standard fonts only. */
-export async function fincoursaPdf(rows: Earning[], meta: StatementMeta): Promise<Uint8Array> {
+export async function fincoursaPdf(rows: Earning[], meta: StatementMeta, cb?: Map<string, CashbackSplit>): Promise<Uint8Array> {
+  if (cb) CB = cb;
   const doc = await PDFDocument.create();
   doc.setTitle(`Instructor Earnings Statement: ${meta.instructor}`);
   doc.setAuthor("FinCoursa");
@@ -146,11 +158,14 @@ export async function fincoursaPdf(rows: Earning[], meta: StatementMeta): Promis
   let y = H - 152;
   const sumLines: [string, number, boolean?][] = [
     [`Gross Revenue (${t.paidSales} paid, ${t.free} free)`, t.revenue], ["- Gateway Fees", -t.fee], ["- Commissions", -t.partner],
-    ["- Cashback", -t.cashback], ["- Instructor Share", -t.instructor], ["= Net Margin", t.margin, true],
+    ["- Cashback Given", -t.cashback], ["- Instructor Share", -t.instructor], ["= Net Margin (Worst Case)", t.margin, true],
+    [`   Cashback: used ${fmt(amt(t.used, c))}, open ${fmt(amt(t.open, c))}, expired ${fmt(amt(t.expired, c))}`, NaN],
+    ["= Net Margin (Actual)", t.actual, true],
   ];
   page.drawRectangle({ x: M, y: y - (sumLines.length - 1) * 16 - 8, width: 330, height: (sumLines.length - 1) * 16 + 24, color: rgb(0.95, 0.96, 0.97) });
   for (const [k, v, b] of sumLines) {
     const col = b && v < 0 ? red : ink;
+    if (Number.isNaN(v)) { text(page, k, M + 10, y, { size: 8.5, color: muted }); y -= 16; continue; }
     text(page, k, M + 10, y, { f: b ? bold : font, size: 10 });
     text(page, c, M + 236, y, { f: b ? bold : font, size: 10, color: col });
     text(page, fmt(amt(v, c)), M + 320, y, { f: b ? bold : font, size: 10, right: true, color: col });
@@ -185,25 +200,28 @@ export async function fincoursaPdf(rows: Earning[], meta: StatementMeta): Promis
   const courses = byCourse(rows);
   const m = (n: number) => fmt(amt(n, c));
   table("By Course", [
-    { h: "Course", w: 210, v: (r) => r.title }, { h: "Paid Sales", w: 56, right: true, v: (r) => String(r.paidSales) },
+    { h: "Course", w: 170, v: (r) => r.title }, { h: "Paid Sales", w: 56, right: true, v: (r) => String(r.paidSales) },
     { h: "Free", w: 40, right: true, v: (r) => String(r.free) }, { h: "Gross Revenue", w: 74, right: true, v: (r) => m(r.revenue) },
     { h: "Gateway Fees", w: 66, right: true, v: (r) => m(r.fee) }, { h: "Commissions", w: 66, right: true, v: (r) => m(r.partner) },
-    { h: "Cashback", w: 62, right: true, v: (r) => m(r.cashback) }, { h: "Instructor Share", w: 82, right: true, v: (r) => m(r.instructor) },
-    { h: "Net Margin", w: 114, right: true, v: (r) => m(r.margin) },
+    { h: "Cashback", w: 58, right: true, v: (r) => m(r.cashback) }, { h: "Used", w: 50, right: true, v: (r) => m(r.used) },
+    { h: "Instructor", w: 58, right: true, v: (r) => m(r.instructor) },
+    { h: "Margin (Worst)", w: 68, right: true, v: (r) => m(r.margin) }, { h: "Margin (Actual)", w: 70, right: true, v: (r) => m(r.actual) },
   ] as Col<(typeof courses)[number]>[], courses, () => false,
-  courses.length > 1 ? ["Total", String(t.paidSales), String(t.free), m(t.revenue), m(t.fee), m(t.partner), m(t.cashback), m(t.instructor), m(t.margin)] : undefined);
+  courses.length > 1 ? ["Total", String(t.paidSales), String(t.free), m(t.revenue), m(t.fee), m(t.partner), m(t.cashback), m(t.used), m(t.instructor), m(t.margin), m(t.actual)] : undefined);
 
   table("Every Sale", [
-    { h: "Date", w: 62, v: (e) => dateOf(e.created_at) }, { h: "Course", w: 170, v: (e) => e.course?.title ?? "" },
-    { h: "Gross Revenue", w: 70, right: true, v: (e) => fmt(amt(sale(e).revenue, e.currency)) }, { h: "Gateway Fees", w: 62, right: true, v: (e) => fmt(amt(sale(e).fee, e.currency)) },
-    { h: "Commissions", w: 62, right: true, v: (e) => fmt(amt(sale(e).partner, e.currency)) }, { h: "Cashback", w: 58, right: true, v: (e) => fmt(amt(sale(e).cashback, e.currency)) },
-    { h: "Instructor Share", w: 78, right: true, v: (e) => fmt(amt(sale(e).instructor, e.currency)) }, { h: "Net Margin", w: 62, right: true, v: (e) => fmt(amt(sale(e).margin, e.currency)) },
-    { h: "Status", w: 146, pad: 12, v: (e) => EARN_STATUS[e.status] ?? e.status },
+    { h: "Date", w: 60, v: (e) => dateOf(e.created_at) }, { h: "Course", w: 140, v: (e) => e.course?.title ?? "" },
+    { h: "Gross Revenue", w: 66, right: true, v: (e) => fmt(amt(sale(e).revenue, e.currency)) }, { h: "Fees", w: 44, right: true, v: (e) => fmt(amt(sale(e).fee, e.currency)) },
+    { h: "Commissions", w: 58, right: true, v: (e) => fmt(amt(sale(e).partner, e.currency)) }, { h: "Cashback", w: 52, right: true, v: (e) => fmt(amt(sale(e).cashback, e.currency)) },
+    { h: "Used", w: 46, right: true, v: (e) => fmt(amt(sale(e).used, e.currency)) },
+    { h: "Instructor", w: 54, right: true, v: (e) => fmt(amt(sale(e).instructor, e.currency)) }, { h: "Margin (Worst)", w: 66, right: true, v: (e) => fmt(amt(sale(e).margin, e.currency)) },
+    { h: "Margin (Actual)", w: 70, right: true, v: (e) => fmt(amt(sale(e).actual, e.currency)) },
+    { h: "Status", w: 114, pad: 10, v: (e) => EARN_STATUS[e.status] ?? e.status },
   ] as Col<Earning>[], rows, (e) => e.status === "reversed");
 
   const pages = doc.getPages();
   pages.forEach((p, i) => {
-    text(p, "Gross Revenue: what students paid after codes and credit, excluding tax. Cashback is the full credit given. Refunded sales are greyed and left out of totals. No student details.", M, 18, { size: 7, color: muted });
+    text(p, "Gross Revenue: what students paid after codes and credit, excluding tax. Worst Case counts all cashback given; Actual counts only cashback spent (expired credit costs nothing). Refunded sales greyed, not in totals. No student details.", M, 18, { size: 7, color: muted });
     text(p, `Page ${i + 1} of ${pages.length}`, W - M, 18, { size: 7, color: muted, right: true });
   });
   return doc.save();

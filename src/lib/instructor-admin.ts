@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadEarnings, monthKey, type Earning } from "@/lib/instructor-statement";
+import { cashbackForEarnings } from "@/lib/cashback-status";
 
 /** Has the instructor been invited, accepted (signed in) and when were they last on the portal? */
 export type InstructorAccess = {
@@ -43,12 +44,15 @@ export type BusinessCourseRow = {
   course_id: string; title: string;
   sales: number; free: number; refunded: number;
   revenue: number; fee: number; partner: number; cashback: number; instructor: number; kept: number;
+  cbUsed: number; cbOpen: number; cbExpired: number; actual: number;
 };
 
 export async function instructorBusiness(db: SupabaseClient, instructorId: string, opts: { month?: string | null; currency: string; courseId?: string | null }) {
   const everything = (await loadEarnings(db, { instructorId })).filter((e) => e.currency === opts.currency);
   const all = opts.courseId ? everything.filter((e) => e.course_id === opts.courseId) : everything;
   const rows = opts.month ? all.filter((e) => monthKey(e.created_at) === opts.month) : all;
+  // where each sale's cashback stands now: used, still open, expired (instructor share stays as it was at the sale)
+  const cb = await cashbackForEarnings(db, all);
   const months = [...new Set(all.map((e) => monthKey(e.created_at)))].sort().reverse();
   const by = new Map<string, Earning[]>();
   for (const e of rows) by.set(e.course_id, [...(by.get(e.course_id) ?? []), e]);
@@ -66,11 +70,17 @@ export async function instructorBusiness(db: SupabaseClient, instructorId: strin
     // FinCoursa's real cost is all the cashback given, not only the part counted against the instructor
     const cashback = s((e) => Number(e.cashback_given_minor || e.cashback_minor));
     const instructor = s((e) => Number(e.amount_minor));
+    const cbUsed = s((e) => cb.get(e.id)?.used ?? 0);
+    const cbOpen = s((e) => cb.get(e.id)?.open ?? 0);
+    const cbExpired = s((e) => cb.get(e.id)?.expired ?? 0);
     return {
       sales: live.filter((e) => Number(e.net_revenue_minor) > 0).length,
       free: live.filter((e) => Number(e.net_revenue_minor) === 0).length,
       refunded: list.length - live.length,
-      revenue, fee, partner, cashback, instructor, kept: revenue - fee - partner - cashback - instructor,
+      revenue, fee, partner, cashback, instructor, cbUsed, cbOpen, cbExpired,
+      // worst case: all cashback given is spent; actual: only the cashback spent so far
+      kept: revenue - fee - partner - cashback - instructor,
+      actual: revenue - fee - partner - cbUsed - instructor,
     };
   };
   const courses: BusinessCourseRow[] = [...by.entries()].map(([course_id, list]) => ({ course_id, title: titles.get(course_id) ?? list[0]?.course?.title ?? "Course", ...calc(list) }))
