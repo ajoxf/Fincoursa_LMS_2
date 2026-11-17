@@ -1,7 +1,7 @@
 import { Logo } from "@/components/site/Logo";
 import Link from "next/link";
 import { brand } from "./brand";
-import { getBundles, getTopics } from "@/lib/catalog";
+import { getListedBundles, getTopics } from "@/lib/catalog";
 
 const links = [
   { href: "/pages/programmes", label: "Programmes" },
@@ -13,7 +13,7 @@ const links = [
 
 export async function SiteFooter() {
   // "Programmes" only appears while at least one programme is published
-  const [bundles, topics] = await Promise.all([getBundles().catch(() => []), getTopics().catch(() => [])]);
+  const [bundles, topics] = await Promise.all([getListedBundles().catch(() => []), getTopics().catch(() => [])]);
   const base = bundles.length > 0 ? links : links.filter((l) => l.href !== "/pages/programmes");
   // topics sit right after "Courses"
   const shown = [base[0], ...(base[0].href === "/pages/programmes" ? [base[1]] : []), ...topics.map((t) => ({ href: `/topics/${t.slug}`, label: t.name })),

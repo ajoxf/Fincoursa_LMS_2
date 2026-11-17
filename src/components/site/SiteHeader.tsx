@@ -1,5 +1,5 @@
 import { getSessionUser } from "@/lib/auth";
-import { getBundles, getTopics } from "@/lib/catalog";
+import { getListedBundles, getTopics } from "@/lib/catalog";
 import { HeaderBar } from "./HeaderBar";
 
 // The Learn menu: one link per topic (course category with published courses), then all courses.
@@ -13,7 +13,7 @@ export const mainLinks = [
 ];
 
 export async function SiteHeader() {
-  const [user, bundles, topics] = await Promise.all([getSessionUser(), getBundles().catch(() => []), getTopics().catch(() => [])]);
+  const [user, bundles, topics] = await Promise.all([getSessionUser(), getListedBundles().catch(() => []), getTopics().catch(() => [])]);
   // "Programmes" only appears while at least one programme is published
   const learn = [
     ...topics.map((t) => ({ href: `/topics/${t.slug}`, label: t.name })),

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getBundles, getCourse, getCourses, getInstructors } from "@/lib/catalog";
+import { getListedBundles, getCourse, getCourses, getInstructors } from "@/lib/catalog";
 import { UpcomingLive } from "@/components/site/UpcomingLive";
 import { sessionNotOver } from "@/lib/format";
 import { SectionHeading } from "@/components/site/SectionHeading";
@@ -12,7 +12,7 @@ import { BundleTile } from "@/components/site/BundleTile";
 import { getBranding, getHomeContent, getIntroVideo } from "@/lib/site-settings";
 
 export default async function HomePage() {
-  const [courses, bundles, faculty, all, intro] = await Promise.all([getCourses({ featured: true }), getBundles(), getInstructors(), getCourses(), getIntroVideo()]);
+  const [courses, bundles, faculty, all, intro] = await Promise.all([getCourses({ featured: true }), getListedBundles(), getInstructors(), getCourses(), getIntroVideo()]);
   const [branding, t] = await Promise.all([getBranding(), getHomeContent()]);
   // "Industry experts" strip: only shown when the admin has added organisations (Admin → Home page & logos)
   const partners = (branding.partners ?? []).map((p) => ({ name: p.name, src: p.logo_url, style: "font-semibold" }));

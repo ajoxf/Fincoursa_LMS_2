@@ -254,6 +254,10 @@ export const getBundles = cache(async (): Promise<BundleCard[]> => {
 
 export const getBundle = cache(async (slug: string) => (await getBundles()).find((b) => b.slug === slug) ?? null);
 
+/** CMT programmes live under CMT Prep (/cmt), so the general Programmes listings, menu and home page leave them out. */
+export const isCmtProgramme = (b: { slug: string }) => b.slug.startsWith("cmt-");
+export const getListedBundles = cache(async (): Promise<BundleCard[]> => (await getBundles()).filter((b) => !isCmtProgramme(b)));
+
 export const getInstructors = cache(async (): Promise<Instructor[]> => {
   if (!isSupabaseConfigured) return demoCatalog.instructors;
   const supabase = await createClient();
