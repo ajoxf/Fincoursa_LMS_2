@@ -80,7 +80,7 @@ export async function fincoursaXlsx(rows: Earning[], meta: StatementMeta): Promi
     sum.addRow([]); sum.addRow([]); sum.addRow([]);
     sum.addImage(img, { tl: { col: 0, row: 0 }, ext: { width: 180, height: 35 } });
   }
-  sum.addRow([`Dashboard (FinCoursa View): ${meta.instructor}`]).font = { bold: true, size: 14 };
+  sum.addRow([`Instructor Earnings Statement: ${meta.instructor}`]).font = { bold: true, size: 14 };
   sum.addRow([`Period: ${meta.scope}`]);
   sum.addRow([`Generated: ${meta.generated}`]);
   sum.addRow([]);
@@ -111,7 +111,7 @@ export async function fincoursaXlsx(rows: Earning[], meta: StatementMeta): Promi
 /** A4 landscape PDF: header with logo, the summary, the by-course table and every sale. Standard fonts only. */
 export async function fincoursaPdf(rows: Earning[], meta: StatementMeta): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  doc.setTitle(`Dashboard (FinCoursa View): ${meta.instructor}`);
+  doc.setTitle(`Instructor Earnings Statement: ${meta.instructor}`);
   doc.setAuthor("FinCoursa");
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -138,7 +138,7 @@ export async function fincoursaPdf(rows: Earning[], meta: StatementMeta): Promis
   const logo = meta.logoWhite ? await doc.embedPng(meta.logoWhite).catch(() => null) : null;
   if (logo) { const h = 26, w = (logo.width / logo.height) * h; page.drawImage(logo, { x: M, y: H - 35 - h / 2, width: w, height: h }); }
   else text(page, "FinCoursa", M, H - 42, { f: bold, size: 20, color: rgb(1, 1, 1) });
-  text(page, "Dashboard (FinCoursa View)", W - M, H - 38, { f: bold, size: 12, color: lime, right: true });
+  text(page, "Instructor Earnings Statement", W - M, H - 38, { f: bold, size: 12, color: lime, right: true });
   text(page, meta.instructor, M, H - 104, { f: bold, size: 16 });
   text(page, `Period: ${meta.scope}   |   Generated: ${meta.generated}   |   Amounts in ${c}, excluding tax`, M, H - 122, { size: 9, color: muted });
 

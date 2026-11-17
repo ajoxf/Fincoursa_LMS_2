@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const [white, dark] = await Promise.all([fetchLogo(b.logo_white || EMAIL_THEME.logo), fetchLogo(b.logo_dark)]);
     Object.assign(meta, { logoWhite: white, logoDark: dark });
   }
-  const base = `fincoursa-view-${ins.slug ?? "instructor"}${monthKey ? `-${monthKey}` : ""}`;
+  const base = `instructor-earnings-statement-${ins.slug ?? "instructor"}${monthKey ? `-${monthKey}` : ""}`;
   const headers = (type: string, ext: string) => ({ "Content-Type": type, "Content-Disposition": `attachment; filename="${base}.${ext}"`, "Cache-Control": "no-store" });
   if (format === "xlsx") return new NextResponse(new Uint8Array(await fincoursaXlsx(rows, meta)), { headers: headers("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx") });
   if (format === "pdf") return new NextResponse(new Uint8Array(await fincoursaPdf(rows, meta)), { headers: headers("application/pdf", "pdf") });
