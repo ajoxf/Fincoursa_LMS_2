@@ -121,14 +121,14 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
             <option value="message">Simple message (you write the text)</option>
             {designs.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
           </select>
-          {designed && <p className="text-xs text-muted">{designs.find((d) => d.id === design)?.description ?? "A ready-made email."} You only choose the subject line and, if you like, add a short personal note at the top. It is sent as a promotion, so only people who agreed to marketing emails get it, with an unsubscribe link.</p>}
+          {designed && <p className="text-xs text-muted">{designs.find((d) => d.id === design)?.description ?? "A ready-made email."} You only choose the subject line and, if you like, add a short personal note at the top. It is sent as a promotion, so only people who receive updates get it, with an unsubscribe link.</p>}
         </fieldset>
 
         <fieldset className={`grid gap-2 ${designed ? "hidden" : ""}`}>
           <legend className="mb-2 text-sm font-semibold">Type of email</legend>
           <label className="flex cursor-pointer gap-3 rounded-lg border border-line p-3 has-[:checked]:border-ink">
             <input type="radio" name="kind" value="promotion" checked={kind === "promotion"} onChange={() => setKind("promotion")} className="mt-1 accent-black" />
-            <span><b className="text-sm">Newsletter or promotion</b><span className="block text-xs text-muted">Weekly updates, new courses, offers. Only goes to people who agreed to marketing emails ({consenting} today), with an unsubscribe link.</span></span>
+            <span><b className="text-sm">Newsletter or promotion</b><span className="block text-xs text-muted">Weekly updates, new courses, offers. Only goes to people who receive updates ({consenting} today), with an unsubscribe link.</span></span>
           </label>
           <label className="flex cursor-pointer gap-3 rounded-lg border border-line p-3 has-[:checked]:border-ink">
             <input type="radio" name="kind" value="update" checked={kind === "update"} onChange={() => setKind("update")} className="mt-1 accent-black" />
@@ -154,7 +154,7 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
               {pool === null && <p className="text-xs text-muted">Loading…</p>}
               {Array.isArray(pool) && [...picked].filter((e) => !pool.some((p) => p.email.toLowerCase() === e)).map((e) => (
                 <p key={e} className="flex flex-wrap items-baseline gap-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-                  <span><b>{e}</b> won&apos;t get this email: they have a FinCoursa account and said no to marketing emails, or they unsubscribed.</span>
+                  <span><b>{e}</b> won&apos;t get this email: they have a FinCoursa account and turned off updates, or they unsubscribed.</span>
                   <button type="button" onClick={() => togglePick(e)} className="underline">Remove</button>
                 </p>
               ))}
@@ -173,7 +173,7 @@ export function Composer({ courses, draft, consenting, contacts, designs, isAdmi
                   {!pool.length && <li className="py-2 text-muted">Nobody can receive this kind of email yet.</li>}
                 </ul>
               )}
-              <p className="text-xs text-muted">Only people who can receive {designed || kind !== "update" ? "marketing emails (they agreed, and haven't unsubscribed)" : "this email"} are listed. Tip: in the Contacts tab you can tick people and click &quot;Email selected people&quot;.</p>
+              <p className="text-xs text-muted">Only people who can receive {designed || kind !== "update" ? "updates (they ticked it, and haven't unsubscribed)" : "this email"} are listed. Tip: in the Contacts tab you can tick people and click &quot;Email selected people&quot;.</p>
             </div>
           )}
           <div className={`grid gap-3 ${who === "pick" ? "hidden" : ""}`}>

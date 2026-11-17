@@ -39,7 +39,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <Stat label="All accounts" value={all.count ?? 0} />
-        <Stat label="Agreed to marketing emails" value={consenting.count ?? 0} hint="Who promotions can be sent to" />
+        <Stat label="Receives Updates" value={consenting.count ?? 0} hint="Ticked “Keep me posted” at sign-up or in Settings" />
         <Stat label="Studied in the last 30 days" value={active.count ?? 0} hint="Customers with lesson activity" />
       </div>
 
@@ -59,7 +59,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
             {ALL_COUNTRIES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
           </select>
         </label>
-        <label className="grid gap-1 text-xs font-medium text-muted">Marketing emails
+        <label className="grid gap-1 text-xs font-medium text-muted">Receives updates
           <select name="consent" defaultValue={f.consent} className="fc-input text-sm text-ink">
             <option value="">Anyone</option><option value="yes">Agreed</option><option value="no">Not agreed</option>
           </select>
@@ -85,7 +85,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
               <p className="font-semibold text-ink">{s.full_name || s.email}</p>
               <p className="text-sm text-muted">{s.email}</p>
               <p className="mt-2 text-sm">{s.active_courses} courses · {spendText(spend.get(s.id))}{s.country_code ? ` · ${s.country_code}` : ""}</p>
-              <p className="mt-1 text-xs text-muted">Joined {formatDate(s.created_at)}{s.last_activity_at ? ` · active ${formatDate(s.last_activity_at)}` : ""}{s.marketing_opt_in ? " · ✓ marketing" : ""}</p>
+              <p className="mt-1 text-xs text-muted">Joined {formatDate(s.created_at)}{s.last_activity_at ? ` · active ${formatDate(s.last_activity_at)}` : ""}{s.marketing_opt_in ? " · ✓ updates" : ""}</p>
             </Link>
           </li>
         ))}
@@ -95,7 +95,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
       <div className="fc-card hidden overflow-x-auto md:block">
         <table className="w-full min-w-[860px] text-sm">
           <thead className="text-left text-muted"><tr>
-            {["Customer", "Country", "Courses", "Spent", "Last active", "Joined", "Marketing"].map((h) => <th key={h} className="p-3 font-medium">{h}</th>)}
+            {["Customer", "Country", "Courses", "Spent", "Last active", "Joined", "Updates"].map((h) => <th key={h} className="p-3 font-medium">{h}</th>)}
           </tr></thead>
           <tbody>
             {rows.map((s) => (

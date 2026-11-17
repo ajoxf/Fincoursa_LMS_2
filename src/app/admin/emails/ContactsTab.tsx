@@ -83,7 +83,7 @@ export async function ContactsTab({ q, group }: { q: string; group: string }) {
                           {(r.groups ?? []).length ? (r.groups as string[]).join(", ") : "No group"} · added {formatDate(r.created_at)}{r.unsubscribed_at ? ` · unsubscribed ${formatDate(r.unsubscribed_at)}` : ""}
                         </span>
                         {noMarketing.has(r.email.toLowerCase()) && !r.unsubscribed_at && (
-                          <span className="block text-xs text-warning">Won&apos;t get marketing emails: they have a FinCoursa account and said no to marketing emails there. They can turn it on in their account settings.</span>
+                          <span className="block text-xs text-warning">Won&apos;t get updates: they have a FinCoursa account and turned off updates there. They can turn it on in their account settings.</span>
                         )}
                       </span>
                     </label>

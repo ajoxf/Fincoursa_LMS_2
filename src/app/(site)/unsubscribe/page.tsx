@@ -66,10 +66,10 @@ export default async function UnsubscribePage({ searchParams }: PageProps<"/unsu
               <p className="mt-4 text-[15px] text-ink/80">Sign in and open Settings to change your email preferences.</p></>
           ) : sp.done || !p.marketing_opt_in ? (
             <><h1 className="fc-h2 mt-4 text-ink">You&apos;re unsubscribed</h1>
-              <p className="mt-4 text-[15px] text-ink/80">{p.email} won&apos;t receive promotions or newsletters from FinCoursa. You&apos;ll still get receipts and messages about courses you&apos;re enrolled in. You can opt back in any time in Settings.</p></>
+              <p className="mt-4 text-[15px] text-ink/80">{p.email} won&apos;t receive updates on new courses, study tips or offers from FinCoursa. You&apos;ll still get receipts and messages about courses you&apos;re enrolled in. You can opt back in any time in Settings.</p></>
           ) : (
-            <><h1 className="fc-h2 mt-4 text-ink">Unsubscribe from marketing emails?</h1>
-              <p className="mt-4 text-[15px] text-ink/80">{p.email} will stop receiving promotions and newsletters. Receipts and updates about your courses still arrive.</p>
+            <><h1 className="fc-h2 mt-4 text-ink">Stop updates from FinCoursa?</h1>
+              <p className="mt-4 text-[15px] text-ink/80">{p.email} will stop receiving updates on new courses, study tips and offers. Receipts and updates about your courses still arrive.</p>
               <form action={unsubscribe} className="mt-8"><input type="hidden" name="u" value={u} /><input type="hidden" name="t" value={t} />
                 <button className="fc-btn fc-btn-primary fc-btn-lg">Unsubscribe</button></form></>
           )}

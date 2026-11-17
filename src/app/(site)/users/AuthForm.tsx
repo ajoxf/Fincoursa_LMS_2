@@ -4,7 +4,7 @@ import { TrackConversion } from "@/components/site/Tracking";
 import { resendConfirmation, type AuthState } from "./actions";
 
 type Field = { name: string; label: string; type?: string; required?: boolean; autoComplete?: string; defaultValue?: string };
-type Check = { name: string; label: string; defaultChecked?: boolean };
+type Check = { name: string; label: string; defaultChecked?: boolean; /** small and below the button */ subtle?: boolean };
 
 export function AuthForm({ action, fields, submit, next, checks = [], conversion }: {
   action: (s: AuthState, f: FormData) => Promise<AuthState>; fields: Field[]; submit: string; next?: string; checks?: Check[];
@@ -33,7 +33,7 @@ export function AuthForm({ action, fields, submit, next, checks = [], conversion
           <input name={f.name} type={f.type ?? "text"} required={f.required} autoComplete={f.autoComplete} defaultValue={f.defaultValue} className="fc-input" />
         </label>
       ))}
-      {checks.map((c) => (
+      {checks.filter((c) => !c.subtle).map((c) => (
         <label key={c.name} className="flex items-start gap-2 text-sm text-ink/80"><input type="checkbox" name={c.name} defaultChecked={c.defaultChecked} className="mt-1" />{c.label}</label>
       ))}
       {next && <input type="hidden" name="next" value={next} />}
@@ -41,6 +41,9 @@ export function AuthForm({ action, fields, submit, next, checks = [], conversion
       {state?.resend && state.email && <Resend email={state.email} next={next} />}
       {state?.message && <p className="text-sm text-success">{state.message}</p>}
       <button disabled={pending} className="fc-btn fc-btn-primary">{pending ? "Please wait…" : submit}</button>
+      {checks.filter((c) => c.subtle).map((c) => (
+        <label key={c.name} className="-mt-1 flex items-center gap-2 text-xs text-muted"><input type="checkbox" name={c.name} defaultChecked={c.defaultChecked} className="h-3.5 w-3.5 accent-current" />{c.label}</label>
+      ))}
     </form>
   );
 }

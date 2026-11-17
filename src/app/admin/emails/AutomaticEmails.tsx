@@ -45,7 +45,7 @@ export async function AutomaticEmails() {
               Placeholders: <code>{"{first_name}"}</code> <code>{"{course}"}</code> <code>{"{course_link}"}</code> <code>{"{deadline}"}</code>{" "}
               <code>{"{days_left}"}</code> <code>{"{offer_lines}"}</code>. <code>{"{offer_lines}"}</code> lists the offers that are live right now
               (cashback, founding members), so emails never promise something that is switched off. Start a line with &ldquo;- &rdquo; for a bullet.
-              Offer and welcome emails go only to people who agreed to marketing emails ({optedIn ?? 0} now), with an unsubscribe link.
+              Offer and welcome emails go only to people who receive updates ({optedIn ?? 0} now), with an unsubscribe link.
             </p>
             <label className="grid gap-1 sm:w-96">Course these emails promote
               <select name="course_id" defaultValue={a.course_id ?? ""} className="fc-input">
@@ -61,7 +61,7 @@ export async function AutomaticEmails() {
             <label className="flex items-center gap-2 font-medium"><input type="checkbox" name="abandoned_enabled" defaultChecked={a.abandoned.enabled} /> On</label>
             <div className="flex flex-wrap items-center gap-4">
               <label className="flex items-center gap-2">Send <input name="abandoned_after_hours" defaultValue={a.abandoned.after_hours} inputMode="numeric" className="fc-input w-20 !py-1.5" /> hours after someone starts checkout without paying</label>
-              <label className="flex items-center gap-2"><input type="checkbox" name="abandoned_opted_in_only" defaultChecked={a.abandoned.opted_in_only} /> Only to people who agreed to marketing emails</label>
+              <label className="flex items-center gap-2"><input type="checkbox" name="abandoned_opted_in_only" defaultChecked={a.abandoned.opted_in_only} /> Only to people who receive updates</label>
             </div>
             <p className="text-xs text-muted">One reminder per person per course. Not sent if they have bought or enrolled since. Emails go out once a day, so the delay is at least the hours above.</p>
             <CopyFields p="abandoned" c={a.abandoned} />
@@ -76,7 +76,7 @@ export async function AutomaticEmails() {
               <label className="flex items-center gap-2">Offer ends on <input type="date" name="offer_deadline" defaultValue={a.offer.deadline?.slice(0, 10) ?? ""} className="fc-input !py-1.5" /></label>
               <label className="flex items-center gap-2">Send <input name="offer_days_before" defaultValue={a.offer.days_before.join(", ")} className="fc-input w-24 !py-1.5" /> days before it ends</label>
             </div>
-            <p className="text-xs text-muted">To people who agreed to marketing emails and don&apos;t own the course yet. E.g. &ldquo;3, 1&rdquo; sends one email 3 days before and one the day before.</p>
+            <p className="text-xs text-muted">To people who receive updates and don&apos;t own the course yet. E.g. &ldquo;3, 1&rdquo; sends one email 3 days before and one the day before.</p>
             <CopyFields p="offer" c={a.offer} />
             <TestButton kind="offer" />
           </div>
@@ -85,7 +85,7 @@ export async function AutomaticEmails() {
         <Card title="3. Welcome sequence (follow-up after sign-up)">
           <div className="grid gap-4">
             <label className="flex items-center gap-2 font-medium"><input type="checkbox" name="welcome_enabled" defaultChecked={a.welcome.enabled} /> On</label>
-            <p className="text-xs text-muted">To new sign-ups who agreed to marketing emails, until they buy something. Leave the days empty to skip a step.</p>
+            <p className="text-xs text-muted">To new sign-ups who receive updates, until they buy something. Leave the days empty to skip a step.</p>
             {steps.map((st, k) => (
               <div key={k} className="grid gap-2 rounded-lg border border-line p-4">
                 <label className="flex items-center gap-2 font-medium">Email {k + 1}: send <input name={`w${k}_days`} defaultValue={st?.days ?? ""} inputMode="numeric" className="fc-input w-16 !py-1.5" /> days after sign-up</label>
