@@ -83,3 +83,22 @@ export function splitCredentials(full: string) {
   const [name, ...rest] = full.split(",").map((s) => s.trim()).filter(Boolean);
   return { name: name ?? full, credentials: rest.length ? rest.join(" · ") : null };
 }
+
+/**
+ * Title Case for headings across the dashboards and admin ("Your earnings statement" -> "Your Earnings Statement").
+ * Short joining words stay lower case unless first; words that already have capitals or digits are kept as written
+ * (FinCoursa, LinkedIn, API, IBs, CMT, 12).
+ */
+const SMALL = new Set(["a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into", "of", "on", "or", "per", "the", "to", "via", "vs", "with"]);
+export function headingCase(s: string): string {
+  let first = true;
+  return s.replace(/[A-Za-z][A-Za-z'’.-]*/g, (w, offset: number, all: string) => {
+    const prev = all.slice(0, offset).trimEnd().slice(-1);
+    const start = first || ["(", ":", "·", "—", "–"].includes(prev);
+    first = false;
+    if (/\.[a-z]/i.test(w)) return w; // e.g.
+    if (!start && SMALL.has(w.toLowerCase())) return w.toLowerCase();
+    // each part of a hyphenated word on its own; parts that already have capitals stay as written (FinCoursa, IBs)
+    return w.split("-").map((p) => (!p || /[A-Z]/.test(p.slice(1)) ? p : p[0].toUpperCase() + p.slice(1).toLowerCase())).join("-");
+  });
+}

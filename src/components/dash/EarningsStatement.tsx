@@ -33,7 +33,7 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
     : [];
 
   return (
-    <Card title="Your earnings statement">
+    <Card title="Instructor Earnings Statement">
       <div id="statement" className="grid scroll-mt-24 gap-5 text-sm">
         {shareText ? (
           <p className="text-base"><b>Your revenue share: {shareText}</b>{!activeCourse && courses.length > 1 ? " on all your courses" : ""}</p>
@@ -68,7 +68,7 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
 
         {perCourse.length > 0 && (
           <div className="overflow-x-auto">
-            <p className="mb-2 font-semibold">By course{activeMonth ? `, ${monthLabel(activeMonth)}` : ""}</p>
+            <p className="mb-2 font-semibold">By Course{activeMonth ? `, ${monthLabel(activeMonth)}` : ""}</p>
             <table className="w-full min-w-[760px] text-sm tabular-nums">
               <thead className="text-left text-muted"><tr>
                 <th className="py-2 font-medium">Course</th><th className="py-2 text-right font-medium">Sales</th>
@@ -111,7 +111,7 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
         </div>
 
         <details className="rounded-xl border border-line p-4">
-          <summary className="cursor-pointer font-semibold">How each figure is worked out</summary>
+          <summary className="cursor-pointer font-semibold">How Each Figure Is Worked Out</summary>
           <ul className="mt-3 grid list-disc gap-1.5 pl-5 text-muted">
             <li><b className="text-ink">Gross Revenue:</b> the course price after any discount code and any FinCoursa credit the student used, excluding tax. A programme&apos;s price is split equally across its courses.</li>
             <li><b className="text-ink">Gateway Fees:</b> the card and payment gateway fee on the sale, at the standard rate shown on each sale. No fee on free enrolments.</li>
@@ -124,7 +124,7 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
 
         {!rows.length ? <p className="text-muted">{earnings.length ? "No sales in this period." : "No sales yet. Each sale will appear here with its full calculation."}</p> : (
           <div className="overflow-x-auto">
-            <p className="mb-2 font-semibold">Every sale</p>
+            <p className="mb-2 font-semibold">Every Sale</p>
             <table className="w-full min-w-[860px] text-sm tabular-nums">
               <thead className="text-left text-muted"><tr>
                 <th className="py-2 font-medium">Date</th><th className="py-2 font-medium">Course</th>

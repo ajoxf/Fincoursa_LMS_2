@@ -7,7 +7,7 @@ export async function MyAgreements({ userId }: { userId: string }) {
   if (!items.length) return null;
   return (
     <section className="fc-card min-w-0 p-5">
-      <h2 className="mb-3 font-semibold text-primary">Your agreement with FinCoursa</h2>
+      <h2 className="mb-3 font-semibold text-primary">Your Agreement with FinCoursa</h2>
       <ul className="divide-y divide-line text-sm">
         {items.map((a) => (
           <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 py-2">

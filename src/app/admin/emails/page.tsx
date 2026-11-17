@@ -75,7 +75,7 @@ export default async function EmailsPage({ searchParams }: PageProps<"/admin/ema
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-primary">Emails &amp; updates</h1>
+        <h1 className="text-3xl font-bold text-primary">Emails &amp; Updates</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted">
           Send weekly updates, new-course news and offers to your students, and set up the emails that go out automatically. To tell the students
           of one course about a change in that course, post a course update from the course&apos;s page (Admin → Courses), which also shows inside the course.

@@ -40,7 +40,7 @@ export default async function AdminFounding({ searchParams }: PageProps<"/admin/
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-primary">Founding members</h1>
+        <h1 className="text-3xl font-bold text-primary">Founding Members</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted">
           Anyone who buys one of the chosen courses while joining is open becomes a founding member and gets a discount on their
           future purchases, applied automatically at checkout. Members see a badge on their dashboard. A full refund of the order

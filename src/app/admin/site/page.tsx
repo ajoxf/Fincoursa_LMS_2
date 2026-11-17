@@ -15,7 +15,7 @@ export default async function SiteSettingsPage() {
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-primary">Home page</h1>
+        <h1 className="text-3xl font-bold text-primary">Home Page</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted">Logo, intro video, partner logos and all the wording on the home page. Instructor photos and organisation logos are under Instructors; course and bundle images under Courses and Bundles.</p>
       </div>
       <Card title="Logo">

@@ -1,7 +1,9 @@
+import { headingCase } from "@/lib/format";
+
 export function Stat({ label, value, hint }: { label: string; value: React.ReactNode; hint?: React.ReactNode }) {
   return (
     <div className="fc-card min-w-0 p-4 sm:p-5">
-      <p className="text-xs text-muted [overflow-wrap:normal] sm:text-sm">{label}</p>
+      <p className="text-xs text-muted [overflow-wrap:normal] sm:text-sm">{headingCase(label)}</p>
       <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{value}</p>
       {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
     </div>
@@ -12,7 +14,7 @@ export function Card({ title, children, action }: { title: string; children: Rea
   return (
     <section className="fc-card min-w-0 p-5">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="font-semibold text-primary">{title}</h2>
+        <h2 className="font-semibold text-primary">{headingCase(title)}</h2>
         {action}
       </div>
       {children}

@@ -20,7 +20,7 @@ export type InstructorDashboardData = {
  * The instructor dashboard body: stats, daily earnings, courses, earnings statement and payouts.
  * Used by the instructor's own page and, unchanged, by Admin -> Instructors -> (instructor), so the admin sees exactly what they see.
  */
-export function InstructorDashboardView({ d, basePath, sp, title = "Instructor dashboard", instructorId }: {
+export function InstructorDashboardView({ d, basePath, sp, title = "Instructor Dashboard", instructorId }: {
   d: InstructorDashboardData; basePath: string; sp: { course?: string | null; month?: string | null }; title?: string; instructorId?: string;
 }) {
   const m = (n: number) => formatMoney(n, d.currency);

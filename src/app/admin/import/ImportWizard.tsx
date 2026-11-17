@@ -161,7 +161,7 @@ function Invites() {
   const [state, setState] = useState<{ pending?: number; sent: number; running: boolean }>({ sent: 0, running: false });
   return (
     <section className="fc-card grid gap-3 p-5">
-      <h2 className="text-lg font-semibold text-primary">4 · Tell students they&apos;ve moved</h2>
+      <h2 className="text-lg font-semibold text-primary">4 · Tell Students They&apos;ve Moved</h2>
       <p className="text-sm text-muted">Sends each migrated student one &ldquo;we&apos;ve moved&rdquo; email. The button in it opens the sign-in page with their email filled in and sends them a fresh one-click link, so invites never expire. Each student gets it once, even if you click again.</p>
       <div className="flex flex-wrap items-center gap-3">
         <button className="fc-btn fc-btn-outline" disabled={state.running} onClick={async () => setState({ ...state, pending: await pendingInvites() })}>Check who&apos;s waiting</button>

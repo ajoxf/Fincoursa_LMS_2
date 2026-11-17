@@ -55,7 +55,7 @@ export async function ApprovalsTab() {
         {list.map((m) => <OutboxItem key={m.id} m={m} back="/admin/marketing?tab=approvals" />)}
       </div>
       <aside className="grid content-start gap-3">
-        <h2 className="font-semibold">Needs your action</h2>
+        <h2 className="font-semibold">Needs Your Action</h2>
         {(attention ?? []).length ? (attention ?? []).map((l) => (
           <Link key={l.id} href={`/admin/marketing/leads/${l.id}`} className="grid gap-1 rounded-xl border border-line bg-white p-3 text-sm hover:border-ink">
             <span className="font-semibold">{l.organization}</span>
