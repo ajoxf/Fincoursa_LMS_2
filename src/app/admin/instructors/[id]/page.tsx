@@ -142,6 +142,7 @@ async function BusinessTab({ id, base, month, course }: { id: string; base: stri
   const neg = (n: number) => (n ? `−${m(n)}` : "–");
   return (
     <div className="grid gap-6">
+      <h2 className="text-3xl font-bold text-primary">Dashboard (FinCoursa View)</h2>
       <form action={base} className="flex flex-wrap items-end gap-3">
         <input type="hidden" name="tab" value="business" />
         {b.courseOptions.length > 1 && (
