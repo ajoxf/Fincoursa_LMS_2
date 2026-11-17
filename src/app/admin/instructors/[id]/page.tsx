@@ -86,7 +86,7 @@ export default async function AdminInstructor({ params, searchParams }: PageProp
           <p className="rounded-lg bg-surface p-3 text-sm text-muted">
             This is exactly what {ins.name} sees on their dashboard{login?.email ? "" : " (once their profile is linked to a login)"}. Course reports open the same pages they use.
           </p>
-          <InstructorDashboardView basePath={base} instructorId={id} title="Their dashboard"
+          <InstructorDashboardView basePath={base} instructorId={id} title="Dashboard (Instructor View)"
             sp={{ course: typeof sp.course === "string" ? sp.course : null, month: typeof sp.month === "string" ? sp.month : null }}
             d={await loadInstructorDashboard(db, id, env.defaultCurrency, days)} />
         </>
