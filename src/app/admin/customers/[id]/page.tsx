@@ -57,7 +57,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
         <div className="mt-2 flex flex-wrap gap-2 text-xs">
           {(s.roles ?? []).map((r: string) => <span key={r} className="rounded-full bg-surface px-2.5 py-0.5 capitalize">{r}</span>)}
           <span className={`rounded-full px-2.5 py-0.5 ${s.marketing_opt_in ? "bg-success/15 text-success" : "bg-surface text-muted"}`}>
-            {s.marketing_opt_in ? "Agreed to marketing emails" : "No marketing emails"}
+            {s.marketing_opt_in ? "Receives updates" : "No updates"}
           </span>
         </div>
         {me.roles.includes("admin") && me.id !== id && !(s.roles ?? []).includes("admin") && (
@@ -214,7 +214,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             <button className="fc-btn fc-btn-outline !min-w-0 !px-5 !py-2.5 text-ink">Save profile</button>
             {s.marketing_opt_in && (
               <label className="flex items-center gap-2 text-sm sm:col-span-2 lg:col-span-3">
-                <input type="checkbox" name="unsubscribe" /> Unsubscribe from marketing emails (when the customer asks)
+                <input type="checkbox" name="unsubscribe" /> Stop updates (when the customer asks)
               </label>
             )}
           </form>
