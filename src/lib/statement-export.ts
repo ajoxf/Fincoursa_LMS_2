@@ -21,7 +21,6 @@ export async function fetchLogo(url: string | null | undefined): Promise<Uint8Ar
 }
 
 const amt = (n: number | null | undefined, c: string) => Number(n ?? 0) / minorUnitsFactor(c);
-const money = (n: number, c: string) => `${c} ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export async function statementXlsx(rows: Earning[], meta: StatementMeta): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
@@ -134,7 +133,9 @@ export async function statementPdf(rows: Earning[], meta: StatementMeta): Promis
   page.drawRectangle({ x: M, y: y - (sumLines.length - 1) * 16 - 8, width: 330, height: (sumLines.length - 1) * 16 + 24, color: rgb(0.95, 0.96, 0.97) });
   for (const [k, v, b] of sumLines) {
     text(page, k, M + 10, y, { f: b ? bold : font, size: 10 });
-    text(page, money(amt(v, c), c), M + 320, y, { f: b ? bold : font, size: 10, right: true });
+    // currency in its own column, amounts right-aligned, so the units line up
+    text(page, c, M + 236, y, { f: b ? bold : font, size: 10 });
+    text(page, amt(v, c).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), M + 320, y, { f: b ? bold : font, size: 10, right: true });
     y -= 16;
   }
 
