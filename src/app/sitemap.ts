@@ -8,7 +8,7 @@ export const revalidate = 3600;
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = env.siteUrl.replace(/\/$/, "");
   const fixed = ["", "/cmt", "/pages/paid-courses", "/pages/free-courses", "/pages/live-courses", "/pages/instructors",
-    "/pages/contact-us", "/pages/terms-conditions", "/pages/privacy-policy"];
+    "/pages/contact-us", "/pages/terms-conditions", "/pages/privacy-policy", "/pages/refund-policy", "/pages/shipping-policy"];
   const [courses, bundles, instructors] = await Promise.all([
     getCourses().catch(() => []), getBundles().catch(() => []), getInstructors().catch(() => []),
   ]);

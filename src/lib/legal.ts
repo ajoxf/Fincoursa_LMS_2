@@ -1,7 +1,7 @@
-// Terms & Conditions and Privacy Policy: edited in Admin → Terms & privacy, shown on the public pages.
+// Terms & Conditions, Privacy Policy, Refund & Cancellation and Shipping & Delivery policies: edited in Admin → Terms & privacy, shown on the public pages.
 // Safe in the browser.
 
-export type LegalKind = "terms" | "privacy";
+export type LegalKind = "terms" | "privacy" | "refunds" | "delivery";
 export type LegalVersion = { body: string; updated_at: string; by?: string | null };
 export type LegalDoc = {
   body: string;               // simple formatting: ## headings, - bullets, 1. lists, **bold**, [links](https://…)
@@ -15,6 +15,9 @@ export type LegalDoc = {
 export const LEGAL: Record<LegalKind, { key: string; title: string; path: string }> = {
   terms: { key: "legal_terms", title: "Terms & Conditions", path: "/pages/terms-conditions" },
   privacy: { key: "legal_privacy", title: "Privacy Policy", path: "/pages/privacy-policy" },
+  refunds: { key: "legal_refunds", title: "Refund & Cancellation Policy", path: "/pages/refund-policy" },
+  delivery: { key: "legal_delivery", title: "Shipping & Delivery Policy", path: "/pages/shipping-policy" },
 };
+export const LEGAL_KINDS: LegalKind[] = ["terms", "privacy", "refunds", "delivery"];
 
 export const EMPTY_LEGAL: LegalDoc = { body: "", updated_at: null, history: [] };

@@ -3,9 +3,9 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSetting, setSetting } from "@/lib/site-settings";
-import { EMPTY_LEGAL, LEGAL, type LegalDoc, type LegalKind } from "@/lib/legal";
+import { EMPTY_LEGAL, LEGAL, LEGAL_KINDS, type LegalDoc, type LegalKind } from "@/lib/legal";
 
-const KINDS: LegalKind[] = ["terms", "privacy"];
+const KINDS: LegalKind[] = LEGAL_KINDS;
 const MAX = 200_000;
 
 async function load(kind: LegalKind): Promise<LegalDoc> {
