@@ -9,6 +9,7 @@ import { formatMoney } from "@/lib/money";
 import { enrollFreeBundle } from "@/app/actions/enroll";
 import { assetUrl } from "@/lib/assets";
 import { EnrolmentSoon } from "@/components/site/EnrolmentSoon";
+import { NotifyMe } from "@/components/site/NotifyMe";
 import { paymentsOpen } from "@/lib/payments/registry";
 
 export async function generateMetadata({ params }: PageProps<"/bundles/[slug]">): Promise<Metadata> {
@@ -25,19 +26,21 @@ export async function generateMetadata({ params }: PageProps<"/bundles/[slug]">)
 export default async function BundlePage({ params }: PageProps<"/bundles/[slug]">) {
   const bundle = await getBundle((await params).slug);
   if (!bundle) notFound();
-  const notOpen = !bundle.isFree && Boolean(bundle.price) && !(await paymentsOpen(bundle.price!.currency));
+  const notOpen = !bundle.comingSoon && !bundle.isFree && Boolean(bundle.price) && !(await paymentsOpen(bundle.price!.currency));
   const hours = Math.round((bundle.totalMinutes / 60) * 10) / 10;
   return (
     <>
       <PageHero label="Programme" title={bundle.title}
         aside={
           <div className="w-full md:min-w-[230px] md:text-right">
-            <p className={`whitespace-nowrap font-bold tracking-tight ${bundle.isFree ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
-              {bundle.isFree ? "Free" : bundle.price && formatMoney(bundle.price.amount_minor, bundle.price.currency)}
+            <p className={`whitespace-nowrap font-bold tracking-tight ${bundle.isFree || bundle.comingSoon ? "text-5xl md:text-[64px]" : "text-4xl md:text-[52px]"}`}>
+              {bundle.comingSoon ? "Coming soon" : bundle.isFree ? "Free" : bundle.price && formatMoney(bundle.price.amount_minor, bundle.price.currency)}
             </p>
-            <p className="mt-3 text-[15px]">{accessLabel(bundle.courses.map((c) => c.accessDays))}</p>
+            <p className="mt-3 text-[15px]">{bundle.comingSoon ? bundle.launchNote : accessLabel(bundle.courses.map((c) => c.accessDays))}</p>
             <div className="mt-5 md:ml-auto md:w-[260px]">
-              {bundle.isFree ? (
+              {bundle.comingSoon ? (
+                <NotifyMe bundleId={bundle.id} />
+              ) : bundle.isFree ? (
                 <form action={enrollFreeBundle.bind(null, bundle.id)}><button className="fc-btn fc-btn-primary w-full !py-4">Enroll for Free</button></form>
               ) : notOpen ? (
                 <EnrolmentSoon />

@@ -11,7 +11,7 @@ export function BundleForm({ bundle, price }: { bundle: any; price: { amount_min
   const [thumb, setThumb] = useState<string>(bundle.thumbnail_url && !isThinkificAsset(bundle.thumbnail_url) ? bundle.thumbnail_url : "");
   const cur = price?.currency ?? (process.env.NEXT_PUBLIC_DEFAULT_CURRENCY ?? "USD");
   return (
-    <form key={JSON.stringify([bundle.title, bundle.slug, bundle.status, bundle.is_featured, bundle.thumbnail_url, price?.amount_minor])} action={action} className="grid gap-4">
+    <form key={JSON.stringify([bundle.title, bundle.slug, bundle.status, bundle.is_featured, bundle.coming_soon, bundle.launch_note, bundle.thumbnail_url, price?.amount_minor])} action={action} className="grid gap-4">
       <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
         <div className="grid gap-4">
           <label className="grid gap-1 text-sm font-medium">Title<input name="title" defaultValue={bundle.title} required className="fc-input" /></label>
@@ -39,6 +39,8 @@ export function BundleForm({ bundle, price }: { bundle: any; price: { amount_min
         <label className="grid gap-1 text-sm font-medium">Status
           <select name="status" defaultValue={bundle.status} className="fc-input"><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></select></label>
         <label className="flex items-center gap-2 self-end pb-3 text-sm"><input type="checkbox" name="is_featured" defaultChecked={bundle.is_featured} />Show on home page</label>
+        <label className="flex items-center gap-2 self-end pb-3 text-sm"><input type="checkbox" name="coming_soon" defaultChecked={bundle.coming_soon} /><span><b>Coming soon</b> <span className="text-muted">(shown, but can&apos;t be bought; visitors can leave their email)</span></span></label>
+        <label className="grid gap-1 text-sm font-medium sm:col-span-2">Launch note <span className="font-normal text-muted">(optional, shown under &ldquo;Coming soon&rdquo;)</span><input name="launch_note" defaultValue={bundle.launch_note ?? ""} className="fc-input" /></label>
       </div>
       <div className="flex items-center gap-3">
         <button disabled={pending} className="fc-btn fc-btn-primary">{pending ? "Saving…" : "Save programme"}</button>

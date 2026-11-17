@@ -20,7 +20,7 @@ export function BundleTile({ bundle }: { bundle: BundleCard }) {
       )}
       <p className="text-sm">{bundle.courses.length} {bundle.courses.length === 1 ? "Course" : "Courses"} <span className="mx-3">|</span> {hours(bundle.totalMinutes)}</p>
       <h3 className="mt-2 text-2xl font-normal tracking-tight">{bundle.title}</h3>
-      <p className="mt-1 text-sm">{bundle.isFree ? "Free" : bundle.price && formatMoney(bundle.price.amount_minor, bundle.price.currency)}</p>
+      <p className="mt-1 text-sm">{bundle.comingSoon ? <span className="font-semibold text-accent">Coming soon</span> : bundle.isFree ? "Free" : bundle.price && formatMoney(bundle.price.amount_minor, bundle.price.currency)}</p>
       <Link href={`/programmes/${bundle.slug}`} className="mt-8 self-start border-b-2 border-accent pb-1 font-medium text-accent hover:opacity-80">View Programme</Link>
     </div>
   );

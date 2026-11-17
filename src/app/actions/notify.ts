@@ -31,3 +31,22 @@ export async function notifyMe(courseId: string, _: NotifyState, form: FormData)
   if (error) return { ok: false, error: "Something went wrong. Please try again." };
   return { ok: true };
 }
+
+/** Waitlist for a "Coming soon" programme (Admin → Leads). */
+export async function notifyMeBundle(bundleId: string, _: NotifyState, form: FormData): Promise<NotifyState> {
+  const parsed = schema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { ok: false, error: "Please check your name and email." };
+  if (!isSupabaseConfigured) return { ok: false, error: "Sign-ups aren't connected yet." };
+  if (!(await allow("contact", await clientIp(), LIMITS.contact.limit, LIMITS.contact.window))) return { ok: false, error: TOO_MANY };
+  if (parsed.data.website) return { ok: true };
+  const db = createAdminClient();
+  const { data: b } = await db.from("bundles").select("title").eq("id", bundleId).maybeSingle();
+  if (!b) return { ok: false, error: "This programme is no longer available." };
+  const { error } = await db.from("contact_requests").insert({
+    name: parsed.data.name, email: parsed.data.email, program_type: "waitlist",
+    message: `Notify me when the "${b.title}" programme launches.`, bundle_id: bundleId,
+    country: ((await headers()).get("x-vercel-ip-country") || "").toUpperCase() || null,
+  });
+  if (error) return { ok: false, error: "Something went wrong. Please try again." };
+  return { ok: true };
+}

@@ -82,8 +82,8 @@ export async function buildQuote(input: QuoteInput): Promise<Quote | null> {
     itemCashback = { mode: data.cashback_mode, percent: data.cashback_percent, fixed: data.cashback_fixed };
     if (price) item = { kind: "course", id: data.id, slug: data.slug, title: data.title, priceId: price.id, courseIds: [data.id] };
   } else if (input.bundleSlug) {
-    const { data } = await db.from("bundles").select(`id, slug, title, status, cashback_mode, cashback_percent, cashback_fixed, prices(${priceCols}), bundle_courses(course_id)`).eq("slug", input.bundleSlug).maybeSingle();
-    if (!data || data.status !== "published") return null;
+    const { data } = await db.from("bundles").select(`id, slug, title, status, coming_soon, cashback_mode, cashback_percent, cashback_fixed, prices(${priceCols}), bundle_courses(course_id)`).eq("slug", input.bundleSlug).maybeSingle();
+    if (!data || data.status !== "published" || data.coming_soon) return null;
     price = chosen(data.prices) ?? pickPrice(data.prices, currency);
     itemCashback = { mode: data.cashback_mode, percent: data.cashback_percent, fixed: data.cashback_fixed };
     if (price) item = { kind: "bundle", id: data.id, slug: data.slug, title: data.title, priceId: price.id,

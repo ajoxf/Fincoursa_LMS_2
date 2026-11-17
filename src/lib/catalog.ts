@@ -98,6 +98,9 @@ export type BundleCard = {
   isFree: boolean;
   courses: CourseCard[];
   totalMinutes: number;
+  /** shown before launch: no buying or enrolling, visitors can leave their email */
+  comingSoon?: boolean;
+  launchNote?: string | null;
 };
 
 const COURSE_SELECT = `id, slug, title, subtitle, description, thumbnail_url, duration_minutes, access_days, certificate_enabled, level, tags,
@@ -219,7 +222,7 @@ export const getBundles = cache(async (): Promise<BundleCard[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("bundles")
-    .select(`id, slug, title, description, thumbnail_url, sort_order,
+    .select(`id, slug, title, description, thumbnail_url, sort_order, coming_soon, launch_note,
              prices(id, type, currency, amount_minor, compare_at_minor, interval, installments, is_active, created_at),
              bundle_courses(position, course:courses(${COURSE_SELECT}))`)
     .eq("status", "published")
@@ -240,7 +243,9 @@ export const getBundles = cache(async (): Promise<BundleCard[]> => {
       description: b.description,
       thumbnail_url: img(b.thumbnail_url),
       price,
-      isFree: !price || price.amount_minor === 0,
+      isFree: !b.coming_soon && (!price || price.amount_minor === 0),
+      comingSoon: Boolean(b.coming_soon),
+      launchNote: b.launch_note ?? null,
       courses,
       totalMinutes: courses.reduce((s, c) => s + c.duration_minutes, 0),
     };
