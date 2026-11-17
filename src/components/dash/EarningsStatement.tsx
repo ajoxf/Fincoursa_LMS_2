@@ -92,24 +92,24 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
 
         {/* the waterfall for the chosen course and period */}
         <div className="grid gap-1 rounded-xl bg-surface p-4 tabular-nums">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Summary · {scope}</p>
-          <div className="flex justify-between gap-4"><span>Course sales (what students paid, excluding tax) · {t.sales} {t.sales === 1 ? "sale" : "sales"}</span><b>{m(t.paid)}</b></div>
-          <div className="flex justify-between gap-4 text-muted"><span>&minus; Payment processing fees</span><span>{m(t.fee)}</span></div>
-          <div className="flex justify-between gap-4 text-muted"><span>&minus; Partner commissions (sales through a partner&apos;s link or code)</span><span>{m(t.partner)}</span></div>
-          <div className="flex justify-between gap-4 text-muted"><span>&minus; Cashback credit{t.cashbackPcts.length === 1 && t.cashbackPcts[0] < 100 ? ` (${t.cashbackPcts[0]}% of ${m(t.cashbackGiven)} given to students; FinCoursa carries the rest)` : " given to students"}</span><span>{m(t.cashback)}</span></div>
-          <div className="mt-1 flex justify-between gap-4 border-t border-line pt-2"><span>= Amount shared with you</span><b>{m(t.shared)}</b></div>
-          <div className="flex justify-between gap-4 text-muted"><span>&times; Your revenue share</span><span>{shareText ?? "per course, above"}</span></div>
-          <div className="mt-1 flex justify-between gap-4 border-t-2 border-ink pt-2 text-base"><b>= Your earnings</b><b>{m(t.earned)}</b></div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Summary · {scope} · {t.sales} {t.sales === 1 ? "sale" : "sales"}</p>
+          <div className="flex justify-between gap-4"><span>Gross Revenue</span><b>{m(t.paid)}</b></div>
+          <div className="flex justify-between gap-4 text-muted"><span>&minus; Gateway Fees</span><span>{m(t.fee)}</span></div>
+          <div className="flex justify-between gap-4 text-muted"><span>&minus; Partner Commissions</span><span>{m(t.partner)}</span></div>
+          <div className="flex justify-between gap-4 text-muted"><span>&minus; Cashback Deduction</span><span>{m(t.cashback)}</span></div>
+          <div className="mt-1 flex justify-between gap-4 border-t border-line pt-2"><span>= Shared Amount</span><b>{m(t.shared)}</b></div>
+          <div className="flex justify-between gap-4 text-muted"><span>&times; Revenue Share</span><span>{shareText ?? "per course, above"}</span></div>
+          <div className="mt-1 flex justify-between gap-4 border-t-2 border-ink pt-2 text-base"><b>= Your Earnings</b><b>{m(t.earned)}</b></div>
         </div>
 
         <details className="rounded-xl border border-line p-4">
           <summary className="cursor-pointer font-semibold">How each figure is worked out</summary>
           <ul className="mt-3 grid list-disc gap-1.5 pl-5 text-muted">
-            <li><b className="text-ink">What students paid:</b> the course price after any discount code and any FinCoursa credit the student used, excluding tax. A programme&apos;s price is split equally across its courses.</li>
-            <li><b className="text-ink">Payment processing fee:</b> the card and payment gateway fee on the sale, at the standard rate shown on each sale. No fee on free enrolments.</li>
-            <li><b className="text-ink">Partner commission:</b> only when the student came through a FinCoursa partner&apos;s referral link or code.</li>
-            <li><b className="text-ink">Cashback credit:</b> the FinCoursa credit a student receives for buying (and for a review, during offers that include it). Part of it counts as a cost of the sale and is taken off before the share (the % is shown on each sale); FinCoursa carries the rest.</li>
-            <li><b className="text-ink">Your earnings:</b> the amount shared &times; your revenue share, never below zero. Earnings become payable 30 days after the sale, once the refund window has passed. A refunded sale is cancelled.</li>
+            <li><b className="text-ink">Gross Revenue:</b> the course price after any discount code and any FinCoursa credit the student used, excluding tax. A programme&apos;s price is split equally across its courses.</li>
+            <li><b className="text-ink">Gateway Fees:</b> the card and payment gateway fee on the sale, at the standard rate shown on each sale. No fee on free enrolments.</li>
+            <li><b className="text-ink">Partner Commissions:</b> only when the student came through a FinCoursa partner&apos;s referral link or code.</li>
+            <li><b className="text-ink">Cashback Deduction:</b> the FinCoursa credit a student receives for buying (and for a review, during offers that include it). Part of it counts as a cost of the sale and is taken off before the share (the % is shown on each sale); FinCoursa carries the rest.</li>
+            <li><b className="text-ink">Your Earnings:</b> the Shared Amount &times; your revenue share, never below zero. Earnings become payable 30 days after the sale, once the refund window has passed. A refunded sale is cancelled.</li>
             <li>Student names and contact details are never shown.</li>
           </ul>
         </details>
