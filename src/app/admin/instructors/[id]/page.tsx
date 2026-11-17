@@ -86,7 +86,7 @@ export default async function AdminInstructor({ params, searchParams }: PageProp
           <p className="rounded-lg bg-surface p-3 text-sm text-muted">
             This is exactly what {ins.name} sees on their dashboard{login?.email ? "" : " (once their profile is linked to a login)"}. Course reports open the same pages they use.
           </p>
-          <InstructorDashboardView basePath={base} instructorId={id} title="Dashboard (Instructor View)"
+          <InstructorDashboardView basePath={base} title="Dashboard (Instructor View)"
             sp={{ course: typeof sp.course === "string" ? sp.course : null, month: typeof sp.month === "string" ? sp.month : null }}
             d={await loadInstructorDashboard(db, id, env.defaultCurrency, days)} />
         </>
@@ -158,6 +158,14 @@ async function BusinessTab({ id, base, month, course }: { id: string; base: stri
             {b.months.map((k) => <option key={k} value={k}>{monthLabel(k)}</option>)}
           </select></label>
         <button className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2 text-sm text-ink">Show</button>
+        {/* admin only: the route checks the admin role */}
+        <span className="ml-auto flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted">Download:</span>
+          {(["xlsx", "csv", "pdf"] as const).map((f) => (
+            <a key={f} href={`/api/admin/instructor-statement?${new URLSearchParams({ instructor: id, format: f, ...(courseId ? { course: courseId } : {}), ...(month ? { month } : {}) })}`}
+              className="fc-btn fc-btn-outline !min-w-0 !px-3 !py-1.5 text-xs text-ink">{f === "xlsx" ? "Excel" : f.toUpperCase()}</a>
+          ))}
+        </span>
       </form>
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <div className="fc-card p-4"><p className="text-sm text-muted">Gross Revenue (excl. tax)</p><p className="mt-1 text-2xl font-bold">{m(t.revenue)}</p><p className="text-xs text-muted">{t.sales} paid · {t.free} free with a code{t.refunded ? ` · ${t.refunded} refunded` : ""}</p></div>

@@ -10,11 +10,9 @@ type CourseOption = { id: string; title: string; share: number | null };
  * paid to earnings, an explanation of each figure, every sale, and a CSV download. No student details.
  * `fixedCourse`: on a course's own report page, only that course (no course filter or per-course table).
  */
-export function EarningsStatement({ earnings, courses, currency, basePath, course, month, fixedCourse, instructorId }: {
+export function EarningsStatement({ earnings, courses, currency, basePath, course, month, fixedCourse }: {
   earnings: Earning[]; courses: CourseOption[]; currency: string; basePath: string;
   course?: string | null; month?: string | null; fixedCourse?: string;
-  /** admin view only: shows Excel / CSV / PDF downloads for this instructor's statement */
-  instructorId?: string;
 }) {
   const m = (n: number) => formatMoney(n, currency);
   const activeCourse = fixedCourse ?? (courses.some((c) => c.id === course) ? course! : null);
@@ -24,8 +22,6 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
   const t = summarize(rows);
   const shares = [...new Set(courses.filter((c) => !activeCourse || c.id === activeCourse).map((c) => c.share).filter((s): s is number => s != null))];
   const shareText = shares.length === 1 ? `${shares[0]}%` : null;
-  // downloads are for admins only (instructorId is passed on the admin page); instructors don't get them for now
-  const dl = (format: string) => `/api/admin/instructor-statement?${new URLSearchParams({ instructor: instructorId ?? "", format, ...(activeCourse ? { course: activeCourse } : {}), ...(activeMonth ? { month: activeMonth } : {}) })}`;
   const scope = [activeCourse && !fixedCourse ? courses.find((c) => c.id === activeCourse)?.title : null, activeMonth ? monthLabel(activeMonth) : "all time"].filter(Boolean).join(", ");
   // per-course table: only on the dashboard, with more than one course and no course filter
   const perCourse = !fixedCourse && !activeCourse && courses.length > 1
@@ -56,14 +52,7 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
               {months.map((k) => <option key={k} value={k}>{monthLabel(k)}</option>)}
             </select></label>
           <button className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2 text-sm text-ink">Show</button>
-          {instructorId && (
-            <span className="ml-auto flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-muted">Download:</span>
-              <a href={dl("xlsx")} className="fc-btn fc-btn-outline !min-w-0 !px-3 !py-1.5 text-xs text-ink">Excel</a>
-              <a href={dl("csv")} className="fc-btn fc-btn-outline !min-w-0 !px-3 !py-1.5 text-xs text-ink">CSV</a>
-              <a href={dl("pdf")} className="fc-btn fc-btn-outline !min-w-0 !px-3 !py-1.5 text-xs text-ink">PDF</a>
-            </span>
-          )}
+
         </form>
 
         {perCourse.length > 0 && (
