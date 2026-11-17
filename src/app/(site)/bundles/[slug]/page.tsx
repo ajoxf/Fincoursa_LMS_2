@@ -8,6 +8,8 @@ import { PageHero, Chips } from "@/components/site/PageHero";
 import { formatMoney } from "@/lib/money";
 import { enrollFreeBundle } from "@/app/actions/enroll";
 import { assetUrl } from "@/lib/assets";
+import { EnrolmentSoon } from "@/components/site/EnrolmentSoon";
+import { paymentsOpen } from "@/lib/payments/registry";
 
 export async function generateMetadata({ params }: PageProps<"/bundles/[slug]">): Promise<Metadata> {
   const b = await getBundle((await params).slug);
@@ -23,6 +25,7 @@ export async function generateMetadata({ params }: PageProps<"/bundles/[slug]">)
 export default async function BundlePage({ params }: PageProps<"/bundles/[slug]">) {
   const bundle = await getBundle((await params).slug);
   if (!bundle) notFound();
+  const notOpen = !bundle.isFree && Boolean(bundle.price) && !(await paymentsOpen(bundle.price!.currency));
   const hours = Math.round((bundle.totalMinutes / 60) * 10) / 10;
   return (
     <>
@@ -33,9 +36,11 @@ export default async function BundlePage({ params }: PageProps<"/bundles/[slug]"
               {bundle.isFree ? "Free" : bundle.price && formatMoney(bundle.price.amount_minor, bundle.price.currency)}
             </p>
             <p className="mt-3 text-[15px]">{accessLabel(bundle.courses.map((c) => c.accessDays))}</p>
-            <div className="mt-5 md:ml-auto md:w-[210px]">
+            <div className="mt-5 md:ml-auto md:w-[260px]">
               {bundle.isFree ? (
                 <form action={enrollFreeBundle.bind(null, bundle.id)}><button className="fc-btn fc-btn-primary w-full !py-4">Enroll for Free</button></form>
+              ) : notOpen ? (
+                <EnrolmentSoon />
               ) : (
                 <Link href={`/checkout?bundle=${bundle.slug}`} className="fc-btn fc-btn-primary w-full !py-4">Enroll Now</Link>
               )}
