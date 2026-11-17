@@ -30,13 +30,6 @@ const LEVELS = [
   { level: "Level III", format: "Short essays and multiple-choice questions", time: "4 hours", focus: "Judgement: building a view across markets, risk management and portfolio decisions, explained in writing." },
 ];
 
-const STEPS = [
-  ["Learn the curriculum", "Work through the official CMT readings for your level, section by section. Our questions follow the same order, so you can practise as you go."],
-  ["Practise every section", "Answer exam-style questions on each topic. Every answer comes with a worked explanation of why it is right and why the other options are not."],
-  ["Read real charts", "Chart questions ask you to read the chart to find the answer, as the exam does, so pattern recognition becomes second nature."],
-  ["Sit timed exams", "Switch to timed exam mode to build pace and stamina, flag questions to revisit, and see where you lose marks before exam day."],
-];
-
 const FAQ: [string, React.ReactNode][] = [
   ["What is the CMT?", <>The Chartered Market Technician (CMT) is a professional designation in technical analysis, awarded by the CMT Association. Candidates pass three exams (Level I, II and III), taken in order, and meet the Association&apos;s membership and work-experience requirements.</>],
   ["When are the exams?", <>The CMT Association offers the exams twice a year, in June and December. For June 2027 it lists Level I and II from 1 to 17 June and Level III on 3 June. Always check dates and registration deadlines at <a href="https://cmtassociation.org/cmt-program/register/" target="_blank" rel="noopener" className="underline">cmtassociation.org</a>.</>],
@@ -123,25 +116,6 @@ export default async function CmtPrepPage() {
                 <p className="mt-4 text-[15px] leading-relaxed text-ink/85">{l.focus}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* how to prepare */}
-      <section className="bg-surface-dark text-white">
-        <div className="fc-container grid gap-10 py-20">
-          <SectionHeading dark label="How to Prepare" title="A study plan that works" />
-          <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map(([t, d], i) => (
-              <li key={t} className="rounded-2xl border border-white/15 p-6">
-                <p className="text-3xl font-bold text-accent">{i + 1}</p>
-                <p className="mt-3 text-lg font-semibold">{t}</p>
-                <p className="mt-2 text-[15px] leading-relaxed text-white/80">{d}</p>
-              </li>
-            ))}
-          </ol>
-          <div className="text-center">
-            <Link href={SAMPLE} className="fc-btn fc-btn-primary fc-btn-lg inline-flex">Start Practising</Link>
           </div>
         </div>
       </section>
