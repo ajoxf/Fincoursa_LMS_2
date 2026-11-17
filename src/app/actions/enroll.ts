@@ -24,11 +24,11 @@ export async function enrollFreeBundle(bundleId: string) {
   const admin = createAdminClient();
   const { data: bundle } = await admin
     .from("bundles")
-    .select("status, prices(amount_minor, is_active), bundle_courses(course_id, course:courses(access_days))")
+    .select("status, coming_soon, prices(amount_minor, is_active), bundle_courses(course_id, course:courses(access_days))")
     .eq("id", bundleId)
     .single();
   const paid = (bundle?.prices ?? []).some((p) => p.is_active && p.amount_minor > 0);
-  if (!bundle || bundle.status !== "published" || paid) throw new Error("This programme is not free.");
+  if (!bundle || bundle.status !== "published" || paid || bundle.coming_soon) throw new Error("This programme is not free.");
 
   // each course's access period applies (null = lifetime)
   const now = Date.now();

@@ -1,11 +1,11 @@
 "use client";
 import { useActionState } from "react";
-import { notifyMe, type NotifyState } from "@/app/actions/notify";
+import { notifyMe, notifyMeBundle, type NotifyState } from "@/app/actions/notify";
 
 /** "Coming soon" course: collect an email so we can tell the visitor when it launches (saved to Admin → Leads). */
-export function NotifyMe({ courseId }: { courseId: string }) {
-  const [state, action, pending] = useActionState<NotifyState, FormData>(notifyMe.bind(null, courseId), null);
-  if (state?.ok) return <p className="rounded-md bg-white/10 p-3 text-left text-[15px]">Thanks! We&apos;ll email you when this course launches.</p>;
+export function NotifyMe({ courseId, bundleId }: { courseId?: string; bundleId?: string }) {
+  const [state, action, pending] = useActionState<NotifyState, FormData>(bundleId ? notifyMeBundle.bind(null, bundleId) : notifyMe.bind(null, courseId ?? ""), null);
+  if (state?.ok) return <p className="rounded-md bg-white/10 p-3 text-left text-[15px]">Thanks! We&apos;ll email you when this {bundleId ? "programme" : "course"} launches.</p>;
   return (
     <form action={action} className="grid gap-2 text-left">
       <input name="name" required maxLength={200} placeholder="Your name" aria-label="Your name" className="fc-input !bg-white text-ink" />

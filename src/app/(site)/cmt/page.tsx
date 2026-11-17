@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHero, Chips } from "@/components/site/PageHero";
 import { SectionHeading } from "@/components/site/SectionHeading";
-import { CourseCard } from "@/components/site/CourseCard";
-import { getCourses } from "@/lib/catalog";
+import { getBundles, getCourses, type CourseCard } from "@/lib/catalog";
 import { CMT_PPP, cmtDisclaimer } from "@/lib/cmt-ppp";
 
 export const metadata: Metadata = {
@@ -14,6 +13,15 @@ export const metadata: Metadata = {
 };
 
 const SAMPLE = "/go/cmt-free-sample?v=cmt-page";
+const PROGRAMME_SLUG = "cmt-programme";
+
+// The CMT Programme: a course and a question bank for each level (course pages say whether each is live or coming soon)
+const LEVEL_TRACK = [
+  { level: "Level I", items: [{ kind: "Course", slug: "cmtl1-course" }, { kind: "Question Bank", slug: "cmtl1-qbank" }] },
+  { level: "Level II", items: [{ kind: "Course", slug: "cmtl2-course" }, { kind: "Question Bank", slug: "cmtl2-qbank" }] },
+  { level: "Level III", items: [{ kind: "Course", slug: "cmtl3-course" }, { kind: "Question Bank", slug: "cmtl3-qbank" }] },
+];
+const isLive = (c?: CourseCard) => Boolean(c && !c.comingSoon);
 
 // Exam facts as published by the CMT Association (cmtassociation.org); checked November 2026.
 const LEVELS = [
@@ -34,13 +42,15 @@ const FAQ: [string, React.ReactNode][] = [
   ["When are the exams?", <>The CMT Association offers the exams twice a year, in June and December. For June 2027 it lists Level I and II from 1 to 17 June and Level III on 3 June. Always check dates and registration deadlines at <a href="https://cmtassociation.org/cmt-program/register/" target="_blank" rel="noopener" className="underline">cmtassociation.org</a>.</>],
   ["How much does registration cost?", <>The CMT Association sets the fees, which depend on when you register. For June 2027 it lists US$875 (early, until 24 February 2027), US$1,075 (standard, until 31 March) and US$1,475 (late, until 20 April) per level. These are paid to the CMT Association, not to FinCoursa.</>],
   ["Do I still need the official curriculum?", <>Yes. FinCoursa materials help you practise and check your understanding; they do not replace the CMT Association&apos;s curriculum and readings.</>],
-  ["Which levels do you cover?", <>Our CMT Level II Question Bank is available now. Level I and Level III preparation are in development; create a free account and we&apos;ll let you know when they open.</>],
+  ["Which levels do you cover?", <>The CMT Programme covers all three levels with a study course and a question bank for each. The Level II Question Bank is available now; the rest are coming soon, and you can ask to be told when each one opens from its course page.</>],
   ["Is there a free trial?", <>Yes. Complimentary sample questions from every section of the Level II Question Bank, charts included. You only need a free FinCoursa account; no payment details are asked for.</>],
 ];
 
 export default async function CmtPrepPage() {
-  const all = await getCourses().catch(() => []);
-  const cmt = all.filter((c) => c.tags.some((t) => /^cmt\b/i.test(t)) || /\bcmt\b/i.test(c.title));
+  const [all, bundles] = await Promise.all([getCourses().catch(() => []), getBundles().catch(() => [])]);
+  const bySlug = new Map(all.map((c) => [c.slug, c]));
+  const programme = bundles.find((b) => b.slug === PROGRAMME_SLUG);
+  const track = LEVEL_TRACK.map((l) => ({ ...l, items: l.items.map((it) => ({ ...it, course: bySlug.get(it.slug) })) }));
 
   return (
     <>
@@ -69,22 +79,41 @@ export default async function CmtPrepPage() {
         <Chips items={["Technical Analysis", "Question Banks", "Chart Questions", "Timed Exam Mode"]} firstLime />
       </PageHero>
 
-      {/* courses */}
+      {/* the programme */}
       <section className="bg-surface">
         <div className="fc-container grid gap-10 py-20">
-          <SectionHeading label="Prep Courses" title="Practise for your level" sub="Start with the complimentary sample questions, then go further with the full question bank." />
-          {cmt.length ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {cmt.map((c) => <CourseCard key={c.id} course={c} />)}
-            </div>
-          ) : <p className="text-center text-muted">CMT courses are being prepared.</p>}
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[["Level I", "In development"], ["Level II", "Question Bank available now"], ["Level III", "In development"]].map(([l, s]) => (
-              <div key={l} className="rounded-2xl bg-white p-5 text-center">
-                <p className="text-lg font-semibold text-ink">{l}</p>
-                <p className={`mt-1 text-sm ${s.includes("now") ? "font-semibold text-success" : "text-muted"}`}>{s}</p>
+          <SectionHeading label="The CMT Programme" title="Everything for Levels I, II and III"
+            sub="A study course and a question bank for each level, released level by level. Start today with the Level II Question Bank and its complimentary sample questions." />
+          <div className="grid gap-4 md:grid-cols-3">
+            {track.map((l) => (
+              <div key={l.level} className="flex flex-col rounded-2xl bg-white p-6">
+                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">{l.level}</p>
+                <ul className="mt-4 grid gap-3">
+                  {l.items.map((it) => {
+                    const live = isLive(it.course);
+                    const body = (
+                      <>
+                        <span className="block text-[17px] font-semibold text-ink">{it.kind}</span>
+                        <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${live ? "bg-accent text-ink" : "bg-surface text-muted"}`}>
+                          {live ? "Available now" : "Coming soon"}
+                        </span>
+                      </>
+                    );
+                    return (
+                      <li key={it.slug}>
+                        {it.course ? (
+                          <Link href={`/courses/${it.slug}`} className={`block rounded-xl border p-4 transition hover:border-ink ${live ? "border-accent" : "border-line"}`}>{body}</Link>
+                        ) : <div className="rounded-xl border border-line p-4">{body}</div>}
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
             ))}
+          </div>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link href={SAMPLE} className="fc-btn fc-btn-primary">Start Practising</Link>
+            {programme && <Link href={`/bundles/${programme.slug}`} className="fc-btn fc-btn-outline text-ink">View the CMT Programme</Link>}
           </div>
         </div>
       </section>

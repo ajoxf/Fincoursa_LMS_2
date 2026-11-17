@@ -35,6 +35,8 @@ export async function saveBundle(bundleId: string, _: FormState, form: FormData)
     thumbnail_url: String(form.get("thumbnail_url") ?? "") || null,
     status: ["draft", "published", "archived"].includes(String(form.get("status"))) ? String(form.get("status")) : "draft",
     is_featured: form.get("is_featured") === "on",
+    coming_soon: form.get("coming_soon") === "on",
+    launch_note: String(form.get("launch_note") ?? "").trim() || null,
   }).eq("id", bundleId);
   if (error) return { error: error.message };
 
