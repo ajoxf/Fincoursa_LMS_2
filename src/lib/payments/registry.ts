@@ -140,3 +140,17 @@ export async function gatewaysFor(country: string | null, currency: string): Pro
   }
   return out;
 }
+
+/**
+ * Can anyone pay online in this currency right now? True when at least one active route (for any country)
+ * points at a provider with keys that isn't paused. Until then the site shows "Enrolment opens soon".
+ */
+export const paymentsOpen = cache(async (currency: string): Promise<boolean> => {
+  const { data: routes } = await createAdminClient().from("payment_routes").select("gateway, currency").eq("is_active", true);
+  for (const id of new Set((routes ?? []).filter((r) => !r.currency || r.currency === currency).map((r) => r.gateway as string))) {
+    const g = await resolveGateway(id);
+    if (!g || (g.currencies && !g.currencies.includes(currency))) continue;
+    if (isReady(g, await gatewayConfig(id))) return true;
+  }
+  return false;
+});

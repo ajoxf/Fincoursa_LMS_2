@@ -10,6 +10,8 @@ import { publishedReviews } from "@/lib/reviews";
 import { benefitLive, foundingLabel, getFoundingSettings, getMembership, joiningOpen } from "@/lib/founding";
 import { enrollFree } from "@/app/actions/enroll";
 import { NotifyMe } from "@/components/site/NotifyMe";
+import { EnrolmentSoon } from "@/components/site/EnrolmentSoon";
+import { paymentsOpen } from "@/lib/payments/registry";
 import { PageHero, Chips } from "@/components/site/PageHero";
 import { FacultyBanner } from "@/components/site/FacultyBanner";
 import { LocalTime } from "@/components/site/LocalTime";
@@ -69,6 +71,8 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
   const usableLine = useBy ? ` Credit can be used until ${useBy}.` : cbSettings.validity_days ? ` Credit stays usable for ${cbSettings.validity_days} days after your purchase.` : "";
   // a free preview lesson to try before buying (e.g. the Question Bank's free sample)
   const sample = !enrollment && !comingSoon ? course.chapters.flatMap((c) => c.lessons).find((l) => l.is_preview) : undefined;
+  // paid course, but no payment provider live yet: show "Enrolment opens soon" instead of buy links
+  const notOpen = !enrollment && !comingSoon && !course.isFree && Boolean(course.price) && !(await paymentsOpen(course.price!.currency));
   const options = !enrollment && !comingSoon && !course.isFree ? course.options ?? [] : [];
   // "What's included" lines that start with "Offer:" are also shown as benefits in the price panel
   const isOffer = (h: string) => /^offer:\s*/i.test(h);
@@ -89,6 +93,8 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
     <form action={enrollFree.bind(null, course.id, course.slug)}>
       <button className="fc-btn fc-btn-primary w-full !py-4">{isLive ? "Register for Free" : "Enroll for Free"}</button>
     </form>
+  ) : notOpen ? (
+    <EnrolmentSoon sample={Boolean(sample)} />
   ) : (
     <Link href={`/checkout?course=${course.slug}`} className="fc-btn fc-btn-primary w-full !py-4">{isLive ? "Register Now →" : "Enroll Now"}</Link>
   );
@@ -162,14 +168,14 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                   const was = base && base > o.amount_minor ? base : null;
                   const pct = was ? Math.round(((was - o.amount_minor) / was) * 100) : 0;
                   return (
-                    <Link key={o.id} href={`/checkout?course=${course.slug}&price=${o.id}`}
-                      className="group mt-3 flex items-center justify-between gap-4 rounded-xl border border-white/30 px-4 py-3.5 transition hover:border-accent">
+                    <Link key={o.id} href={notOpen ? "#" : `/checkout?course=${course.slug}&price=${o.id}`} aria-disabled={notOpen || undefined}
+                      className={`group mt-3 flex items-center justify-between gap-4 rounded-xl border border-white/30 px-4 py-3.5 transition ${notOpen ? "pointer-events-none" : "hover:border-accent"}`}>
                       <span>
                         <span className="block font-semibold">{o.label || "Longer access"}</span>
                         <span className="block text-sm text-white/70">Access until {formatDate(o.access_until!, "long")}</span>
                       </span>
                       <span className="text-right">
-                        <span className="block whitespace-nowrap text-lg font-semibold">{formatMoney(o.amount_minor, o.currency)} <span className="text-accent transition group-hover:translate-x-0.5">→</span></span>
+                        <span className="block whitespace-nowrap text-lg font-semibold">{formatMoney(o.amount_minor, o.currency)} {!notOpen && <span className="text-accent transition group-hover:translate-x-0.5">→</span>}</span>
                         {was && (
                           <span className="block whitespace-nowrap text-sm">
                             <span className="text-white/55 line-through">{formatMoney(was, o.currency)}</span>
@@ -182,8 +188,8 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
                 })}
                 {sample && (
                   <Link href={`/learn/${course.slug}/${sample.id}`}
-                    className="mt-3 flex w-full items-center justify-center rounded-xl border-2 border-accent px-4 py-3 text-[15px] font-semibold text-accent transition hover:bg-accent hover:text-ink">
-                    Try free sample questions first
+                    className={notOpen ? "fc-btn fc-btn-primary mt-3 w-full !py-4" : "mt-3 flex w-full items-center justify-center rounded-xl border-2 border-accent px-4 py-3 text-[15px] font-semibold text-accent transition hover:bg-accent hover:text-ink"}>
+                    {notOpen ? "Start the free sample questions" : "Try free sample questions first"}
                   </Link>
                 )}
                 {!course.isFree && <a href={`/pages/institutions?course=${course.slug}#enquire`} className="mt-4 block text-center text-sm text-white/80 underline underline-offset-4 hover:text-white">Buying for a team? Get a quote</a>}
