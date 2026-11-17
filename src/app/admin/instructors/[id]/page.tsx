@@ -83,9 +83,20 @@ export default async function AdminInstructor({ params, searchParams }: PageProp
         <BusinessTab id={id} base={base} month={typeof sp.month === "string" ? sp.month : null} course={typeof sp.course === "string" ? sp.course : null} />
       ) : tab === "dashboard" ? (
         <>
-          <p className="rounded-lg bg-surface p-3 text-sm text-muted">
-            This is exactly what {ins.name} sees on their dashboard{login?.email ? "" : " (once their profile is linked to a login)"}. Course reports open the same pages they use.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface p-3 text-sm">
+            <p className="text-muted">
+              This is exactly what {ins.name} sees on their dashboard{login?.email ? "" : " (once their profile is linked to a login)"}. Course reports open the same pages they use.
+            </p>
+            {/* admin only (the route checks the admin role): the instructor's own statement, safe to send to them */}
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-muted">Instructor Earnings Statement{typeof sp.month === "string" && /^\d{4}-\d{2}$/.test(sp.month) ? `, ${monthLabel(sp.month)}` : ""}:</span>
+              {(["xlsx", "csv", "pdf"] as const).map((f) => (
+                <a key={f} href={`/api/admin/instructor-statement?${new URLSearchParams({ instructor: id, view: "instructor", format: f,
+                  ...(typeof sp.course === "string" && sp.course ? { course: sp.course } : {}), ...(typeof sp.month === "string" && sp.month ? { month: sp.month } : {}) })}`}
+                  className="fc-btn fc-btn-outline !min-w-0 !px-3 !py-1.5 text-xs text-ink">{f === "xlsx" ? "Excel" : f.toUpperCase()}</a>
+              ))}
+            </span>
+          </div>
           <InstructorDashboardView basePath={base} title="Dashboard (Instructor View)"
             sp={{ course: typeof sp.course === "string" ? sp.course : null, month: typeof sp.month === "string" ? sp.month : null }}
             d={await loadInstructorDashboard(db, id, env.defaultCurrency, days)} />
@@ -160,7 +171,7 @@ async function BusinessTab({ id, base, month, course }: { id: string; base: stri
         <button className="fc-btn fc-btn-outline !min-w-0 !px-4 !py-2 text-sm text-ink">Show</button>
         {/* admin only: the route checks the admin role */}
         <span className="ml-auto flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted">Download:</span>
+          <span className="text-muted" title="FinCoursa Margin Statement: internal, not to be shared with the instructor">Internal download:</span>
           {(["xlsx", "csv", "pdf"] as const).map((f) => (
             <a key={f} href={`/api/admin/instructor-statement?${new URLSearchParams({ instructor: id, format: f, ...(courseId ? { course: courseId } : {}), ...(month ? { month } : {}) })}`}
               className="fc-btn fc-btn-outline !min-w-0 !px-3 !py-1.5 text-xs text-ink">{f === "xlsx" ? "Excel" : f.toUpperCase()}</a>
