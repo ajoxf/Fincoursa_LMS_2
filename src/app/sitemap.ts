@@ -7,7 +7,7 @@ export const revalidate = 3600;
 /** Public pages for search engines: the catalogue, every published course, programme and instructor. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = env.siteUrl.replace(/\/$/, "");
-  const fixed = ["", "/pages/paid-courses", "/pages/free-courses", "/pages/live-courses", "/pages/instructors",
+  const fixed = ["", "/cmt", "/pages/paid-courses", "/pages/free-courses", "/pages/live-courses", "/pages/instructors",
     "/pages/contact-us", "/pages/terms-conditions", "/pages/privacy-policy"];
   const [courses, bundles, instructors] = await Promise.all([
     getCourses().catch(() => []), getBundles().catch(() => []), getInstructors().catch(() => []),
