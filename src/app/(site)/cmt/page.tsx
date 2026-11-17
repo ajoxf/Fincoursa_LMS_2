@@ -1,0 +1,141 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { PageHero, Chips } from "@/components/site/PageHero";
+import { SectionHeading } from "@/components/site/SectionHeading";
+import { CourseCard } from "@/components/site/CourseCard";
+import { getCourses } from "@/lib/catalog";
+
+export const metadata: Metadata = {
+  title: "CMT Exam Prep",
+  description: "Prepare for the Chartered Market Technician (CMT) exams with FinCoursa, a participant in the CMT Association Prep Provider Program. Exam-style question banks with chart questions and worked explanations.",
+  alternates: { canonical: "/cmt" },
+  openGraph: { title: "CMT Exam Prep | FinCoursa", url: "/cmt", description: "Exam-style CMT practice with chart questions and worked explanations. Start with complimentary sample questions." },
+};
+
+const SAMPLE = "/go/cmt-free-sample?v=cmt-page";
+
+// Exam facts as published by the CMT Association (cmtassociation.org); checked November 2026.
+const LEVELS = [
+  { level: "Level I", format: "132 multiple-choice questions", time: "2 hours", focus: "The vocabulary and building blocks of technical analysis: chart types, trends, patterns, indicators and the theory behind them." },
+  { level: "Level II", format: "170 multiple-choice questions", time: "4 hours", focus: "Applying the tools: reading charts, combining indicators, relative strength, market internals, cycles and testing a trading approach." },
+  { level: "Level III", format: "Short essays and multiple-choice questions", time: "4 hours", focus: "Judgement: building a view across markets, risk management and portfolio decisions, explained in writing." },
+];
+
+const STEPS = [
+  ["Learn the curriculum", "Work through the official CMT readings for your level, section by section. Our questions follow the same order, so you can practise as you go."],
+  ["Practise every section", "Answer exam-style questions on each topic. Every answer comes with a worked explanation of why it is right and why the other options are not."],
+  ["Read real charts", "Chart questions ask you to read the chart to find the answer, as the exam does, so pattern recognition becomes second nature."],
+  ["Sit timed exams", "Switch to timed exam mode to build pace and stamina, flag questions to revisit, and see where you lose marks before exam day."],
+];
+
+const FAQ: [string, React.ReactNode][] = [
+  ["What is the CMT?", <>The Chartered Market Technician (CMT) is a professional designation in technical analysis, awarded by the CMT Association. Candidates pass three exams (Level I, II and III), taken in order, and meet the Association&apos;s membership and work-experience requirements.</>],
+  ["When are the exams?", <>The CMT Association offers the exams twice a year, in June and December. For June 2027 it lists Level I and II from 1 to 17 June and Level III on 3 June. Always check dates and registration deadlines at <a href="https://cmtassociation.org/cmt-program/register/" target="_blank" rel="noopener" className="underline">cmtassociation.org</a>.</>],
+  ["How much does registration cost?", <>The CMT Association sets the fees, which depend on when you register. For June 2027 it lists US$875 (early, until 24 February 2027), US$1,075 (standard, until 31 March) and US$1,475 (late, until 20 April) per level. These are paid to the CMT Association, not to FinCoursa.</>],
+  ["Do I still need the official curriculum?", <>Yes. FinCoursa materials help you practise and check your understanding; they do not replace the CMT Association&apos;s curriculum and readings.</>],
+  ["Which levels do you cover?", <>Our CMT Level II Question Bank is available now. Level I and Level III preparation are in development; create a free account and we&apos;ll let you know when they open.</>],
+  ["Is there a free trial?", <>Yes. Complimentary sample questions from every section of the Level II Question Bank, charts included. You only need a free FinCoursa account; no payment details are asked for.</>],
+];
+
+export default async function CmtPrepPage() {
+  const all = await getCourses().catch(() => []);
+  const cmt = all.filter((c) => c.tags.some((t) => /^cmt\b/i.test(t)) || /\bcmt\b/i.test(c.title));
+
+  return (
+    <>
+      <PageHero label="CMT Exam Prep" title={<>Prepare for the <span className="text-accent">Chartered Market Technician</span> exams.</>}
+        aside={
+          <div className="w-full rounded-2xl border border-accent/50 bg-white/[0.04] p-6 md:w-[340px]">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Prep Provider Program</p>
+            <p className="mt-3 text-[15px] leading-relaxed text-white/85">FinCoursa is a participant in the CMT Association Prep Provider Program.</p>
+            <Link href={SAMPLE} className="fc-btn fc-btn-primary mt-5 w-full !py-3.5">Start Practising</Link>
+            <p className="mt-2 text-center text-xs text-white/60">Complimentary sample questions. No payment needed.</p>
+          </div>
+        }>
+        <p className="mt-6 max-w-[580px] text-[17px] leading-relaxed text-white/85">
+          Exam-style practice for CMT candidates: questions mapped to the curriculum, chart questions where you read the chart to find
+          the answer, and a worked explanation for every option.
+        </p>
+        <Chips items={["Technical Analysis", "Question Banks", "Chart Questions", "Timed Exam Mode"]} firstLime />
+      </PageHero>
+
+      {/* courses */}
+      <section className="bg-surface">
+        <div className="fc-container grid gap-10 py-20">
+          <SectionHeading label="Prep Courses" title="Practise for your level" sub="Start with the complimentary sample questions, then go further with the full question bank." />
+          {cmt.length ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {cmt.map((c) => <CourseCard key={c.id} course={c} />)}
+            </div>
+          ) : <p className="text-center text-muted">CMT courses are being prepared.</p>}
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[["Level I", "In development"], ["Level II", "Question Bank available now"], ["Level III", "In development"]].map(([l, s]) => (
+              <div key={l} className="rounded-2xl bg-white p-5 text-center">
+                <p className="text-lg font-semibold text-ink">{l}</p>
+                <p className={`mt-1 text-sm ${s.includes("now") ? "font-semibold text-success" : "text-muted"}`}>{s}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* the exams */}
+      <section className="bg-white">
+        <div className="fc-container grid gap-10 py-20">
+          <SectionHeading label="The CMT Program" title="Three exams, taken in order"
+            sub={<>Offered by the CMT Association twice a year, in June and December. Exam details as published by the CMT Association; check <a href="https://cmtassociation.org/cmt-program/" target="_blank" rel="noopener" className="underline">cmtassociation.org</a> for the latest.</>} />
+          <div className="grid gap-4 md:grid-cols-3">
+            {LEVELS.map((l) => (
+              <div key={l.level} className="rounded-2xl border border-line p-6">
+                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">{l.level}</p>
+                <p className="mt-3 text-xl font-semibold text-ink">{l.format}</p>
+                <p className="text-sm text-muted">{l.time}</p>
+                <p className="mt-4 text-[15px] leading-relaxed text-ink/85">{l.focus}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* how to prepare */}
+      <section className="bg-surface-dark text-white">
+        <div className="fc-container grid gap-10 py-20">
+          <SectionHeading dark label="How to Prepare" title="A study plan that works" />
+          <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map(([t, d], i) => (
+              <li key={t} className="rounded-2xl border border-white/15 p-6">
+                <p className="text-3xl font-bold text-accent">{i + 1}</p>
+                <p className="mt-3 text-lg font-semibold">{t}</p>
+                <p className="mt-2 text-[15px] leading-relaxed text-white/80">{d}</p>
+              </li>
+            ))}
+          </ol>
+          <div className="text-center">
+            <Link href={SAMPLE} className="fc-btn fc-btn-primary fc-btn-lg inline-flex">Start Practising</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="bg-white">
+        <div className="fc-container grid max-w-3xl gap-8 py-20">
+          <SectionHeading label="Questions" title="Frequently asked" />
+          <div className="divide-y divide-line rounded-2xl border border-line">
+            {FAQ.map(([q, a]) => (
+              <details key={q} className="group p-5">
+                <summary className="cursor-pointer list-none text-[17px] font-semibold text-ink">{q}<span className="float-right text-primary group-open:rotate-45">+</span></summary>
+                <div className="mt-3 text-[15px] leading-relaxed text-ink/85">{a}</div>
+              </details>
+            ))}
+          </div>
+          <p className="text-xs leading-relaxed text-muted">
+            FinCoursa is a participant in the CMT Association Prep Provider Program. The CMT Association does not endorse, promote, review or
+            warrant the accuracy of the products or services offered by FinCoursa, and participation does not make FinCoursa an official or
+            authorised provider. FinCoursa materials are our own and are not reviewed by the CMT Association. CMT® and Chartered Market
+            Technician® are trademarks of the CMT Association, used here to describe the exams our materials prepare for.
+          </p>
+        </div>
+      </section>
+    </>
+  );
+}

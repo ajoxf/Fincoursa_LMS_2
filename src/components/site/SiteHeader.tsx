@@ -7,6 +7,7 @@ const programmesLink = { href: "/pages/programmes", label: "Programmes" };
 const allCoursesLink = { href: "/pages/paid-courses", label: "All courses" };
 
 export const mainLinks = [
+  { href: "/cmt", label: "CMT Prep" },
   { href: "/pages/instructors", label: "Instructors" },
   { href: "/pages/institutions", label: "For Institutions" },
   { href: "/pages/contact-us", label: "Contact" },
