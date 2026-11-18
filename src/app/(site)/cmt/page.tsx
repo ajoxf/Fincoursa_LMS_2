@@ -48,7 +48,7 @@ export default async function CmtPrepPage() {
           <div className="w-full rounded-2xl border border-accent/50 bg-white/[0.04] p-6 md:w-[340px]">
             {CMT_PPP.APPROVED ? (
               <>
-                {CMT_PPP.BADGE && <img src={CMT_PPP.BADGE} alt="CMT Association Participating Prep Provider" className="mb-4 h-20 w-auto" />}
+                {CMT_PPP.BADGE && <img src={CMT_PPP.BADGE} alt="CMT Association Participating Prep Provider" className="mb-4 h-28 w-auto" />}
                 <p className="text-[15px] leading-relaxed text-white/85">{CMT_PPP.STATUS}</p>
               </>
             ) : (
