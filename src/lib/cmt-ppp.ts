@@ -1,12 +1,12 @@
 /**
- * CMT Association Participating Prep Provider (PPP) status. The application is under review: until the Association
+ * CMT Association Participating Prep Provider (PPP) status: approved and listed (18 Nov 2026). Before approval
  * confirms the listing, the site must not claim the status or show the badge. When approved, set APPROVED to true and
  * add the badge the Association sent as /public/cmt-ppp-badge.png (BADGE below).
  * Wording rule from the Association: state the status accurately and never imply endorsement, authorisation,
  * accreditation or exclusivity (so never "official" or "authorised").
  */
 export const CMT_PPP = {
-  APPROVED: false,
+  APPROVED: true,
   BADGE: null as string | null, // e.g. "/cmt-ppp-badge.png" once approved
   STATUS: "FinCoursa is a CMT Association Participating Prep Provider.",
   DISCLAIMER_APPROVED:
