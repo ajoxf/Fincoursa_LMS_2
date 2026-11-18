@@ -15,9 +15,12 @@ export const metadata: Metadata = {
 const SAMPLE = "/go/cmt-free-sample?v=cmt-page";
 // One programme per level (Admin → Programmes): a course for each curriculum section, then the level's question bank
 const LEVELS_PROGRAMMES = [
-  { level: "Level I", n: 1, slug: "cmt-level-1", about: "The foundations: the vocabulary and building blocks of technical analysis." },
-  { level: "Level II", n: 2, slug: "cmt-level-2", about: "Applying the tools: reading charts, combining indicators and testing an approach." },
-  { level: "Level III", n: 3, slug: "cmt-level-3", about: "Judgement: building a view across markets, managing risk and portfolio decisions." },
+  { level: "Level I", n: 1, slug: "cmt-level-1", about: "The foundations: the vocabulary and building blocks of technical analysis.",
+    sections: ["Theory and History of Technical Analysis", "Charts: Market Price Data", "Trend Analysis", "Chart Pattern Analysis", "Technical Indicators",
+      "Statistics for Technicians", "Behavioral Finance", "Sentiment", "Cycle Analysis", "Comparative Market Analysis", "Volatility Analysis", "Systems and Quantitative Methods"] },
+  { level: "Level II", n: 2, slug: "cmt-level-2", about: "Applying the tools: reading charts, combining indicators and testing an approach.",
+    sections: ["Theory and History of Technical Analysis", "Behavioural Finance", "Charts: Organizing Market Data", "Chart Pattern Analysis", "Trend Analysis",
+      "Volatility Analysis", "Sentiment", "Statistics for Technicians", "Technical Indicators", "Comparative Market Analysis", "Cycle Analysis", "Systems and Quantitative Methods"] },
 ];
 const isLive = (c?: CourseCard) => Boolean(c && !c.comingSoon);
 
@@ -33,7 +36,7 @@ const FAQ: [string, React.ReactNode][] = [
   ["When are the exams?", <>The CMT Association offers the exams twice a year, in June and December. For June 2027 it lists Level I and II from 1 to 17 June and Level III on 3 June. Always check dates and registration deadlines at <a href="https://cmtassociation.org/cmt-program/register/" target="_blank" rel="noopener" className="underline">cmtassociation.org</a>.</>],
   ["How much does registration cost?", <>The CMT Association sets the fees, which depend on when you register. For June 2027 it lists US$875 (early, until 24 February 2027), US$1,075 (standard, until 31 March) and US$1,475 (late, until 20 April) per level. These are paid to the CMT Association, not to FinCoursa.</>],
   ["Do I still need the official curriculum?", <>Yes. FinCoursa materials help you practise and check your understanding; they do not replace the CMT Association&apos;s curriculum and readings.</>],
-  ["Which levels do you cover?", <>There is a CMT programme for each level, with study courses and a question bank. The Level II Question Bank is available now; the rest are coming soon, and you can ask to be told when each one opens from its course page.</>],
+  ["Which levels do you cover?", <>We have programmes for Level I and Level II, each with a study course for every section of the curriculum and a question bank. The Level II Question Bank is available now; the rest are coming soon, and you can ask to be told when each one opens.</>],
   ["Is there a free trial?", <>Yes. Complimentary sample questions from every section of the Level II Question Bank, charts included. You only need a free FinCoursa account; no payment details are asked for.</>],
 ];
 
@@ -71,29 +74,37 @@ export default async function CmtPrepPage() {
       {/* the programmes, one per level */}
       <section className="bg-surface">
         <div className="fc-container grid gap-10 py-20">
-          <SectionHeading label="CMT Programmes" title="A programme for each level"
-            sub="Study courses and a question bank for each level, released over time. Start today with the Level II Question Bank and its complimentary sample questions." />
-          <div className="grid gap-4 md:grid-cols-3">
+          <SectionHeading label="CMT Programmes" title="Levels I and II"
+            sub="A study course for each section of the curriculum and a question bank for practice, released over time. Start today with the Level II Question Bank and its complimentary sample questions." />
+          <div className="mx-auto grid w-full max-w-[968px] gap-4 md:grid-cols-2">
             {track.map((l) => {
-              // what's open now in this level (e.g. the Level II Question Bank), else the level is coming soon
-              const live = (l.programme?.courses ?? []).filter(isLive);
+              // the level's question bank: open now (Level II) or coming soon
+              const qb = (l.programme?.courses ?? []).find((c) => /question bank/i.test(c.title));
+              const qbLive = isLive(qb);
+              const pill = (live: boolean) => (
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${live ? "bg-accent text-ink" : "bg-surface text-muted"}`}>{live ? "Available now" : "Coming soon"}</span>
+              );
               return (
-                <div key={l.level} className={`flex flex-col rounded-2xl bg-white p-6 ${live.length ? "ring-2 ring-accent" : ""}`}>
+                <div key={l.level} className={`flex flex-col rounded-2xl bg-white p-6 ${qbLive ? "ring-2 ring-accent" : ""}`}>
                   <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">{l.level}</p>
                   <h3 className="mt-1 text-xl font-semibold text-ink">CMT {l.level} Programme</h3>
-                  <p className="mt-3 text-[15px] leading-relaxed text-ink/85">{l.about}</p>
-                  <ul className="mt-4 grid gap-1.5 text-sm text-ink/80">
-                    <li>Study courses following the curriculum</li>
-                    <li>Question bank with chart questions</li>
-                    <li>Timed exam mode</li>
+                  <p className="mt-2 text-[15px] leading-relaxed text-ink/85">{l.about}</p>
+                  <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Study courses, section by section</p>
+                  <ul className="mt-2 grid gap-1 text-[15px]">
+                    {l.sections.map((sec) => (
+                      <li key={sec} className="flex items-start justify-between gap-3 rounded-lg px-2 py-1.5">
+                        <span className="text-ink/85">{sec}</span>{pill(false)}
+                      </li>
+                    ))}
                   </ul>
-                  <p className="mt-5">
-                    {live.length ? (
-                      <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-ink">Question Bank available now</span>
-                    ) : (
-                      <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-muted">Coming soon</span>
-                    )}
-                  </p>
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Practice</p>
+                  {qb ? (
+                    <Link href={`/courses/${qb.slug}`} className="mt-2 flex items-start justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-surface">
+                      <span className={qbLive ? "font-semibold text-ink" : "text-ink/85"}>{l.level} Question Bank</span>{pill(qbLive)}
+                    </Link>
+                  ) : (
+                    <div className="mt-2 flex items-start justify-between gap-3 px-2 py-1.5"><span className="text-ink/85">{l.level} Question Bank</span>{pill(false)}</div>
+                  )}
                   <Link href={`/programmes/${l.slug}`} className="fc-btn fc-btn-primary mt-auto !mt-6">Explore Level {l.n} &rarr;</Link>
                 </div>
               );
