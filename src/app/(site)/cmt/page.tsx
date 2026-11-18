@@ -14,13 +14,37 @@ export const metadata: Metadata = {
 
 const SAMPLE = "/go/cmt-free-sample?v=cmt-page";
 // One programme per level (Admin → Programmes): a course for each curriculum section, then the level's question bank
-const LEVELS_PROGRAMMES = [
+const LEVELS_PROGRAMMES: { level: string; n: number; slug: string; about: string; sections: [string, string[]][] }[] = [
   { level: "Level I", n: 1, slug: "cmt-level-1", about: "The foundations: the vocabulary and building blocks of technical analysis.",
-    sections: ["Theory and History of Technical Analysis", "Charts: Market Price Data", "Trend Analysis", "Chart Pattern Analysis", "Technical Indicators",
-      "Statistics for Technicians", "Behavioral Finance", "Sentiment", "Cycle Analysis", "Comparative Market Analysis", "Volatility Analysis", "Systems and Quantitative Methods"] },
+    sections: [
+      ["Theory and History of Technical Analysis", ["A Brief History of Technical Analysis", "The Dow Theory", "Markets, Instruments, Data and the Technical Analyst", "The Opportunity of the Efficient Markets Hypothesis", "The Fibonacci Sequence and The Golden Ratio"]],
+      ["Charts: Market Price Data", ["An Overview of Charting", "The X Axis", "The Y Axis", "Charting Volume and Open Interest"]],
+      ["Trend Analysis", ["Trend Primer: What is a Trend", "Trend Primer: A Trend's Four Phases", "Trend Primer: Trend Identification and Following", "Introduction to Volume Analysis", "Volume, Open Interest, and Price", "Market Internals"]],
+      ["Chart Pattern Analysis", ["Classical Chart Patterns", "Introduction to Candlesticks", "Introduction to Candlestick Patterns", "Basics of Point-and-Figure Charting"]],
+      ["Technical Indicators", ["Moving Averages", "Technical Indicator Construction", "Introduction to Bollinger Bands"]],
+      ["Statistics for Technicians", ["Introduction to Statistics Part 1", "Introduction to Statistics Part 2", "Introduction to Probability"]],
+      ["Behavioral Finance", ["Behavioral Finance"]],
+      ["Sentiment", ["Market Sentiment and Technical Analysis", "Sentiment Measured from Market Data", "Sentiment Measured from External Data"]],
+      ["Cycle Analysis", ["Foundations of Cycle Theory", "Common Cycles"]],
+      ["Comparative Market Analysis", ["Equities", "Indexes", "Fixed Income/Bonds", "Futures", "Exchange-Traded Products (ETPs)", "Foreign Exchange (Currencies)", "Digital Assets", "Options", "Introduction to Relative Strength", "Relative Strength and its Uses"]],
+      ["Volatility Analysis", ["The Meaning of Volatility to a Technician", "Measuring Historical Volatility", "Options Derived Volatility"]],
+      ["Systems and Quantitative Methods", ["Introduction to Quantitative Methods"]],
+    ] },
   { level: "Level II", n: 2, slug: "cmt-level-2", about: "Applying the tools: reading charts, combining indicators and testing an approach.",
-    sections: ["Theory and History of Technical Analysis", "Behavioural Finance", "Charts: Organizing Market Data", "Chart Pattern Analysis", "Trend Analysis",
-      "Volatility Analysis", "Sentiment", "Statistics for Technicians", "Technical Indicators", "Comparative Market Analysis", "Cycle Analysis", "Systems and Quantitative Methods"] },
+    sections: [
+      ["Theory and History of Technical Analysis", ["Alpha and Beta - Outperforming the Benchmarks", "Fusion Analysis: Technical Analysis as Part of a Team Approach"]],
+      ["Behavioural Finance", ["Anatomy of Market Bubbles"]],
+      ["Charts: Organizing Market Data", ["Charting Multiple Data Sets and Multiple Data Intervals", "Market Profile"]],
+      ["Chart Pattern Analysis", ["Classical Chart Patterns", "Candlestick Patterns in the Real World", "Candlestick Analysis in the Real World", "Point-and-Figure Pattern Analysis"]],
+      ["Trend Analysis", ["Price Trend and Volume", "Market Internals"]],
+      ["Volatility Analysis", ["Extrapolating Price from Volatility", "Volatility Risk Premium", "Volatility Indexes and VIX Complex"]],
+      ["Sentiment", ["Analysing Sentiment in the Stock Market", "Analyzing Sentiment in the Derivatives Market"]],
+      ["Statistics for Technicians", ["Inferential Statistics"]],
+      ["Technical Indicators", ["Momentum and Indicator Interpretation Part 1", "Momentum and Indicator Interpretation Part 2", "Volume Weighted Average Price", "Practical Applications of Bollinger Bands"]],
+      ["Comparative Market Analysis", ["Advanced Applications of Relative Strength"]],
+      ["Cycle Analysis", ["Concepts in Cycle Theory", "Applied Cycle Analysis", "Analysis of Seasonal Cycles", "The Elliott Wave Principle Part 1", "The Elliott Wave Principle Part 2", "The Elliott Wave Principle Part 3"]],
+      ["Systems and Quantitative Methods", ["Trading Systems", "Applying Quantitative Techniques"]],
+    ] },
 ];
 const isLive = (c?: CourseCard) => Boolean(c && !c.comingSoon);
 
@@ -89,11 +113,22 @@ export default async function CmtPrepPage() {
                   <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">{l.level}</p>
                   <h3 className="mt-1 text-xl font-semibold text-ink">CMT {l.level} Programme</h3>
                   <p className="mt-2 text-[15px] leading-relaxed text-ink/85">{l.about}</p>
-                  <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Study courses, section by section</p>
+                  <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Study courses, section by section <span className="normal-case tracking-normal">(click a section to see its chapters)</span></p>
                   <ul className="mt-2 grid gap-1 text-[15px]">
-                    {l.sections.map((sec) => (
-                      <li key={sec} className="flex items-start justify-between gap-3 rounded-lg px-2 py-1.5">
-                        <span className="text-ink/85">{sec}</span>{pill(false)}
+                    {l.sections.map(([sec, units]) => (
+                      <li key={sec}>
+                        <details className="group rounded-lg hover:bg-surface/60 open:bg-surface/60">
+                          <summary className="flex cursor-pointer list-none items-start justify-between gap-3 px-2 py-1.5">
+                            <span className="text-ink/85">
+                              <span className="mr-1.5 inline-block text-muted transition group-open:rotate-90">&#9656;</span>{sec}
+                              <span className="ml-1.5 text-xs text-muted">{units.length} {units.length === 1 ? "chapter" : "chapters"}</span>
+                            </span>
+                            {pill(false)}
+                          </summary>
+                          <ul className="grid gap-1 pb-2 pl-8 pr-2 text-sm text-ink/70">
+                            {units.map((u) => <li key={u} className="list-disc">{u}</li>)}
+                          </ul>
+                        </details>
                       </li>
                     ))}
                   </ul>
