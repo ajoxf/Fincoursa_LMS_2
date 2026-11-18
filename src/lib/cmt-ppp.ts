@@ -7,7 +7,7 @@
  */
 export const CMT_PPP = {
   APPROVED: true,
-  BADGE: null as string | null, // e.g. "/cmt-ppp-badge.png" once approved
+  BADGE: "/cmt-ppp-badge.png" as string | null, // the official badge the CMT Association sent
   STATUS: "FinCoursa is a CMT Association Participating Prep Provider.",
   DISCLAIMER_APPROVED:
     "FinCoursa is a CMT Association Participating Prep Provider. This does not mean the CMT Association endorses, authorises, accredits or reviews FinCoursa's products or services, and FinCoursa is not an exclusive provider. FinCoursa materials are our own. CMT® and Chartered Market Technician® are trademarks of the CMT Association, used to describe the exams our materials prepare for.",
