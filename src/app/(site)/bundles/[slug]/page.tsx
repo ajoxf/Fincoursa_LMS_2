@@ -11,6 +11,7 @@ import { assetUrl } from "@/lib/assets";
 import { EnrolmentSoon } from "@/components/site/EnrolmentSoon";
 import { NotifyMe } from "@/components/site/NotifyMe";
 import { paymentsOpen } from "@/lib/payments/registry";
+import { cmtCurriculumFor } from "@/lib/cmt-curriculum";
 
 export async function generateMetadata({ params }: PageProps<"/bundles/[slug]">): Promise<Metadata> {
   const b = await getBundle((await params).slug);
@@ -26,6 +27,8 @@ export async function generateMetadata({ params }: PageProps<"/bundles/[slug]">)
 export default async function BundlePage({ params }: PageProps<"/bundles/[slug]">) {
   const bundle = await getBundle((await params).slug);
   if (!bundle) notFound();
+  // CMT Level I / II programmes: the curriculum outline (sections and their sub-sections)
+  const curriculum = cmtCurriculumFor(bundle.slug);
   const notOpen = !bundle.comingSoon && !bundle.isFree && Boolean(bundle.price) && !(await paymentsOpen(bundle.price!.currency));
   const hours = Math.round((bundle.totalMinutes / 60) * 10) / 10;
   return (
@@ -68,6 +71,25 @@ export default async function BundlePage({ params }: PageProps<"/bundles/[slug]"
                 <li key={t} className="rounded-2xl bg-white p-6 text-[15px] leading-relaxed text-ink/85">{t}</li>
               ))}
             </ul>
+            {curriculum && (
+              <div className="mx-auto mt-14 max-w-[968px]">
+                <h3 className="text-center text-2xl font-semibold text-ink">The {curriculum.level} curriculum</h3>
+                <p className="mt-2 text-center text-[15px] text-muted">A study course for each section, covering every sub-section below.</p>
+                <div className="mt-8 grid gap-4 md:grid-cols-2">
+                  {curriculum.sections.map(([sec, chapters]) => (
+                    <div key={sec} className="rounded-2xl bg-white p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="font-semibold text-ink">{sec}</p>
+                        <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">Coming soon</span>
+                      </div>
+                      <ul className="mt-2 grid gap-1 pl-5 text-sm text-ink/75">
+                        {chapters.map((c) => <li key={c} className="list-disc">{c}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {bundle.courses.some((c) => !c.comingSoon) && (
               <div className="mx-auto mt-14 grid max-w-[968px] gap-6">
                 <h3 className="text-center text-2xl font-semibold text-ink">Available now</h3>
