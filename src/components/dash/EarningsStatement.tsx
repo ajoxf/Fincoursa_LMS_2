@@ -102,11 +102,11 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
         <details className="rounded-xl border border-line p-4">
           <summary className="cursor-pointer font-semibold">How Each Figure Is Worked Out</summary>
           <ul className="mt-3 grid list-disc gap-1.5 pl-5 text-muted">
-            <li><b className="text-ink">Gross Revenue:</b> the course price after any discount code and any FinCoursa credit the student used, excluding tax. A programme&apos;s price is split equally across its courses.</li>
-            <li><b className="text-ink">Gateway Fees:</b> the card and payment gateway fee on the sale, at the standard rate shown on each sale. No fee on free enrolments.</li>
-            <li><b className="text-ink">Partner Commissions:</b> only when the student came through a FinCoursa partner&apos;s referral link or code.</li>
-            <li><b className="text-ink">Cashback Deduction:</b> the FinCoursa credit a student receives for buying (and for a review, during offers that include it). Part of it counts as a cost of the sale and is taken off before the share (the % is shown on each sale); FinCoursa carries the rest.</li>
-            <li><b className="text-ink">Your Earnings:</b> the Shared Amount &times; your revenue share, never below zero. Earnings become payable 30 days after the sale, once the refund window has passed. A refunded sale is cancelled.</li>
+            <li><b className="text-ink">Gross Revenue:</b> the course price after any discount code and FinCoursa credit the student used, excluding tax. A programme&apos;s price is split equally across its courses.</li>
+            <li><b className="text-ink">Gateway Fees:</b> the card and payment gateway fee, charged at the standard rate shown on each sale. Free enrolments have no fee.</li>
+            <li><b className="text-ink">Partner Commissions:</b> charged only when the student comes through a FinCoursa partner&apos;s referral link or code.</li>
+            <li><b className="text-ink">Cashback Deduction:</b> the FinCoursa credit a student receives for a purchase (and for a review, during offers that include one). Part of this credit counts as a cost of the sale and is deducted before your share is calculated (the percentage is shown on each sale); FinCoursa covers the rest.</li>
+            <li><b className="text-ink">Your Earnings:</b> the Shared Amount multiplied by your revenue share, and never less than zero. Earnings become payable 30 days after the sale, once the refund window has closed. If a sale is refunded, the earnings on it are cancelled.</li>
           </ul>
         </details>
 
