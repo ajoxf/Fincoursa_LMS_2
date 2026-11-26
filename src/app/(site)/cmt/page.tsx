@@ -88,11 +88,11 @@ export default async function CmtPrepPage() {
                   <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">{l.level}</p>
                   <h3 className="mt-1 text-xl font-semibold text-ink">CMT {l.level} Programme</h3>
                   <p className="mt-2 text-[15px] leading-relaxed text-ink/85">{l.about}</p>
-                  <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Study courses, section by section</p>
+                  <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Study courses, section by section <span className="normal-case tracking-normal">(click a section to see its sub-sections)</span></p>
                   <ul className="mt-2 grid gap-1 text-[15px]">
                     {l.sections.map(([sec, units]) => (
                       <li key={sec}>
-                        <details open className="group rounded-lg">
+                        <details className="group rounded-lg hover:bg-surface/60 open:bg-surface/60">
                           <summary className="flex cursor-pointer list-none items-start justify-between gap-3 px-2 py-1.5">
                             <span className="text-ink/85">
                               <span className="mr-1.5 inline-block text-muted transition group-open:rotate-90">&#9656;</span>{sec}
