@@ -107,7 +107,6 @@ export function EarningsStatement({ earnings, courses, currency, basePath, cours
             <li><b className="text-ink">Partner Commissions:</b> only when the student came through a FinCoursa partner&apos;s referral link or code.</li>
             <li><b className="text-ink">Cashback Deduction:</b> the FinCoursa credit a student receives for buying (and for a review, during offers that include it). Part of it counts as a cost of the sale and is taken off before the share (the % is shown on each sale); FinCoursa carries the rest.</li>
             <li><b className="text-ink">Your Earnings:</b> the Shared Amount &times; your revenue share, never below zero. Earnings become payable 30 days after the sale, once the refund window has passed. A refunded sale is cancelled.</li>
-            <li>Student names and contact details are never shown.</li>
           </ul>
         </details>
 
