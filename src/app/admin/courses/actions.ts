@@ -99,7 +99,8 @@ export async function setCourseStatus(courseId: string, status: "draft" | "publi
   const db = createAdminClient();
   if (status === "published") {
     const { count } = await db.from("lessons").select("id", { count: "exact", head: true }).eq("course_id", courseId);
-    if (!count) throw new Error("Add at least one lesson before publishing.");
+    // explain on the page instead of failing with a server error
+    if (!count) redirect(`/admin/courses/${courseId}?err=${encodeURIComponent("This course has no lessons yet. Add at least one lesson in section 4 · Curriculum below, then publish.")}`);
   }
   await db.from("courses").update({ status, ...(status === "published" ? { published_at: new Date().toISOString() } : {}) }).eq("id", courseId);
   await audit(admin.id, `course.${status}`, courseId);
