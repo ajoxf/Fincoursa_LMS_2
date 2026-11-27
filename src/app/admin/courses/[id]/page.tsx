@@ -17,8 +17,9 @@ import { PricingEditor, type PriceRow } from "./PricingEditor";
 export const metadata: Metadata = { title: "Edit course" };
 
 
-export default async function EditCoursePage({ params }: PageProps<"/admin/courses/[id]">) {
+export default async function EditCoursePage({ params, searchParams }: PageProps<"/admin/courses/[id]">) {
   const { id } = await params;
+  const err = (await searchParams).err;
   await requireRole(["admin"], `/admin/courses/${id}`);
   await syncPendingVideos(id).catch(() => {});
   const db = createAdminClient();
@@ -56,6 +57,7 @@ export default async function EditCoursePage({ params }: PageProps<"/admin/cours
             <Link href={`/instructor/courses/${id}`} className="underline">Progress analytics</Link>
           </p>
         </div>
+        {typeof err === "string" && <p className="w-full rounded-lg bg-danger/10 p-3 text-sm text-danger">{err}</p>}
         <form className="flex flex-wrap gap-2">
           <Link href={`/learn/${course.slug}`} className="fc-btn fc-btn-outline !min-w-0">Preview</Link>
           {course.status !== "published" && <button formAction={setCourseStatus.bind(null, id, "published")} className="fc-btn fc-btn-primary">Publish</button>}
